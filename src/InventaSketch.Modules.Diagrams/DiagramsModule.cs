@@ -9,7 +9,8 @@ namespace InventaSketch.Modules.Diagrams
     /// Diagrams module: UML (class, use case, activity, state, sequence, deployment, relationships), ER (entities,
     /// Chen notation, crow's-foot connectors), system/architecture blocks, BPMN-lite with pools and lanes, control loops,
     /// computer systems and communication, data layouts, GUI wireframes, state circles, fault trees, sequential function
-    /// charts (SFC/GRAFCET), Ishikawa diagrams and mind maps. Every box symbol exposes
+    /// charts (SFC/GRAFCET), Ishikawa diagrams, mind maps, BPMN event triggers, data objects and flows, state machine pseudo
+    /// states and network diagrams with the critical path. Every box symbol exposes
     /// connector ports; connectors are point objects whose ends attach to those ports. Simple flowchart starters
     /// remain in the annotation module (<c>ann.flow.*</c>).
     /// </summary>
@@ -19,7 +20,7 @@ namespace InventaSketch.Modules.Diagrams
 
         public string Id => "diagrams";
         public I18nText Name => new("Diagrams (UML, ER, flow)", "Diagramme (UML, ER, Ablauf)");
-        public string Version => "0.4.0";
+        public string Version => "0.5.0";
         public IEnumerable<ObjectType> Types => AllTypes;
 
         private static ObjectType[] CreateTypes() => new ObjectType[]
@@ -64,6 +65,8 @@ namespace InventaSketch.Modules.Diagrams
             new SfcStepType(true), new SfcStepType(false), new SfcTransitionType(), new SfcActionType(), new SfcBranchType(), new SfcLinkType(),
             // Ishikawa and mind maps
             new IshikawaType(), new MindMapNodeType(), new MindMapLinkType(),
+            // State machine pseudo states, BPMN data and flows, network diagrams (2026-11-26)
+            new PseudoStateType(), new BpmnDataType(false), new BpmnDataType(true), new BpmnFlowType(), new NetNodeType(), new NetLinkType(),
         };
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -84,6 +87,7 @@ namespace InventaSketch.Modules.Diagrams
             new LibraryCategory(DiagCategories.Fta, new I18nText("Fault tree analysis (FTA)", "Fehlerbaumanalyse (FTA)"), Id, 130),
             new LibraryCategory(DiagCategories.Sfc, new I18nText("Sequential function chart (SFC, GRAFCET)", "Ablaufsprache (SFC, GRAFCET)"), Id, 140),
             new LibraryCategory(DiagCategories.Maps, new I18nText("Ishikawa & mind map", "Ishikawa & Mindmap"), Id, 150),
+            new LibraryCategory(DiagCategories.Network, new I18nText("Network diagram (critical path)", "Netzplan (kritischer Pfad)"), Id, 160),
         };
 
         private static Dictionary<string, ParamValue> Ps(params (string Key, ParamValue Value)[] kv) => kv.ToDictionary(x => x.Key, x => x.Value);
@@ -173,6 +177,41 @@ namespace InventaSketch.Modules.Diagrams
                     with { Params = Ps(("marker", "inclusive")) };
                 yield return Item("diag.bpmn.task.subprocess", "diag.bpmn.task", "Sub-process (BPMN)", "Teilprozess (BPMN)", DiagCategories.Bpmn, "subprocess", "teilprozess")
                     with { Params = Ps(("subprocess", true)), Text = "Sub-process" };
+                foreach (var (id, type, en, de, ps, keys) in new (string, string, string, string, (string, ParamValue)[], string[])[]
+                {
+                    ("start.message", "diag.bpmn.start", "Message start event (BPMN)", "Nachrichten-Startereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "message") }, new[] { "message", "nachricht" }),
+                    ("start.timer", "diag.bpmn.start", "Timer start event (BPMN)", "Zeit-Startereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "timer") }, new[] { "timer", "zeit", "uhr" }),
+                    ("start.signal", "diag.bpmn.start", "Signal start event (BPMN)", "Signal-Startereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "signal") }, new[] { "signal" }),
+                    ("intermediate.message", "diag.bpmn.intermediate", "Message intermediate event, catching (BPMN)", "Nachrichten-Zwischenereignis, eintretend (BPMN)",
+                        new (string, ParamValue)[] { ("trigger", "message") }, new[] { "message", "nachricht", "catch", "empfangen" }),
+                    ("intermediate.message.throw", "diag.bpmn.intermediate", "Message intermediate event, throwing (BPMN)", "Nachrichten-Zwischenereignis, auslösend (BPMN)",
+                        new (string, ParamValue)[] { ("trigger", "message"), ("throwing", true) }, new[] { "message", "nachricht", "throw", "senden" }),
+                    ("intermediate.timer", "diag.bpmn.intermediate", "Timer intermediate event (BPMN)", "Zeit-Zwischenereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "timer") },
+                        new[] { "timer", "zeit", "wait", "warten" }),
+                    ("intermediate.boundary.timer", "diag.bpmn.intermediate", "Non-interrupting timer boundary event (BPMN)", "Nicht unterbrechendes Zeit-Randereignis (BPMN)",
+                        new (string, ParamValue)[] { ("trigger", "timer"), ("interrupting", false) }, new[] { "boundary", "randereignis", "angeheftet", "timer", "zeit", "dashed", "gestrichelt" }),
+                    ("intermediate.error", "diag.bpmn.intermediate", "Error boundary event (BPMN)", "Fehler-Randereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "error") },
+                        new[] { "boundary", "randereignis", "error", "fehler" }),
+                    ("end.message", "diag.bpmn.end", "Message end event (BPMN)", "Nachrichten-Endereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "message") }, new[] { "message", "nachricht" }),
+                    ("end.error", "diag.bpmn.end", "Error end event (BPMN)", "Fehler-Endereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "error") }, new[] { "error", "fehler" }),
+                    ("end.terminate", "diag.bpmn.end", "Terminate end event (BPMN)", "Terminierungs-Endereignis (BPMN)", new (string, ParamValue)[] { ("trigger", "terminate") },
+                        new[] { "terminate", "terminierung", "abbruch" }),
+                    ("dataobject.input", "diag.bpmn.dataobject", "Data input (BPMN)", "Dateneingabe (BPMN)", new (string, ParamValue)[] { ("role", "input") }, new[] { "input", "eingabe" }),
+                    ("dataobject.output", "diag.bpmn.dataobject", "Data output (BPMN)", "Datenausgabe (BPMN)", new (string, ParamValue)[] { ("role", "output") }, new[] { "output", "ausgabe" }),
+                    ("dataobject.collection", "diag.bpmn.dataobject", "Data collection (BPMN)", "Datensammlung (BPMN)", new (string, ParamValue)[] { ("collection", true) },
+                        new[] { "collection", "sammlung", "list", "liste" }),
+                })
+                    yield return Item("diag.bpmn." + id, type, en, de, DiagCategories.Bpmn, keys) with { Params = Ps(ps) };
+                foreach (var (value, en, de) in BpmnFlowType.Kinds.Skip(1))
+                    yield return Item("diag.bpmn.flow." + value, "diag.bpmn.flow", en + " (BPMN)", de + " (BPMN)", DiagCategories.Bpmn, value) with { Params = Ps(("kind", value)) };
+
+                // State machine pseudo states
+                foreach (var (value, en, de) in PseudoStateType.Kinds.Skip(1))
+                    yield return Item("diag.state.pseudo." + value, PseudoStateType.TypeId, en, de, DiagCategories.State, value.ToLowerInvariant()) with { Params = Ps(("kind", value)) };
+
+                // Network diagrams
+                yield return Item("diag.net.node.duration", Cpm.NodeType, "Activity with duration 5 (network diagram)", "Vorgang mit Dauer 5 (Netzplan)", DiagCategories.Network,
+                    "duration", "dauer", "5") with { Params = Ps(("duration", "5")) };
 
                 // Control loops
                 yield return Item("diag.ctrl.sum.cross", "diag.ctrl.sum", "Summing junction (with cross)", "Summierstelle (mit Kreuz)", DiagCategories.Control, "cross", "kreuz")

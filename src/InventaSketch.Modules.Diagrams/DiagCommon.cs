@@ -40,6 +40,8 @@ namespace InventaSketch.Modules.Diagrams
         public const string Sfc = "diag.sfc";
         /// <summary>Ishikawa (fishbone) diagrams and mind maps.</summary>
         public const string Maps = "diag.maps";
+        /// <summary>Network diagrams (activity on node) with the critical path.</summary>
+        public const string Network = "diag.network";
     }
 
     /// <summary>Semantic primitive tags used by the diagram types (tests, host naming, style overrides).</summary>
@@ -697,6 +699,7 @@ namespace InventaSketch.Modules.Diagrams
                 DiagCategories.Fta => "diag.fta.link",
                 DiagCategories.Sfc => "diag.sfc.link",
                 DiagCategories.Maps => "diag.mindmap.link",
+                DiagCategories.Network => Cpm.LinkType,
                 // Widgets and pointers sit on a screen; screens chain into a screen flow (UiScreenType overrides).
                 DiagCategories.Ui or DiagCategories.Data => null,
                 _ => "diag.uml.relation.directed",

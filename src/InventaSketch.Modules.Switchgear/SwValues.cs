@@ -49,7 +49,10 @@ namespace InventaSketch.Modules.Switchgear
     /// devices and frequency inverters: P, I, U, cos φ, phase L1/L2/L3 or three-phase) and rails (current per phase, power
     /// and imbalance of the loads fed from the rail's devices). The circuit of a load is the feed tree of the reports
     /// (<see cref="Board.FeedTree"/>): its "fed from" designation, the wiring, or the rail order. Only loads with a power or
-    /// current entered count in the totals. Every value is optional; derived values are never stored.
+    /// current entered count in the totals. Every value is optional; derived values are never stored. The main switch
+    /// estimates the short-circuit currents at the board (transformer and supply cable) and passes them to the overcurrent
+    /// devices below; those also see the rated and instantaneous tripping currents of the device upstream (selectivity
+    /// hints), and RCDs check the type the frequency inverters below them need.
     /// </summary>
     internal static class SwValues
     {
@@ -130,6 +133,37 @@ namespace InventaSketch.Modules.Switchgear
         private static VarDef InstantCurrent() => V("Ia", T("Instantaneous tripping current (upper limit)", "Sofortauslösestrom (obere Grenze)"), "I_a", Quantities.Current, "A", "ia", VarRelevance.Panel);
         private static VarDef ResidualCurrent() => V("IDn", T("Rated residual current", "Bemessungsdifferenzstrom"), "I_Δn", Quantities.Current, "mA", "idn", VarRelevance.Panel) with { StoredUnit = "mA" };
 
+        // Short-circuit estimate at the board (main switch) and the values passed to the protective devices below it.
+        private static VarDef Ik1(VarRelevance rel) => V("Ik1", T("Short-circuit current phase to PE at the board (estimate)", "Kurzschlussstrom Außenleiter–PE an der Verteilung (Schätzung)"),
+            "I_k1", Quantities.Current, "kA", "ik1", rel);
+        private static VarDef Ik3(VarRelevance rel) => V("Ik3", T("Three-phase short-circuit current at the board (estimate)", "Dreipoliger Kurzschlussstrom an der Verteilung (Schätzung)"),
+            "I_k3", Quantities.Current, "kA", "ik3", rel);
+
+        private static IReadOnlyList<VarDef> SupplyVariables() => new[]
+        {
+            Ik1(VarRelevance.Card),
+            Ik3(VarRelevance.Panel),
+            V("Zs", T("Loop impedance at the board", "Schleifenimpedanz an der Verteilung"), "Z_s", Quantities.Resistance, "mΩ", "zs", VarRelevance.Panel),
+            V("Sr", T("Rated power of the supply transformer", "Bemessungsleistung des Einspeisetransformators"), "S_r", Quantities.ApparentPower, "kVA", "trafoPower", VarRelevance.Panel, 1e9),
+            V("uk", T("Short-circuit voltage of the transformer", "Kurzschlussspannung des Transformators"), "u_k", Quantities.Ratio, "%", "uk", VarRelevance.Panel, 1),
+            V("l", T("Length of the supply cable", "Länge der Zuleitung"), "l", Quantities.Length, "m", "supplyLength", VarRelevance.Panel, 1e5),
+            V("A", T("Cross-section of the supply cable", "Querschnitt der Zuleitung"), "A", Quantities.Area, "mm²", "supplySection", VarRelevance.Panel, 1),
+            V("Un", T("System voltage (line-to-line)", "Netzspannung (Außenleiter)"), "U_n", Quantities.Voltage, "V", "systemVoltage", VarRelevance.Engineer, 1e5) with { Default = 400 },
+            V("rho", T("Resistivity of the conductor (copper, 20 °C)", "Spezifischer Widerstand des Leiters (Kupfer, 20 °C)"), "ρ", Quantities.Resistivity, "Ω·mm²/m", "resistivity", VarRelevance.Engineer, 1)
+                with { Default = 0.017241e-6 },
+            V("ZT", T("Impedance of the transformer", "Impedanz des Transformators"), "Z_T", Quantities.Resistance, "mΩ", "zTrafo", VarRelevance.Engineer),
+            V("ZL", T("Impedance of one conductor of the supply cable", "Impedanz eines Leiters der Zuleitung"), "Z_L", Quantities.Resistance, "mΩ", "zLine", VarRelevance.Engineer),
+        };
+
+        /// <summary>Short-circuit and selectivity values of a protective device: from the board and from the device upstream.</summary>
+        private static IReadOnlyList<VarDef> FaultVariables(bool withIk) => (withIk
+            ? new[] { Ik1(VarRelevance.Panel), Ik3(VarRelevance.Panel), V("Icn", T("Rated short-circuit capacity", "Bemessungsschaltvermögen"), "I_cn", Quantities.Current, "kA", "icn", VarRelevance.Panel) }
+            : Array.Empty<VarDef>()).Concat(new[]
+        {
+            V("Inup", T("Rated current of the protective device upstream", "Bemessungsstrom des vorgeschalteten Schutzorgans"), "I_n,up", Quantities.Current, "A", "inUp", VarRelevance.Engineer) with { ReadOnly = true },
+            V("Iaup", T("Instantaneous tripping current of the device upstream", "Sofortauslösestrom des vorgeschalteten Schutzorgans"), "I_a,up", Quantities.Current, "A", "iaUp", VarRelevance.Engineer) with { ReadOnly = true },
+        }).ToList();
+
         private static IReadOnlyList<VarDef> LoadVariables(bool drive) => new[]
         {
             drive
@@ -198,6 +232,69 @@ namespace InventaSketch.Modules.Switchgear
             }
         }
 
+        private static readonly double Sqrt3 = Math.Sqrt(3);
+
+        private static readonly I18nText ScValidity = T("estimate: impedances added as magnitudes, upstream grid, reactances and the voltage factor c neglected, conductor at 20 °C",
+            "Schätzung: Impedanzen als Beträge addiert, vorgelagertes Netz, Reaktanzen und Spannungsfaktor c vernachlässigt, Leiter bei 20 °C");
+
+        /// <summary>Transformer impedance Z_T = u_k·U_n²/S_r [S7].</summary>
+        private static readonly Relation TrafoImpedance =
+            new Relation("sw.sc.transformer", T("Impedance of the transformer", "Impedanz des Transformators"), "{ZT} = {uk}·{Un}²/{Sr}", "ZT", "uk", "Un", "Sr")
+            {
+                Source = "S7", Validity = T("per phase, referred to the low-voltage side", "je Außenleiter, auf die Unterspannungsseite bezogen"),
+            }
+                .Solve("ZT", "{uk}·{Un}²/{Sr}", v => v("uk") * v("Un") * v("Un") / v("Sr"))
+                .Solve("uk", "{ZT}·{Sr}/{Un}²", v => v("ZT") * v("Sr") / (v("Un") * v("Un")))
+                .Solve("Sr", "{uk}·{Un}²/{ZT}", v => v("uk") * v("Un") * v("Un") / v("ZT"));
+
+        /// <summary>Conductor resistance Z_L = ρ·l/A [S12].</summary>
+        private static readonly Relation LineImpedance =
+            new Relation("sw.sc.line", T("Impedance of one conductor", "Impedanz eines Leiters"), "{ZL} = {rho}·{l}/{A}", "ZL", "rho", "l", "A")
+            {
+                Source = "S12", Validity = T("resistance only (reactance neglected)", "nur Wirkwiderstand (Reaktanz vernachlässigt)"),
+            }
+                .Solve("ZL", "{rho}·{l}/{A}", v => v("rho") * v("l") / v("A"))
+                .Solve("l", "{ZL}·{A}/{rho}", v => v("ZL") * v("A") / v("rho"))
+                .Solve("A", "{rho}·{l}/{ZL}", v => v("rho") * v("l") / v("ZL"))
+                .Solve("rho", "{ZL}·{A}/{l}", v => v("ZL") * v("A") / v("l"));
+
+        /// <summary>Fault loop at the board Z_s = Z_T + 2·Z_L (phase and protective conductor of the supply cable) [S7, S10].</summary>
+        private static readonly Relation Loop =
+            new Relation("sw.sc.loop", T("Loop impedance at the board", "Schleifenimpedanz an der Verteilung"), "{Zs} = {ZT} + 2·{ZL}", "Zs", "ZT", "ZL")
+            {
+                Source = "S10", Validity = T("phase and protective conductor of the same cross-section", "Außen- und Schutzleiter mit gleichem Querschnitt"),
+            }
+                .Solve("Zs", "{ZT} + 2·{ZL}", v => v("ZT") + 2 * v("ZL"))
+                .Solve("ZT", "{Zs} − 2·{ZL}", v => v("Zs") - 2 * v("ZL"))
+                .Solve("ZL", "({Zs} − {ZT})/2", v => (v("Zs") - v("ZT")) / 2);
+
+        /// <summary>Single-phase short-circuit current I_k1 = U_0/Z_s with U_0 = U_n/√3 [S7, S10].</summary>
+        private static readonly Relation ShortCircuit1 =
+            new Relation("sw.sc.ik1", T("Short-circuit current phase to PE", "Kurzschlussstrom Außenleiter–PE"), "{Ik1} = {Un}/(√3·{Zs})", "Ik1", "Un", "Zs")
+            {
+                Source = "S10", Validity = ScValidity,
+            }
+                .Solve("Ik1", "{Un}/(√3·{Zs})", v => v("Un") / (Sqrt3 * v("Zs")))
+                .Solve("Zs", "{Un}/(√3·{Ik1})", v => v("Un") / (Sqrt3 * v("Ik1")))
+                .Solve("Un", "√3·{Zs}·{Ik1}", v => Sqrt3 * v("Zs") * v("Ik1"));
+
+        /// <summary>Three-phase short-circuit current I_k3 = U_n/(√3·(Z_T + Z_L)) [S7].</summary>
+        private static readonly Relation ShortCircuit3 =
+            new Relation("sw.sc.ik3", T("Three-phase short-circuit current", "Dreipoliger Kurzschlussstrom"), "{Ik3} = {Un}/(√3·({ZT} + {ZL}))", "Ik3", "Un", "ZT", "ZL")
+            {
+                Source = "S7", Validity = ScValidity,
+            }
+                .Solve("Ik3", "{Un}/(√3·({ZT} + {ZL}))", v => v("Un") / (Sqrt3 * (v("ZT") + v("ZL"))))
+                .Solve("ZL", "{Un}/(√3·{Ik3}) − {ZT}", v => v("Un") / (Sqrt3 * v("Ik3")) - v("ZT"));
+
+        private static readonly Relation PassIk1 = Relation.Equality("sw.sc.passed.ik1", T("Short-circuit current at the board passed on", "Kurzschlussstrom der Verteilung weitergegeben"));
+        private static readonly Relation PassIk3 = Relation.Equality("sw.sc.passed.ik3", T("Three-phase short-circuit current at the board passed on", "Dreipoliger Kurzschlussstrom der Verteilung weitergegeben"));
+        private static readonly Relation PassIn = Relation.Equality("sw.upstream.in", T("Rated current of the device upstream", "Bemessungsstrom des vorgeschalteten Geräts"));
+        private static readonly Relation PassIa = Relation.Equality("sw.upstream.ia", T("Instantaneous tripping current of the device upstream", "Sofortauslösestrom des vorgeschalteten Geräts"));
+
+        private static BoundRelation Pass(Relation r, string objectId, string key, string otherId, string otherKey)
+            => new(r, new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["a"] = new VarRef(objectId, key), ["b"] = new VarRef(otherId, otherKey) });
+
         private static readonly Relation Imbalance =
             new Relation("sw.board.imbalance", T("Phase imbalance", "Schieflast"), "{dI} = max({IL1}, {IL2}, {IL3}) − min({IL1}, {IL2}, {IL3})", "dI", "IL1", "IL2", "IL3")
                 .Solve("dI", "max({IL1}, {IL2}, {IL3}) − min({IL1}, {IL2}, {IL3})",
@@ -256,6 +353,44 @@ namespace InventaSketch.Modules.Switchgear
               "Die Außenleiter sind ungleich belastet: der am stärksten und der am schwächsten belastete Außenleiter unterscheiden sich um mehr als ΔI_max (Vorgabe 20 A; Grenze des Netzbetreibers eintragen). Stromkreise auf einen anderen Außenleiter legen."),
             "I_max − I_min ≤ ΔI_max", c => Above(c["dI"], c["dImax"]));
 
+        private static bool Below(double? value, double? limit) => value is double v && limit is double l && v < l * (1 - 1e-9);
+
+        /// <summary>sw.disconnect: the short-circuit current at the board does not reach the instantaneous tripping current I_a [S10, S11].</summary>
+        public static readonly ValueCheck Disconnection = new("sw.disconnect", CheckSeverity.Warning,
+            T("The short-circuit current phase to PE at the board (estimate) is below the instantaneous tripping current I_a: a fault is not switched off instantaneously. The circuit cable lowers I_k further; check the loop impedance or choose another characteristic.",
+              "Der Kurzschlussstrom Außenleiter–PE an der Verteilung (Schätzung) liegt unter dem Sofortauslösestrom I_a: ein Fehler wird nicht unverzögert abgeschaltet. Die Leitung des Stromkreises verringert I_k weiter; Schleifenimpedanz prüfen oder eine andere Charakteristik wählen."),
+            "I_k1 ≥ I_a", c => Below(c["Ik1"], c["Ia"])) { Source = "S10" };
+
+        /// <summary>sw.breaking: the three-phase short-circuit current at the board is above the device's rated short-circuit capacity [S11].</summary>
+        public static readonly ValueCheck Breaking = new("sw.breaking", CheckSeverity.Warning,
+            T("The short-circuit current at the board (estimate) is above the rated short-circuit capacity I_cn of the device. Choose a device with a higher capacity or back-up protection.",
+              "Der Kurzschlussstrom an der Verteilung (Schätzung) liegt über dem Bemessungsschaltvermögen I_cn des Geräts. Ein Gerät mit höherem Schaltvermögen oder einen Back-up-Schutz wählen."),
+            "I_k3 ≤ I_cn", c => Above(c["Ik3"], c["Icn"])) { Source = "S11" };
+
+        /// <summary>sw.selectivity: the device upstream is rated less than 1.6 times this one (rule of thumb for gG fuses) [S11].</summary>
+        public static readonly ValueCheck SelectivityRatio = new("sw.selectivity", CheckSeverity.Hint,
+            T("The protective device upstream is rated less than 1.6 times this one: an overload or fault here may trip the upstream device as well (no selectivity). Check the tripping characteristics.",
+              "Das vorgeschaltete Schutzorgan ist mit weniger als dem 1,6-Fachen dieses Geräts bemessen: eine Überlast oder ein Fehler hier kann auch das vorgeschaltete Gerät auslösen (keine Selektivität). Auslösekennlinien prüfen."),
+            "I_n,up ≥ 1.6·I_n", c => c["Inup"] is double up && c["In"] is double n && up < 1.6 * n * (1 - 1e-9)) { Source = "S11" };
+
+        /// <summary>sw.selectivity.instant: a short circuit at the board also reaches the upstream breaker's instantaneous trip [S11].</summary>
+        public static readonly ValueCheck SelectivityInstant = new("sw.selectivity.instant", CheckSeverity.Hint,
+            T("A short circuit at the board also exceeds the instantaneous tripping current of the circuit breaker upstream: both trip at once (no current selectivity).",
+              "Ein Kurzschluss an der Verteilung übersteigt auch den Sofortauslösestrom des vorgeschalteten Leitungsschutzschalters: beide lösen gleichzeitig aus (keine Stromselektivität)."),
+            "I_k3 < I_a,up", c => c["Ik3"] is double ik && c["Iaup"] is double ia && ik >= ia * (1 - 1e-9)) { Source = "S11" };
+
+        /// <summary>RCD types in increasing order of the residual currents they detect.</summary>
+        public static readonly string[] RcdTypes = { "AC", "A", "F", "B" };
+
+        public static int RcdRank(string type) => Math.Max(0, Array.IndexOf(RcdTypes, type));
+
+        /// <summary>sw.rcd.type: a load below needs an RCD of a higher type (frequency inverter: three-phase B, single-phase F) [S11].</summary>
+        public static readonly ValueCheck RcdTypeCheck = new("sw.rcd.type", CheckSeverity.Hint,
+            T("A frequency inverter below this RCD can cause residual currents it does not detect (three-phase: smooth DC, type B; single-phase: mixed frequencies, type F). Check the inverter's manual for the RCD type.",
+              "Ein Frequenzumrichter unter diesem FI kann Fehlerströme verursachen, die er nicht erfasst (dreiphasig: glatte Gleichfehlerströme, Typ B; einphasig: Mischfrequenzen, Typ F). FI-Typ in der Anleitung des Umrichters prüfen."),
+            "type ≥ required type of the loads",
+            c => CircuitMap.Of(c.Context.Doc).RequiredRcdRank(c.Object.Id) > RcdRank(c.Object.Str("rcdType", "A"))) { Source = "S11" };
+
         // ------------------------------------------------------------------ specs per type
 
         private static readonly Dictionary<string, SwValueSpec> Specs = new(StringComparer.Ordinal);
@@ -281,8 +416,10 @@ namespace InventaSketch.Modules.Switchgear
                     return spec.Role switch
                     {
                         DeviceRole.Protection or DeviceRole.Rcbo => Protection(spec),
-                        DeviceRole.Rcd => Make(SwValueKind.Rcd, spec.Params, new[] { RatedCurrent(spec.Id), OperatingCurrent(), CircuitPower(), ResidualCurrent() }, Array.Empty<Relation>(), new[] { LoadAboveRating }),
-                        DeviceRole.MainSwitch => Make(SwValueKind.Switch, spec.Params, new[] { RatedCurrent(spec.Id), OperatingCurrent(), CircuitPower() }, Array.Empty<Relation>(), new[] { LoadAboveRating }),
+                        DeviceRole.Rcd => Make(SwValueKind.Rcd, spec.Params, new[] { RatedCurrent(spec.Id), OperatingCurrent(), CircuitPower(), ResidualCurrent() }, Array.Empty<Relation>(),
+                            new[] { LoadAboveRating, RcdTypeCheck }),
+                        DeviceRole.MainSwitch => Make(SwValueKind.Switch, spec.Params, new[] { RatedCurrent(spec.Id), OperatingCurrent(), CircuitPower() }.Concat(SupplyVariables()).ToList(),
+                            new[] { TrafoImpedance, LineImpedance, Loop, ShortCircuit1, ShortCircuit3 }, new[] { LoadAboveRating }),
                         DeviceRole.Drive => Make(SwValueKind.Load, spec.Params, LoadVariables(true), Array.Empty<Relation>(), Array.Empty<ValueCheck>()),
                         _ => SwValueSpec.Empty,
                     };
@@ -300,7 +437,14 @@ namespace InventaSketch.Modules.Switchgear
             var vars = new List<VarDef> { RatedCurrent(spec.Id), OperatingCurrent(), CircuitPower(), CableCapacity() };
             if (spec.Params.Any(p => p.Key == "char")) vars.Add(InstantCurrent());
             if (spec.Params.Any(p => p.Key == "idn")) vars.Add(ResidualCurrent());
-            return Make(SwValueKind.Protection, spec.Params, vars, Array.Empty<Relation>(), new[] { LoadAboveRating, RatingAboveCable });
+            // An overload relay is no short-circuit protection: no short-circuit or selectivity values.
+            if (spec.Id == Industrial.Overload)
+                return Make(SwValueKind.Protection, spec.Params, vars, Array.Empty<Relation>(), new[] { LoadAboveRating, RatingAboveCable });
+            vars.AddRange(FaultVariables(true));
+            var checks = new List<ValueCheck> { LoadAboveRating, RatingAboveCable, Breaking, SelectivityRatio, SelectivityInstant };
+            if (vars.Any(v => v.Key == "Ia")) checks.Insert(2, Disconnection);
+            if (spec.Params.Any(p => p.Key == "rcdType")) checks.Add(RcdTypeCheck);
+            return Make(SwValueKind.Protection, spec.Params, vars, Array.Empty<Relation>(), checks);
         }
 
         private static SwValueSpec Make(SwValueKind kind, IReadOnlyList<ParamDef> existing, IReadOnlyList<VarDef> vars, IReadOnlyList<Relation> relations, IReadOnlyList<ValueCheck> checks)
@@ -411,6 +555,18 @@ namespace InventaSketch.Modules.Switchgear
                         }
                         if (spec.Has("Iz") && map.CableCapacity(o.Id) is { } iz)
                             yield return BindOne(Constant("sw.cable.iz", CableName, iz.Value, iz.Text), o.Id, "Iz");
+                        // The short-circuit currents of the board come from the main switch upstream; selectivity looks at the
+                        // protective device upstream.
+                        if (spec.Has("Ik1") && spec.Kind == SwValueKind.Protection && map.MainSwitchOf(o.Id) is { } main)
+                        {
+                            yield return Pass(PassIk1, o.Id, "Ik1", main, "Ik1");
+                            yield return Pass(PassIk3, o.Id, "Ik3", main, "Ik3");
+                        }
+                        if (spec.Has("Inup") && map.UpstreamOf(o.Id) is { } up)
+                        {
+                            yield return Pass(PassIn, o.Id, "Inup", up, "In");
+                            if (ctx.Doc.Get(up) is { } uo && For(uo.Type).Has("Ia")) yield return Pass(PassIa, o.Id, "Iaup", up, "Ia");
+                        }
                         yield break;
                     }
             }
@@ -441,6 +597,26 @@ namespace InventaSketch.Modules.Switchgear
         public IReadOnlyList<Load> RailLoads(string railId) => _rail.TryGetValue(railId, out var l) ? l : (IReadOnlyList<Load>)Array.Empty<Load>();
         public string? PhaseOf(string loadId) => _phase.TryGetValue(loadId, out var p) ? p : null;
         public (double Value, string Text)? CableCapacity(string deviceId) => _iz.TryGetValue(deviceId, out var v) ? v : null;
+
+        private readonly Dictionary<string, string> _main = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _upstream = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _rcdNeed = new(StringComparer.Ordinal);
+
+        /// <summary>The nearest main switch above the device in the feed tree (its short-circuit values), or null.</summary>
+        public string? MainSwitchOf(string deviceId) => _main.TryGetValue(deviceId, out var m) ? m : null;
+
+        /// <summary>The nearest overcurrent protective device above the device in the feed tree (not an RCD or overload relay), or null.</summary>
+        public string? UpstreamOf(string deviceId) => _upstream.TryGetValue(deviceId, out var u) ? u : null;
+
+        /// <summary>The RCD type the loads below the device need (<see cref="SwValues.RcdTypes"/> rank; 0 = no requirement found).</summary>
+        public int RequiredRcdRank(string deviceId) => _rcdNeed.TryGetValue(deviceId, out var r) ? r : 0;
+
+        private static bool IsOvercurrent(SketchObject o)
+            => Board.Device(o) is { } t && t.Spec.Role is DeviceRole.Protection or DeviceRole.Rcbo && t.Id != Industrial.Overload;
+
+        /// <summary>RCD type rank a load needs: a frequency inverter three-phase B, single-phase F (manufacturers' guidance) [S11].</summary>
+        private static int RcdNeedOf(SketchObject load)
+            => load.Type == Industrial.Vfd ? (SwValues.IsThreePhase(load) ? SwValues.RcdRank("B") : SwValues.RcdRank("F")) : 0;
 
         private CircuitMap(SketchDocument doc)
         {
@@ -489,6 +665,33 @@ namespace InventaSketch.Modules.Switchgear
                 {
                     _device[o.Id] = loads;
                     if (iz is { } v) _iz[o.Id] = v;
+                }
+            }
+
+            // Upstream main switch and overcurrent device of every device; the RCD type the loads below need.
+            var need = new Dictionary<Board.Node, int>();
+            int Need(Board.Node n)
+            {
+                if (need.TryGetValue(n, out var r)) return r;
+                need[n] = 0;
+                r = n.Loads.Select(RcdNeedOf).DefaultIfEmpty(0).Max();
+                foreach (var c in n.Children) r = Math.Max(r, Need(c));
+                return need[n] = r;
+            }
+            foreach (var n in nodes)
+            {
+                string? main = null, up = null;
+                for (var cur = parent[n]; cur is not null && (main is null || up is null); cur = parent[cur])
+                {
+                    main ??= cur.Objects.FirstOrDefault(x => Board.Device(x)?.Spec.Role == DeviceRole.MainSwitch)?.Id;
+                    up ??= cur.Objects.FirstOrDefault(IsOvercurrent)?.Id;
+                }
+                var rank = Need(n);
+                foreach (var o in n.Objects)
+                {
+                    if (main is not null) _main[o.Id] = main;
+                    if (up is not null) _upstream[o.Id] = up;
+                    if (rank > 0) _rcdNeed[o.Id] = rank;
                 }
             }
 

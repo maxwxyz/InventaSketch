@@ -140,9 +140,9 @@ einfügen; abgeleitete Werte werden nie gespeichert.
 
 | Element | Variablen (Kartenwerte zuerst) | Parameter |
 |---|---|---|
-| LS, FI/LS, Motorschutzschalter, Überlastrelais, NH-Lasttrenner | I_n Bemessungsstrom (Motorschutzschalter und Überlastrelais: Einstellstrom I_r), I_B Betriebsstrom des Stromkreises, P Leistung des Stromkreises; I_z Strombelastbarkeit der Leitung, I_a Sofortauslösestrom (LS, FI/LS), I_Δn (FI/LS) | `rating` (die Bemessungsauswahl selbst), `ib`, `power`, `iz`, `ia`, `idn` |
+| LS, FI/LS, Motorschutzschalter, Überlastrelais, NH-Lasttrenner | I_n Bemessungsstrom (Motorschutzschalter und Überlastrelais: Einstellstrom I_r), I_B Betriebsstrom des Stromkreises, P Leistung des Stromkreises; I_z Strombelastbarkeit der Leitung, I_a Sofortauslösestrom (LS, FI/LS), I_Δn (FI/LS); nicht beim Überlastrelais: I_k1 und I_k3 an der Verteilung (vom vorgeschalteten Hauptschalter), I_cn Bemessungsschaltvermögen; Engineer (nur lesbar, vom vorgeschalteten Gerät) I_n,up, I_a,up | `rating` (die Bemessungsauswahl selbst), `ib`, `power`, `iz`, `ia`, `idn`, `ik1`, `ik3`, `icn`, `inUp`, `iaUp` |
 | FI | I_n, I_B, P; I_Δn | `rating`, `ib`, `power`, `idn` |
-| Hauptschalter | I_n, I_B, P | `rating`, `ib`, `power` |
+| Hauptschalter | I_n, I_B, P, I_k1 Kurzschlussstrom Außenleiter–PE an der Verteilung; I_k3 dreipoliger Kurzschlussstrom, Z_s Schleifenimpedanz, S_r und u_k des Einspeisetransformators, l und A der Zuleitung; Engineer U_n (Vorgabe 400 V), ρ (Kupfer bei 20 °C, Vorgabe 0,017241 Ω·mm²/m), Z_T, Z_L | `rating`, `ib`, `power`, `ik1`, `ik3`, `zs`, `trafoPower`, `uk`, `supplyLength`, `supplySection`, `systemVoltage`, `resistivity`, `zTrafo`, `zLine` |
 | Raumgeräte, Frequenzumrichter | P Leistung (Umrichter: Bemessungsleistung, die Auswahl `power` in kW), I Strom je Außenleiter; U Spannung Außenleiter–Neutralleiter (Vorgabe 230 V), cos φ (Vorgabe 1) | `power`, `current`, `voltage`, `powerFactor` |
 | Hutschiene | I_L1, I_L2, I_L3 Strom je Außenleiter, P Leistung der Verteilung; ΔI Schieflast, ΔI_max zulässige Schieflast (Vorgabe 20 A) | `currentL1` … `currentL3`, `power`, `imbalance`, `imbalanceMax` |
 
@@ -174,6 +174,23 @@ einfügen; abgeleitete Werte werden nie gespeichert.
 | `sw.load.rating` | Warnung | I_B ≤ I_n (Schutzorgane, FI, Hauptschalter): die Verbraucher ziehen mehr als die Bemessung | S9 |
 | `sw.rating.cable` | Warnung | I_n ≤ I_z (Überstromschutzorgane; nur wenn ein I_z bekannt ist) | S9 |
 | `sw.phase.imbalance` | Warnung | I_max − I_min ≤ ΔI_max auf einer Schiene; die Vorgabe 20 A ist ein Plausibilitätswert, die Grenze des Netzbetreibers eintragen | – |
+| `sw.disconnect` | Warnung | I_k1 an der Verteilung ≥ I_a (LS, FI/LS): ein Fehler Außenleiter–PE löst das Gerät unverzögert aus (automatische Abschaltung, Z_s·I_a ≤ U_0) | S10 |
+| `sw.breaking` | Warnung | I_k3 an der Verteilung ≤ I_cn (nur mit eingetragenem I_cn) | S11 |
+| `sw.selectivity` | Hinweis | I_n,up ≥ 1,6·I_n gegenüber dem vorgeschalteten Überstromschutzorgan (Faustregel für gG-Sicherungen; ein Hinweis, keine Selektivitätsuntersuchung) | S11 |
+| `sw.selectivity.instant` | Hinweis | I_k3 an der Verteilung < I_a,up eines vorgeschalteten LS-Schalters (sonst lösen beide gleichzeitig aus: keine Stromselektivität) | S11 |
+| `sw.rcd.type` | Hinweis | FI- bzw. FI/LS-Typ ≥ dem Typ, den ein Frequenzumrichter darunter braucht (dreiphasig B, einphasig F; Reihenfolge AC < A < F < B) | S11 |
+
+**Kurzschluss, Selektivität und FI-Typ (2026-11-26).** Der Hauptschalter trägt eine Schätzung der Kurzschlussströme an
+der Verteilung: Z_T = u_k·U_n²/S_r [S7], Z_L = ρ·l/A [S12], Z_s = Z_T + 2·Z_L (Außen- und Schutzleiter mit gleichem
+Querschnitt) [S10], I_k1 = U_n/(√3·Z_s) und I_k3 = U_n/(√3·(Z_T + Z_L)) [S7, S10]. Die Impedanzen werden als Beträge
+addiert; vorgelagertes Netz, Reaktanzen und Spannungsfaktor c sind vernachlässigt, der Leiter hat 20 °C – eine Schätzung,
+keine Kurzschlussberechnung (IEC 60909 ist nicht umgesetzt). Eine gemessene Schleifenimpedanz kann direkt als Z_s
+eingetragen werden. Beispiel: 630 kVA, u_k = 4 %, 50 m Kupfer 95 mm² ergeben Z_s = 28,3 mΩ, I_k1 ≈ 8,2 kA und
+I_k3 ≈ 12,0 kA. Jedes Überstromschutzorgan unter dem Hauptschalter im Einspeisebaum erhält I_k1 und I_k3 (Werte an der
+Verteilung: die Leitung des Stromkreises verringert I_k weiter, das ist nicht modelliert) sowie Bemessungs- und
+Sofortauslösestrom des nächsten Überstromschutzorgans darüber (kein FI, Hauptschalter oder Überlastrelais). Ein FI oder
+FI/LS prüft die Frequenzumrichter darunter. Bibliothekseinträge: `sw.switch.main.supply` (Hauptschalter mit
+Kurzschluss-Suchwörtern), `sw.protection.rcd.f` (Typ F).
 
 ## Beschriftungsstreifen
 
@@ -258,9 +275,11 @@ Alles wird mit nativen Grundformen gezeichnet. Schwarz-Weiß-Ausgabe übernehmen
 
 ## Grenzen und nächste Schritte
 
-- Die Berechnungen beschränken sich auf Lastsummen je Stromkreis und Außenleiter und die drei Prüfungen: kein
-  Spannungsfall, keine Leitungsbemessung, Selektivität, Schleifenimpedanz oder FI-Zuordnungsprüfung; I_z wird
-  eingegeben, nicht nachgeschlagen.
+- Die Berechnungen beschränken sich auf Lastsummen je Stromkreis und Außenleiter, eine Kurzschlussschätzung an der
+  Verteilung und die Prüfungen oben: kein Spannungsfall, keine Leitungsbemessung, keine Auslösekennlinien (Selektivität
+  ist ein Faustregel-Hinweis), keine Schleifenimpedanz der Endstromkreise und keine FI-Zuordnungsprüfung; I_z wird
+  eingegeben, nicht nachgeschlagen. Überspannungsschutzgeräte tragen keine Werte (die Abstimmung mit der Vorsicherung
+  ist offen).
 - Die Schienenregel für LS-Schalter ist eine Annahme; für Gewissheit Adern zeichnen oder „Gespeist von“ setzen.
 - Kabellängen werden eingegeben (m), nicht aus der Zeichnung gemessen.
 - Die Schaltzeichen-Ansicht ist ein kompaktes Gerätesymbol, kein vollständiger mehrpoliger Stromlaufplan; die

@@ -24,7 +24,9 @@ namespace InventaSketch.Modules.Energy
     /// </para>
     /// <para>
     /// Also: CHP (η_el, η_th), thermal storage (Q = ρ·V·c·Δθ), electrolyser and fuel cell (η, P_el, P_H2, ṁ), hydro power plant
-    /// (P = ρ·g·Q·H·η), pumped storage (E = ρ·g·V·H) and the EV charging time t = E/P.
+    /// (P = ρ·g·Q·H·η), pumped storage (E = ρ·g·V·H) and the EV charging time t = E/P. Round 6: battery state of charge,
+    /// time left and round-trip efficiency; PV annual yield (Y_f = H_POA·PR, E_a = P·Y_f); the utility grid as grid
+    /// connection point (inverters' AC power against the feed-in limit, annual self-consumption share and self-sufficiency).
     /// </para>
     /// </summary>
     internal static class EnergyValues
@@ -109,8 +111,8 @@ namespace InventaSketch.Modules.Energy
                 .Solve("Umpp", "{P}/{Impp}", v => v("P") / v("Impp"))
                 .Solve("Impp", "{P}/{Umpp}", v => v("P") / v("Umpp"));
 
-        private static Relation Product(string id, I18nText name, string result, string a, string b, string source = "S34") =>
-            new Relation(id, name, "{" + result + "} = {" + a + "}·{" + b + "}", result, a, b) { Source = source }
+        private static Relation Product(string id, I18nText name, string result, string a, string b, string source = "S34", I18nText? validity = null) =>
+            new Relation(id, name, "{" + result + "} = {" + a + "}·{" + b + "}", result, a, b) { Source = source, Validity = validity }
                 .Solve(result, "{" + a + "}·{" + b + "}", v => v(a) * v(b))
                 .Solve(a, "{" + result + "}/{" + b + "}", v => v(result) / v(b))
                 .Solve(b, "{" + result + "}/{" + a + "}", v => v(result) / v(a));
@@ -191,6 +193,51 @@ namespace InventaSketch.Modules.Energy
                 .Solve("t", "{Eus}/{P}", v => v("Eus") / v("P"))
                 .Solve("Eus", "{t}·{P}", v => v("t") * v("P"))
                 .Solve("P", "{Eus}/{t}", v => v("Eus") / v("t"));
+
+        /// <summary>Battery: energy stored now E_st = SoC·E_nutz [S35].</summary>
+        private static readonly Relation BatStored = Product("bat.stored", T("Energy stored now", "Aktuell gespeicherte Energie"), "Est", "soc", "Eus", "S35",
+            T("state of charge relative to the usable capacity", "Ladezustand bezogen auf die nutzbare Kapazität"));
+
+        /// <summary>Battery: time left at the present power t_rest = E_st/P [S35].</summary>
+        private static readonly Relation BatLeft =
+            new Relation("bat.time.left", T("Time left at this power", "Restlaufzeit bei dieser Leistung"), "{tl} = {Est}/{P}", "tl", "Est", "P")
+            {
+                Source = "S35", Validity = T("constant power, no losses", "konstante Leistung, ohne Verluste"),
+            }
+                .Solve("tl", "{Est}/{P}", v => v("Est") / v("P"))
+                .Solve("Est", "{tl}·{P}", v => v("tl") * v("P"))
+                .Solve("P", "{Est}/{tl}", v => v("Est") / v("tl"));
+
+        /// <summary>Battery: round trip E_nutz = η_rt·E_in (energy drawn to charge fully from empty) [S35].</summary>
+        private static readonly Relation BatRoundTrip = Product("bat.roundtrip", T("Round-trip efficiency", "Zyklus-Wirkungsgrad (Laden und Entladen)"), "Eus", "etart", "Ein", "S35",
+            T("one full cycle: E_in charged from empty, E_nutz delivered back", "ein voller Zyklus: E_in von leer geladen, E_nutz wieder abgegeben"));
+
+        /// <summary>PV specific yield Y_f = H_POA·PR (H_POA as peak-sun hours) [S33].</summary>
+        private static readonly Relation PvSpecific = Product("pv.yield.specific", T("Specific yield", "Spezifischer Ertrag"), "Ysp", "Hpoa", "PR", "S33",
+            T("H_POA in peak-sun hours (kWh/m² ÷ 1 kW/m²); PR covers all losses (IEC 61724-1)", "H_POA in Volllaststunden der Sonne (kWh/m² ÷ 1 kW/m²); PR enthält alle Verluste (IEC 61724-1)"));
+
+        /// <summary>PV annual yield E_a = P_STC·Y_f [S33].</summary>
+        private static readonly Relation PvAnnual = Product("pv.yield.annual", T("Annual yield", "Jahresertrag"), "Ea", "P", "Ysp", "S33",
+            T("estimate per year from the STC power and the specific yield", "Schätzung je Jahr aus STC-Leistung und spezifischem Ertrag"));
+
+        /// <summary>a = b/c (shares of the energy balance) [S34].</summary>
+        private static Relation Quotient(string id, I18nText name, string result, string a, string b) =>
+            new Relation(id, name, "{" + result + "} = {" + a + "}/{" + b + "}", result, a, b) { Source = "S34", Validity = T("energies over the same period (a year)", "Energien über denselben Zeitraum (ein Jahr)") }
+                .Solve(result, "{" + a + "}/{" + b + "}", v => v(a) / v(b))
+                .Solve(a, "{" + result + "}·{" + b + "}", v => v(result) * v(b))
+                .Solve(b, "{" + a + "}/{" + result + "}", v => v(a) / v(result));
+
+        /// <summary>a = b − c (fed-in and drawn energy) [S34].</summary>
+        private static Relation Difference(string id, I18nText name, string result, string a, string b) =>
+            new Relation(id, name, "{" + result + "} = {" + a + "} − {" + b + "}", result, a, b) { Source = "S34", Validity = T("energies over the same period (a year)", "Energien über denselben Zeitraum (ein Jahr)") }
+                .Solve(result, "{" + a + "} − {" + b + "}", v => v(a) - v(b))
+                .Solve(a, "{" + result + "} + {" + b + "}", v => v(result) + v(b))
+                .Solve(b, "{" + a + "} − {" + result + "}", v => v(a) - v(result));
+
+        private static readonly Relation SelfShare = Quotient("energy.balance.self", T("Self-consumption share", "Eigenverbrauchsanteil"), "rself", "Eself", "Epv");
+        private static readonly Relation Autarky = Quotient("energy.balance.autarky", T("Self-sufficiency (autarky)", "Autarkiegrad"), "raut", "Eself", "Eload");
+        private static readonly Relation FedIn = Difference("energy.balance.feed", T("Energy fed into the grid", "Ins Netz eingespeiste Energie"), "Efeed", "Epv", "Eself");
+        private static readonly Relation Drawn = Difference("energy.balance.grid", T("Energy drawn from the grid", "Aus dem Netz bezogene Energie"), "Egrid", "Eload", "Eself");
 
         /// <summary>Heat pump Φ_H = COP·P_el [S32].</summary>
         private static readonly Relation Cop = Product("heat.cop", T("Coefficient of performance", "Leistungszahl"), "Phi", "cop", "Pel", "S32");
@@ -322,6 +369,7 @@ namespace InventaSketch.Modules.Energy
             "energy.hydro.turbine" => Hydro(),
             "energy.storage.pumped" => Pumped(),
             "energy.grid.transformer" => Transformer(),
+            "energy.grid.infeed" => Infeed(),
             _ => Spec.Empty,
         };
 
@@ -367,12 +415,13 @@ namespace InventaSketch.Modules.Energy
                 Watt("Pm", T("Module power (STC)", "Modulleistung (STC)"), T("P_mpp", "P_mpp"), "power", VarRelevance.Panel, "Wp") with { StoredUnit = "Wp" },
                 Uoc(), Umpp(), Impp(), Beta(), ThMin(), ThMax(),
                 UmppMin(T("String MPP voltage at the highest temperature (β of U_oc)", "MPP-Spannung des Strings bei höchster Temperatur (β von U_oc)")),
-            };
+            }.Concat(YieldVars()).ToArray();
             var rels = new[]
             {
                 StringPower, StringVoltage, ModuleMpp,
                 Corrected("pv.string.voc", MaxName, "UocMax", "Uoc", "thmin", true),
                 Corrected("pv.string.vmp", MinName, "UmppMin", "Umpp", "thmax", true, MinValidity),
+                PvSpecific, PvAnnual,
             };
             return new Spec(vars, rels, Params(vars, "modules", "power"), Array.Empty<ValueCheck>()) { Ports = (_, p) => PvPort(p, "P") };
         }
@@ -388,9 +437,20 @@ namespace InventaSketch.Modules.Energy
                 Watt("Pstr", T("String power (STC)", "Stringleistung (STC)"), T("P_S", "P_S"), "powerString", VarRelevance.Panel, "Wp"),
                 Amp("Iscs", T("String short-circuit current (STC)", "Kurzschlussstrom je String (STC)"), T("I_sc,S", "I_sc,S"), "isc", VarRelevance.Panel),
                 UmppMin(MinName),
-            };
-            return new Spec(vars, new[] { ArrayPower, ArrayCurrent }, Params(vars, "power"), Array.Empty<ValueCheck>()) { Ports = (_, p) => PvPort(p, "P", false) };
+            }.Concat(YieldVars()).ToArray();
+            return new Spec(vars, new[] { ArrayPower, ArrayCurrent, PvSpecific, PvAnnual }, Params(vars, "power"), Array.Empty<ValueCheck>()) { Ports = (_, p) => PvPort(p, "P", false) };
         }
+
+        /// <summary>Yield estimate of a PV string or array: irradiation as peak-sun hours, performance ratio, specific and annual yield.</summary>
+        private static VarDef[] YieldVars() => new[]
+        {
+            V("Ea", T("Annual yield (estimate)", "Jahresertrag (Schätzung)"), T("E_a", "E_a"), Quantities.Energy, "kWh", "annualYield", VarRelevance.Panel) with { Min = 0, Max = 1e18 },
+            V("Ysp", T("Specific yield (kWh/kWp per year, full-load hours)", "Spezifischer Ertrag (kWh/kWp im Jahr, Volllaststunden)"), T("Y_f", "Y_f"), Quantities.Time_, "h",
+                "specificYield", VarRelevance.Panel) with { Min = 0, Max = 8760 * 3600.0 },
+            V("Hpoa", T("Annual irradiation in the module plane as peak-sun hours (kWh/m² ÷ 1 kW/m²)", "Jahreseinstrahlung in Modulebene als Volllaststunden (kWh/m² ÷ 1 kW/m²)"),
+                T("H_POA", "H_POA"), Quantities.Time_, "h", "irradiation", VarRelevance.Panel) with { Min = 0, Max = 8760 * 3600.0 },
+            V("PR", T("Performance ratio", "Performance Ratio"), T("PR", "PR"), Quantities.Efficiency, "%", "performanceRatio", VarRelevance.Panel) with { Default = 0.8, Min = 0, Max = 1 },
+        };
 
         private static Spec Inverter()
         {
@@ -474,8 +534,13 @@ namespace InventaSketch.Modules.Energy
                 V("dod", T("Depth of discharge", "Entladetiefe"), T("DoD", "DoD"), Quantities.Efficiency, "%", "dod", VarRelevance.Panel) with { Min = 0, Max = 1 },
                 Amp("I", T("Current", "Strom"), T("I", "I"), "current", VarRelevance.Panel),
                 V("Cmax", T("Maximum C-rate (datasheet)", "Maximale C-Rate (Datenblatt)"), T("C_max", "C_max"), Quantities.Ratio, null, "cmax", VarRelevance.Panel) with { Min = 0, Max = 100 },
+                V("soc", T("State of charge", "Ladezustand"), T("SoC", "SoC"), Quantities.Efficiency, "%", "soc", VarRelevance.Panel) with { StoredUnit = "%", Min = 0, Max = 1 },
+                V("Est", T("Energy stored now", "Aktuell gespeicherte Energie"), T("E_st", "E_sp"), Quantities.Energy, "kWh", "energyStored", VarRelevance.Panel) with { Min = 0, Max = 1e15 },
+                V("tl", T("Time left at this power", "Restlaufzeit bei dieser Leistung"), T("t_rest", "t_rest"), Quantities.Time_, "h", "timeLeft", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                Eff("etart", T("Round-trip efficiency", "Zyklus-Wirkungsgrad"), T("η_rt", "η_rt"), "roundTrip"),
+                V("Ein", T("Energy drawn to charge fully from empty", "Ladeenergie von leer bis voll"), T("E_in", "E_in"), Quantities.Energy, "kWh", "energyCharge", VarRelevance.Panel) with { Min = 0, Max = 1e15 },
             };
-            return new Spec(vars, new[] { BatEnergy, BatUsable, BatPower, CRate, RunTime }, Params(vars, "capacity"), new[] { CRateCheck() });
+            return new Spec(vars, new[] { BatEnergy, BatUsable, BatPower, CRate, RunTime, BatStored, BatLeft, BatRoundTrip }, Params(vars, "capacity", "soc"), new[] { CRateCheck() });
         }
 
         private static Spec Charger()
@@ -641,6 +706,33 @@ namespace InventaSketch.Modules.Energy
             return new Spec(vars, new[] { Potential, PumpedElectric, HydroPower, GeneratingTime }, Params(vars, "power", "capacity"), Array.Empty<ValueCheck>());
         }
 
+        /// <summary>
+        /// Grid connection point (utility grid element): the AC power of the inverters on its net against the feed-in limit, and
+        /// the annual energy balance of a PV system with own consumption (self-consumption share, self-sufficiency, fed-in and
+        /// drawn energy).
+        /// </summary>
+        private static Spec Infeed()
+        {
+            VarDef Year(string key, I18nText name, I18nText sym, string param) => V(key, name, sym, Quantities.Energy, "kWh", param, VarRelevance.Panel) with { Min = 0, Max = 1e18 };
+            var vars = new[]
+            {
+                Watt("Pgen", T("AC power of the inverters at the connection point", "AC-Leistung der Wechselrichter am Netzanschlusspunkt"), T("P_gen", "P_Erz"), "powerFeed", VarRelevance.Card, "kW"),
+                Watt("Plim", T("Feed-in limit (grid operator)", "Einspeisegrenze (Netzbetreiber)"), T("P_lim", "P_max,E"), "feedLimit", VarRelevance.Card, "kW"),
+                Eff("rself", T("Self-consumption share", "Eigenverbrauchsanteil"), T("r_SC", "r_EV"), "selfConsumption", VarRelevance.Card),
+                Eff("raut", T("Self-sufficiency (autarky)", "Autarkiegrad"), T("r_SS", "r_Aut"), "autarky", VarRelevance.Card),
+                Year("Epv", T("PV generation per year", "PV-Erzeugung im Jahr"), T("E_PV", "E_PV"), "energyPv"),
+                Year("Eload", T("Consumption per year", "Verbrauch im Jahr"), T("E_L", "E_V"), "energyLoad"),
+                Year("Eself", T("Self-consumed PV energy per year", "Selbst genutzte PV-Energie im Jahr"), T("E_SC", "E_EV"), "energySelf"),
+                Year("Efeed", T("Energy fed into the grid per year", "Ins Netz eingespeiste Energie im Jahr"), T("E_feed", "E_Einsp"), "energyFeed"),
+                Year("Egrid", T("Energy drawn from the grid per year", "Aus dem Netz bezogene Energie im Jahr"), T("E_grid", "E_Bezug"), "energyGrid"),
+            };
+            return new Spec(vars, new[] { SelfShare, Autarky, FedIn, Drawn }, Params(vars), new[] { FeedLimit(), BalanceCheck() })
+            {
+                // The inverters' AC power on the net of the connection point adds up here (as at a busbar).
+                Ports = (_, p) => p == "poc" ? new[] { new PortVar("Pac", "Pgen", PortRole.Total) } : Array.Empty<PortVar>(),
+            };
+        }
+
         private static Spec Wind()
         {
             var vars = new[]
@@ -776,6 +868,23 @@ namespace InventaSketch.Modules.Energy
             "C > C_max",
             c => c["C"] is double cr && c["Cmax"] is double max && cr > max * (1 + Rel))
         { Source = "S35" };
+
+        /// <summary>energy.feedin.limit: the inverters can feed in more than the grid operator's limit (no own consumption).</summary>
+        private static ValueCheck FeedLimit() => new(
+            "energy.feedin.limit", CheckSeverity.Hint,
+            T("The AC power of the inverters is above the feed-in limit: without own consumption the feed-in must be curtailed (inverter setting or energy management).",
+              "Die AC-Leistung der Wechselrichter liegt über der Einspeisegrenze: ohne Eigenverbrauch muss die Einspeisung begrenzt werden (Wechselrichtereinstellung oder Energiemanagement)."),
+            "P_gen > P_lim",
+            c => c["Pgen"] is double p && c["Plim"] is double lim && p > lim * (1 + Rel));
+
+        /// <summary>energy.balance: more self-consumed energy than generated or consumed (impossible) [S1].</summary>
+        private static ValueCheck BalanceCheck() => new(
+            "energy.balance", CheckSeverity.Warning,
+            T("The self-consumed energy is larger than the PV generation or the consumption: impossible. Check the annual energies.",
+              "Die selbst genutzte Energie ist größer als die PV-Erzeugung oder der Verbrauch: unmöglich. Jahresenergien prüfen."),
+            "E_SC ≤ min(E_PV, E_L)",
+            c => c["Eself"] is double e && ((c["Epv"] is double pv && e > pv * (1 + Rel)) || (c["Eload"] is double l && e > l * (1 + Rel))))
+        { Source = "S1" };
 
         /// <summary>heat.cop.carnot: COP above T_flow/(T_flow − T_source) (impossible) [S29].</summary>
         private static ValueCheck Carnot() => new(
