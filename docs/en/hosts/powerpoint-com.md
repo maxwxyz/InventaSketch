@@ -198,7 +198,10 @@
 - **Values and calculator (Calc 2):** see [engineering-calculations.md](../design/engineering-calculations.md) section 11:
   value level (quick sketch / explore / engineer), "Values" in the bar, Edit ▸ Values ▸ in the pie, value card, values
   label, drag grips, conflict badge. More ▸ "Calculator with units …" opens a non-modal calculator (expressions and
-  conversions, "Show in" units, steps, history).
+  conversions, "Show in" units, steps, history). Calc 6: the card lists the element's plausibility warnings with rule
+  and source and a "Mute" link (the ⚠ badge shows for them too); "Calculation sheet …" (card and More menu) gives CSV,
+  Markdown or LaTeX with copy, save and "Insert as table"; Values ▸ "Show values in" sets preferred units (bar/MPa/kPa,
+  min⁻¹/s⁻¹/rad/s, kWh/MJ/J, W/kW) per presentation.
 - **More menu (ribbon):** "Check and exchange" (review items, send slides, save slides, import of matplotlib/pgfplots/TikZ
   code), then tools: symbol size ×1/×1.5/×2 for every standard symbol of the slide (new symbols take it), value level,
   calculator.

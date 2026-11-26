@@ -1073,9 +1073,18 @@ voltage is called *U*.
   an engine test checks that every source a relation or check cites is in it.
 - **Markings.** A value from a relation without inputs (a marking such as "24 V" on a lamp) is its own origin: two
   markings that disagree give a conflict naming both. Links that both ends report are added once.
-- **Open (Calc 6):** the host side (COM: "Calculation sheet …" in the value card and More menu with copy/save and
-  "insert as table"; a sources pane in Engineer), check settings (user limits, mute list), unit preferences (bar/MPa,
-  min⁻¹/s⁻¹, kWh/MJ).
+- **Check settings and unit preferences (2026-11-26).** `DocumentSettings.MutedChecks` and `UnitPreferences`; the solver
+  skips muted checks, `ValueTable.UnitOf` shows each value in the preferred unit of its quantity (card, values label,
+  calculation sheet, explanations). Engine methods `muteCheck` (`key`, `text` on/off) and `setUnitPreference`
+  (`quantityKind`, `unit`, empty clears); both survive save and reload (tests `CheckSettingsApiTests`, Calc 6 accept
+  "muting a check survives a save and reload").
+- **COM (2026-11-26).** More ▸ "Calculation sheet …" and the value card's "Calculation sheet …" (CSV, Markdown, LaTeX,
+  copy, save, insert as table); the value card lists the element's plausibility warnings with rule and source and a
+  "Mute" link, the ⚠ badge shows for warnings too; Values ▸ "Show values in" offers preferred units for pressure,
+  speed of rotation, energy and power (presentation tags `ISK_MUTED`, `ISK_UNITS`). Scenarios `calc-sheet`,
+  `check-settings`.
+- **Open (Calc 6):** user limits for checks (own thresholds), a separate sources pane (the sheet and the card name the
+  sources), the same UI in the web add-in and LibreOffice (engine methods exist).
 - **Decision on standard series (E series), 2026-11-26:** InventaSketch ships no E-series or other preferred-number
   tables: they are table content of IEC 60063 [S5], and CLAUDE.md forbids copying standard tables. Values are shown with
   three significant digits and snap to that resolution when dragged; a user can type any value. If a series is wanted

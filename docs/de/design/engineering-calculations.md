@@ -1113,9 +1113,18 @@ mit dem Kennzeichen des Elements („*U*(R1) = …"), da die Spannung jedes Wide
 - **Aufschriften.** Ein Wert aus einer Beziehung ohne Eingänge (eine Aufschrift wie „24 V“ auf einer Lampe) ist seine
   eigene Herkunft: zwei widersprechende Aufschriften ergeben einen Widerspruch, der beide nennt. Verknüpfungen, die
   beide Enden melden, werden einmal aufgenommen.
-- **Offen (Calc 6):** die Host-Seite (COM: „Rechenblatt …“ in der Wertekarte und im Menü Mehr mit Kopieren/Speichern
-  und „als Tabelle einfügen“; ein Quellenbereich in der Stufe Ingenieur), Prüfeinstellungen (eigene Grenzen,
-  Stummschalten), Einheitenvorlieben (bar/MPa, min⁻¹/s⁻¹, kWh/MJ).
+- **Prüfeinstellungen und Einheitenvorlieben (26.11.2026).** `DocumentSettings.MutedChecks` und `UnitPreferences`; der
+  Solver überspringt stummgeschaltete Prüfungen, `ValueTable.UnitOf` zeigt jeden Wert in der bevorzugten Einheit seiner
+  Größe (Karte, Wertebeschriftung, Rechenblatt, Erklärungen). Engine-Methoden `muteCheck` (`key`, `text` on/off) und
+  `setUnitPreference` (`quantityKind`, `unit`, leer löscht); beides übersteht Speichern und Laden (Tests
+  `CheckSettingsApiTests`, Calc-6-Abnahme „Stummschalten übersteht Speichern und Laden“).
+- **COM (26.11.2026).** Mehr ▸ „Rechenblatt …“ und „Rechenblatt …“ in der Wertekarte (CSV, Markdown, LaTeX, Kopieren,
+  Speichern, als Tabelle einfügen); die Wertekarte listet die Plausibilitätswarnungen des Elements mit Regel und Quelle
+  und einem Link „Stummschalten“, das ⚠-Abzeichen erscheint auch bei Warnungen; Werte ▸ „Werte anzeigen in“ bietet
+  bevorzugte Einheiten für Druck, Drehzahl, Energie und Leistung (Präsentations-Tags `ISK_MUTED`, `ISK_UNITS`).
+  Szenarien `calc-sheet`, `check-settings`.
+- **Offen (Calc 6):** eigene Grenzwerte für Prüfungen, ein eigener Quellenbereich (Rechenblatt und Karte nennen die
+  Quellen), dieselbe Oberfläche in Web-Add-in und LibreOffice (die Engine-Methoden gibt es).
 - **Entscheidung zu Normreihen (E-Reihen), 26.11.2026:** InventaSketch liefert keine E-Reihen oder andere
   Vorzugszahlen-Tabellen mit: sie sind Tabelleninhalt von IEC 60063 [S5], und CLAUDE.md verbietet das Kopieren von
   Normtabellen. Werte erscheinen mit drei gültigen Stellen und rasten beim Ziehen in dieser Auflösung ein; jeder Wert

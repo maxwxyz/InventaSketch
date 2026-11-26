@@ -486,7 +486,7 @@ in the drawing).
       springs, bearings, motors) with checks.
     - **Calc 4 (done 2026-11-26)** fluid, thermal/process, building services, energy/solar and cross-module chains.
     - **Calc 5 (done 2026-11-26, engine + COM operating-point grips)** linked charts (torque–speed, pump/system, PV I–V, Bode, step response, gear train, heating curve).
-    - **Calc 6 (done 2026-11-26 except check settings and unit preferences)** engineer extras (tolerance intervals, calculation sheet, sources pane, check settings).
+    - **Calc 6 (done 2026-11-26 in engine and COM; own check thresholds open)** engineer extras (tolerance intervals, calculation sheet, sources pane, check settings).
     **Guiding idea (maintainer 2026-11-25):** sketch fast, but also learn and understand interactively and playfully,
     and draw and compute physically correct and technically precise, with plausibility checks (gentle warnings with
     their rule and source: gear modules that do not match, a fuse below the cable load, a PV string above the
@@ -652,8 +652,8 @@ context places, values panel, calculator, code import, select connected, glow, i
 
 - **Checks by eye:** the web add-in's new interaction (bar, pie, halo, handles, value card, calculation sheet) has only
   unit tests – check it in the dev page and in PowerPoint (web). LibreOffice was checked with its own UI smoke tests.
-- **Calc 6 host side:** check settings (user limits, mute list per document) and unit preferences (bar/MPa, min⁻¹/s⁻¹,
-  kWh/MJ); a sources pane in Engineer (the calculation sheet already names the sources).
+- **Calc 6:** own thresholds for checks; a separate sources pane (sheet and card name the sources); mute list, unit
+  preferences and calculation sheet in the web add-in and LibreOffice UI (engine methods exist).
 - **Calc 5:** live preview of the chart while dragging the operating point; transitive redraw when a value changes
   through a neighbour; efficiency map, pump affinity laws, PV at other irradiance/temperature.
 - **Colour by medium and designations:** web and LibreOffice UI (engine methods exist: `setColorBy`, `mediumColours`,

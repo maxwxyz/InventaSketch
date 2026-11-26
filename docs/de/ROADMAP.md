@@ -539,7 +539,7 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
     - **Calc 4 (erledigt 26.11.2026)** Fluid, Wärme/Verfahren, Gebäudetechnik, Energie/Solar und modulübergreifende Ketten.
     - **Calc 5 (erledigt 26.11.2026, Engine + COM-Griffe für den Betriebspunkt)** verknüpfte Diagramme (Drehmoment-Drehzahl, Pumpe/Anlage, PV I-U, Bode, Sprungantwort, Getriebeplan,
       Heizkurve).
-    - **Calc 6 (erledigt 26.11.2026 außer Prüfeinstellungen und Einheitenvorlieben)** Ingenieur-Extras (Toleranzintervalle, Rechenblatt, Quellenbereich, Prüfeinstellungen).
+    - **Calc 6 (erledigt 26.11.2026 in Engine und COM; eigene Prüfgrenzen offen)** Ingenieur-Extras (Toleranzintervalle, Rechenblatt, Quellenbereich, Prüfeinstellungen).
     **Leitbild (Maintainer 25.11.2026):** schnell skizzieren, aber auch interaktiv und spielerisch lernen und verstehen,
     und physikalisch korrekt und technisch präzise zeichnen und rechnen, mit Plausibilitätsprüfungen (behutsame Hinweise
     mit Regel und Quelle: Zahnräder mit unterschiedlichem Modul, Sicherung kleiner als die Leitungslast, PV-Strang über
@@ -724,8 +724,9 @@ Schein, Einfügestellen). Noch offen:
 - **Sichtprüfung:** die neue Bedienung im Web-Add-in (Leiste, Kreismenü, Schein, Griffe, Wertekarte, Rechenblatt) hat
   nur Unit-Tests – in der Entwicklerseite und in PowerPoint (Web) prüfen. LibreOffice wurde mit seinen eigenen
   UI-Smoke-Tests geprüft.
-- **Calc 6, Host-Seite:** Prüfeinstellungen (eigene Grenzen, Stummschalten je Dokument) und Einheitenvorlieben (bar/MPa,
-  min⁻¹/s⁻¹, kWh/MJ); ein Quellenbereich in der Stufe Ingenieur (das Rechenblatt nennt die Quellen bereits).
+- **Calc 6:** eigene Grenzwerte für Prüfungen; ein eigener Quellenbereich (Rechenblatt und Karte nennen die Quellen);
+  Stummschalten, Einheitenvorlieben und Rechenblatt in der Oberfläche von Web-Add-in und LibreOffice (die
+  Engine-Methoden gibt es).
 - **Calc 5:** Live-Vorschau des Diagramms beim Ziehen des Betriebspunkts; transitives Neuzeichnen, wenn sich ein Wert
   über einen Nachbarn ändert; Wirkungsgradkennfeld, Affinitätsgesetze, PV bei anderer Einstrahlung/Temperatur.
 - **Farbe nach Medium und Bezeichnungen:** Oberfläche in Web und LibreOffice (die Engine-Methoden gibt es: `setColorBy`,

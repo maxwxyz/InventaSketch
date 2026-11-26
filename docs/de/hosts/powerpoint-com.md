@@ -208,7 +208,11 @@
 - **Werte und Rechner (Calc 2):** siehe [engineering-calculations.md](../design/engineering-calculations.md) Abschnitt 11:
   Werte-Stufe (Schnellskizze / Erkunden / Ingenieur), „Werte“ in der Leiste, Bearbeiten ▸ Werte ▸ im Kreismenü,
   Wertekarte, Werte-Beschriftung, Ziehgriffe, Konflikt-Abzeichen. Mehr ▸ „Rechner mit Einheiten …“ öffnet einen
-  nicht-modalen Rechner (Ausdrücke und Umrechnungen, „Anzeigen in“, Rechenschritte, Verlauf).
+  nicht-modalen Rechner (Ausdrücke und Umrechnungen, „Anzeigen in“, Rechenschritte, Verlauf). Calc 6: die Karte listet
+  die Plausibilitätswarnungen des Elements mit Regel und Quelle und einem Link „Stummschalten“ (auch dafür erscheint das
+  ⚠-Abzeichen); „Rechenblatt …“ (Karte und Menü Mehr) liefert CSV, Markdown oder LaTeX mit Kopieren, Speichern und „Als
+  Tabelle einfügen“; Werte ▸ „Werte anzeigen in“ legt bevorzugte Einheiten (bar/MPa/kPa, min⁻¹/s⁻¹/rad/s, kWh/MJ/J,
+  W/kW) je Präsentation fest.
 - **Menü „Mehr“ (Menüband):** „Prüfen und Weitergeben“ (Prüfpunkte, Folien senden, Folien speichern, Import von
   matplotlib-, pgfplots- und TikZ-Code), dann Werkzeuge: Symbolgröße ×1/×1,5/×2 für alle Standardsymbole der Folie (neue
   Symbole übernehmen sie), Werte-Stufe, Rechner.
