@@ -2135,6 +2135,9 @@ namespace InventaSketch.Engine
                 s.Apply("Move handle", d =>
                 {
                     if (d.Get(o.Id) is not { } x) return d;
+                    // A handle that writes into another element (the operating point of a linked chart sets the pump's flow):
+                    // the whole document changes in one step (Calc 5).
+                    if (Registry.Type(x.Type) is IDocumentHandles) return DocumentHandles.Move(Registry, d, x.Id, key, at, s.Lang);
                     var moved = Registry.MoveHandle(x, key, at, new RenderContext(d, s.Lang));
                     // Nothing changed (unknown key, value snapped to the same number): no undo step.
                     if (ReferenceEquals(moved, x) || moved.Params.Count == x.Params.Count && moved.Params.All(kv => x.Params.TryGetValue(kv.Key, out var v) && v.Equals(kv.Value)) && moved.Size == x.Size
@@ -2146,6 +2149,14 @@ namespace InventaSketch.Engine
             return StateOf(s, r);
         }
 
+        /// <summary>Equal point lists (both null, or the same points in order).</summary>
+        private static bool SamePoints(IReadOnlyList<Vec2>? a, IReadOnlyList<Vec2>? b)
+            => ReferenceEquals(a, b) || a is not null && b is not null && a.Count == b.Count && a.SequenceEqual(b);
+
+        /// <summary>Equal attachments (both null, or the same attachment per point).</summary>
+        private static bool SameAttach(IReadOnlyList<Attachment?>? a, IReadOnlyList<Attachment?>? b)
+            => ReferenceEquals(a, b) || a is not null && b is not null && a.Count == b.Count && a.SequenceEqual(b);
+
         /// <summary>
         /// partOutline: the drawn outline of one part of element id in page mm, as polylines [[x, y], …] (lines and curves
         /// sampled, sub-paths separate, texts and areas as their box), for hosts that highlight the selected part.
@@ -2156,14 +2167,6 @@ namespace InventaSketch.Engine
         /// added as a new series (charts v2, <see cref="InventaSketch.Modules.Charts.ChartSketchInput"/>); one undo step.
         /// Returns the state plus the message (what was recognised); unchanged state with an empty message if nothing fits.
         /// </summary>
-        /// <summary>Equal point lists (both null, or the same points in order).</summary>
-        private static bool SamePoints(IReadOnlyList<Vec2>? a, IReadOnlyList<Vec2>? b)
-            => ReferenceEquals(a, b) || a is not null && b is not null && a.Count == b.Count && a.SequenceEqual(b);
-
-        /// <summary>Equal attachments (both null, or the same attachment per point).</summary>
-        private static bool SameAttach(IReadOnlyList<Attachment?>? a, IReadOnlyList<Attachment?>? b)
-            => ReferenceEquals(a, b) || a is not null && b is not null && a.Count == b.Count && a.SequenceEqual(b);
-
         private object SketchCurveCore(EngineRequest r)
         {
             var s = S(r);

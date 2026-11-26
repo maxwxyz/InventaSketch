@@ -675,6 +675,19 @@ namespace InventaSketch.AddIn.OnSlide
             var o = (_gripOwner is null ? null : unit.Doc.Get(_gripOwner)) ?? unit.Objects.FirstOrDefault(x => registry.Type(x.Type) is not null);
             if (o is null) return;
             var full = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
+            // A handle that writes into another element (the operating point of a linked chart sets the pump's flow, Calc 5):
+            // the slide document changes; the other units take their changes in the same undo step.
+            if (registry.Type(o.Type) is IDocumentHandles)
+            {
+                if (ReferenceEquals(full, unit.Doc)) full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+                var after = DocumentHandles.Move(registry, full, o.Id, key, at, lang);
+                if (ReferenceEquals(after, full)) { Log.Info("Drag handle " + key + ": no change"); if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); } return; }
+                _app.StartNewUndoEntry();
+                ApplyOutsideOwn(slide, unit, full, after);
+                ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, unit.Doc.Objects.Keys.ToList(), x => after.Get(x.Id) ?? x));
+                Log.Info($"Drag handle {key} of {o.Type} to ({at.X:0.##}, {at.Y:0.##}) mm (document)");
+                return;
+            }
             var moved = registry.MoveHandle(o, key, at, new RenderContext(full, lang));
             if (Equals(moved, o)) { Log.Info("Drag handle " + key + ": no change"); if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); } return; }
             _app.StartNewUndoEntry();

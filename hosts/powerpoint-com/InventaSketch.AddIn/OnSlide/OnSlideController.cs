@@ -2368,7 +2368,8 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>
         /// What a document action did outside the unit's own objects (ROADMAP plan review item 2, "Add ray bundle"): objects it
         /// created become one new unit on the slide (inside the action's undo step), objects it removed from other units are
-        /// taken out of those units (a unit left empty is deleted). Changes to other units' objects are not taken over.
+        /// taken out of those units (a unit left empty is deleted), and objects it changed in other units are taken over
+        /// there (the operating point of a linked chart sets the pump's flow, Calc 5).
         /// </summary>
         private void ApplyOutsideOwn(PowerPoint.Slide slide, SketchUnit unit, SketchDocument before, SketchDocument after)
         {
@@ -2386,6 +2387,17 @@ namespace InventaSketch.AddIn.OnSlide
                     else
                         SketchUnits.Replace(slide, other, Edits.Remove(other.Doc, other.Doc.Objects.Keys.Where(removed.Contains).ToList()), registry, lang);
                     Log.Info("Action removed objects of unit " + other.Id);
+                }
+            var changed = after.Objects.Values.Where(o => !own.Contains(o.Id) && before.Get(o.Id) is { } b && !ReferenceEquals(b, o) && !Equals(b, o) && registry.Type(o.Type) is not null)
+                .Select(o => o.Id).ToHashSet(StringComparer.Ordinal);
+            if (changed.Count > 0)
+                foreach (var other in SketchUnits.All(slide, unit.Id).Where(u => u.Doc.Objects.Keys.Any(changed.Contains)).ToList())
+                {
+                    var ids = other.Doc.Objects.Keys.Where(changed.Contains).ToList();
+                    var replaced = Edits.Update(other.Doc, ids, x => after.Get(x.Id) ?? x);
+                    SketchUnits.Replace(slide, other, replaced, registry, lang);
+                    SketchUnits.RedrawDependents(slide, registry, lang, new[] { other.Doc }, new[] { replaced });
+                    Log.Info("Action changed " + ids.Count + " object(s) of unit " + other.Id);
                 }
             if (added.Count == 0) return;
             var setup = _app.ActivePresentation.PageSetup;
