@@ -146,6 +146,13 @@ namespace InventaSketch.AddIn.OnSlide
         public static bool NeedsContext(Registry registry, SketchDocument? doc)
             => doc is not null && (doc.Objects.Values.Any(o => registry.Type(o.Type)?.DependsOnNeighbours == true) || HasExternalAttachments(doc));
 
+        /// <summary>
+        /// True if an object of the model names dependents in other units (<see cref="ObjectType.HasDependents"/>: the source
+        /// of a linked chart, an optical element with rays) without rendering from them: a move keeps its shape.
+        /// </summary>
+        public static bool HasDependents(Registry registry, SketchDocument? doc)
+            => doc is not null && doc.Objects.Values.Any(o => registry.Type(o.Type)?.HasDependents == true);
+
         /// <summary>True if a point of the model is anchored to an object of another unit ("Anchor").</summary>
         public static bool HasExternalAttachments(SketchDocument doc)
             => doc.Objects.Values.Any(o => o.Attach is not null && o.Attach.Any(a => a is not null && !doc.Objects.ContainsKey(a.ObjectId)));
@@ -237,7 +244,7 @@ namespace InventaSketch.AddIn.OnSlide
             var anchored = others.Where(u => u.Objects.Any(o => o.Attach is not null && o.Attach.Any(x => x is not null && touched.Contains(x.ObjectId)))).ToList();
             // Parts lists on the slide follow every part edit.
             var lists = others.Any(u => u.Objects.Any(o => registry.Type(o.Type)?.DependsOnAllParts == true));
-            if (anchored.Count == 0 && !lists && !b.Concat(a).Any(d => NeedsContext(registry, d))) return coupled;
+            if (anchored.Count == 0 && !lists && !b.Concat(a).Any(d => NeedsContext(registry, d) || HasDependents(registry, d))) return coupled;
             var deps = new HashSet<string>(ChangeSet.DependentsOf(registry, Merge(b, others), Merge(a, others), touched.ToList(), lang), StringComparer.Ordinal);
             var count = 0;
             foreach (var unit in others)

@@ -265,7 +265,7 @@ namespace InventaSketch.AddIn.OnSlide
             _unitAnchors = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.PageAnchors(o, ctx)).ToList();
             UpdateChainSource(unit);
             _targets = CollectTargets(slide, unit.Id);
-            _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
+            _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) || SketchUnits.HasDependents(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
             PrepareFollowers(unit);
             ResetCouplingPreview();
             PrepareLinks(unit);
@@ -2336,7 +2336,7 @@ namespace InventaSketch.AddIn.OnSlide
             var registry = _registry();
             var lang = _lang();
             var own = unit.Doc;
-            var full = SketchUnits.NeedsContext(registry, own) ? SketchUnits.WithContext(own, SketchUnits.All(slide, unit.Id)) : own;
+            var full = SketchUnits.NeedsContext(registry, own) || SketchUnits.HasDependents(registry, own) ? SketchUnits.WithContext(own, SketchUnits.All(slide, unit.Id)) : own;
             var first = own.ObjectsOn(own.Pages[0]).FirstOrDefault(o => registry.Type(o.Type) is not null);
             var action = first is null ? null : registry.Actions(first, new RenderContext(full, lang)).FirstOrDefault(a => a.Id == actionId);
             var scripted = _scriptedInput;

@@ -32,7 +32,7 @@ namespace InventaSketch.Modules.Energy
         public CharacteristicSet? Characteristic(SketchObject o, string key, CharacteristicContext c)
             => HasCurves && key == PvSet ? Pv(c, _id == "energy.pv.string") : null;
 
-        public override bool DependsOnNeighbours => HasCurves;
+        public override bool HasDependents => HasCurves;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
             => HasCurves ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();

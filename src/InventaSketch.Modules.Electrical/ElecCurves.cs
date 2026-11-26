@@ -60,7 +60,7 @@ namespace InventaSketch.Modules.Electrical
             return key == BodeSet ? Bode(net) : Step(net);
         }
 
-        public override bool DependsOnNeighbours => IsPassive;
+        public override bool HasDependents => IsPassive;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
             => IsPassive ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();

@@ -75,7 +75,7 @@ ray object docked on the element (anchor `exit`, `o` or `tip`); when one is dock
 
 **Live tracing.** Rays are traced every time they are drawn, from the current document: every optics element on the
 page (hidden layers excluded) takes part. Every optics element reports the rays of its page as dependents
-(`ObjectType.Dependents`, `DependsOnNeighbours`); elements that act on light (they have an optical surface) also report
+(`ObjectType.Dependents`, `HasDependents`; only rays and object arrows set `DependsOnNeighbours`); elements that act on light (they have an optical surface) also report
 the object arrows of the page that draw an image. So moving, rotating, scaling or changing an element, or dragging one of
 its grips, redraws the rays and images in the same undo step; the docked start point follows its emitter through the
 ordinary attachment. Nothing has to be re-traced by hand.

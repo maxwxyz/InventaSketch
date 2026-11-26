@@ -51,7 +51,7 @@ namespace InventaSketch.Modules.BuildingServices
             return null;
         }
 
-        public override bool DependsOnNeighbours => HasCurves;
+        public override bool HasDependents => HasCurves;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
             => HasCurves ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();

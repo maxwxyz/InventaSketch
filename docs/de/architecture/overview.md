@@ -103,7 +103,10 @@ Vertragstypen stehen in `Contracts.cs` und `hosts/office-web/src/engine/types.ts
   ausgewertet, z. B. an eine bearbeitete Wand angeschlossene Wände und die Türen darin). Hosts zeichnen genau diese
   Einheiten in einem Rückgängig-Schritt neu. Typen, deren Darstellung Nachbarn liest, setzen
   `ObjectType.DependsOnNeighbours`; Hosts mit einem Modell pro Form (PowerPoint-COM) rendern solche Einheiten mit den
-  übrigen Einheiten der Folie als Kontext.
+  übrigen Einheiten der Folie als Kontext und zeichnen sie beim Verschieben neu. Typen, die abhängige Objekte nennen,
+  aber für sich zeichnen (ein optisches Element, die Quelle eines verknüpften Diagramms), setzen stattdessen
+  `ObjectType.HasDependents`: Beim Verschieben bleibt ihre Form erhalten, nur die abhängigen Objekte werden neu
+  gezeichnet.
 - **Dokumenteinstellungen:** `DocumentSettings.PlanScale` (Maßstabszahl, 100 = 1:100, optional) wird mit dem Dokument
   und jeder kompakten Folien-Nutzlast gespeichert. `setPlanScale {value}` setzt oder löscht ihn (ein
   Rückgängig-Schritt, alle Objekte mit `ObjectType.UsesPlanScale` gelten als geändert); `EditorState.planScale` und

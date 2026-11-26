@@ -26,7 +26,7 @@ namespace InventaSketch.Modules.Process
             => HasCurves && key == CharacteristicKit.PumpSet ? CharacteristicKit.PumpAndSystem(c, "Vdot", "H", "m³/h", 100 / 3600.0, 40) : null;
 
         /// <summary>Linked charts render from the pump: they are its dependents.</summary>
-        public override bool DependsOnNeighbours => HasCurves;
+        public override bool HasDependents => HasCurves;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
             => HasCurves ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();

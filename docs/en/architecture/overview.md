@@ -92,7 +92,9 @@ live in `Contracts.cs` and `hosts/office-web/src/engine/types.ts`. Decision reco
   (`ObjectType.Dependents`, evaluated before and after the change, e.g. walls joined to an edited wall and the doors
   in it). Hosts redraw exactly these units in one undo step. Types whose rendering reads neighbours declare
   `ObjectType.DependsOnNeighbours`; hosts with one model per shape (PowerPoint COM) render such units with the other
-  units of the slide as context.
+  units of the slide as context and redraw them when they move. Types that name dependents but render on their own (an
+  optical element, the source of a linked chart) set `ObjectType.HasDependents` instead: a move keeps their shape and
+  redraws only the dependents.
 - **Document settings:** `DocumentSettings.PlanScale` (denominator, 100 = 1:100, optional) is persisted with the
   document and every compact slide payload. `setPlanScale {value}` sets or clears it (one undo step, all objects with
   `ObjectType.UsesPlanScale` are reported as changed); `EditorState.planScale` and `inspector.planScale` /

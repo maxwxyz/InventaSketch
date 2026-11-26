@@ -294,10 +294,11 @@ namespace InventaSketch.Modules.Optics
         public override IReadOnlyList<string> Keywords => _keywords;
 
         /// <summary>
-        /// Rays read the elements of their page and object arrows image through the next lens or curved mirror; elements
-        /// name the rays (and, if they act on light, the object arrows that draw an image) as their dependents.
+        /// Rays read the elements of their page and object arrows image through the next lens or curved mirror (only those
+        /// two types render from their neighbours); elements name the rays (and, if they act on light, the object arrows
+        /// that draw an image) as their dependents.
         /// </summary>
-        public override bool DependsOnNeighbours => true;
+        public override bool HasDependents => true;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
         {

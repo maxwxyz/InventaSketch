@@ -726,10 +726,17 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// True if the rendering reads other objects of the document (wall joints, openings cutting walls). Hosts that keep
-        /// objects in separate units (PowerPoint COM) render such objects with the neighbouring units as context. Types that
-        /// return <see cref="Dependents"/> must set this flag as well.
+        /// objects in separate units (PowerPoint COM) render such objects with the neighbouring units as context and redraw
+        /// them whenever they move. Types that return <see cref="Dependents"/> but render on their own (the source element
+        /// of a linked chart) set <see cref="HasDependents"/> instead.
         /// </summary>
         public virtual bool DependsOnNeighbours => false;
+
+        /// <summary>
+        /// True if <see cref="Dependents"/> can return objects. Defaults to <see cref="DependsOnNeighbours"/>; hosts that keep
+        /// objects in separate units evaluate the dependents of an edit only for such types.
+        /// </summary>
+        public virtual bool HasDependents => DependsOnNeighbours;
 
         /// <summary>
         /// Ids of other objects whose rendering depends on <paramref name="o"/> and must be redrawn when it is added, changed
