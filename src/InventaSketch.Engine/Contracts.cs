@@ -384,6 +384,8 @@ namespace InventaSketch.Engine
         public double LineGroup { get; set; }
         /// <summary>Accent colour of the document (#rrggbb, <c>setAccent</c>); null = each module's own colours.</summary>
         public string? Accent { get; set; }
+        /// <summary>Display mode of connection lines: null = own colours, "medium" = coloured by medium and role.</summary>
+        public string? ColorBy { get; set; }
         /// <summary>Value level of the document (<c>setValueLevel</c>): "quick" (default), "explore" or "engineer".</summary>
         public string ValueLevel { get; set; } = "quick";
         /// <summary>

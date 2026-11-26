@@ -181,6 +181,12 @@ namespace InventaSketch.Core
         /// <summary>Accent colour of the drawing (#rrggbb, <see cref="Accents"/>): coloured parts take its hue; null = each module's colours.</summary>
         public string? Accent { get; init; }
         /// <summary>
+        /// Display mode of connection lines: null = their own colours, <see cref="LineMedia.ByMedium"/> = coloured by medium and
+        /// role (conductors L1/L2/L3/N/PE, DC polarity, bus vs power, heating flow/return, hot/cold water, hydraulic lines,
+        /// process fluids; <see cref="LineMedia.Scheme"/>). Applied at render time; the objects keep their colours.
+        /// </summary>
+        public string? ColorBy { get; init; }
+        /// <summary>
         /// Plan scale denominator of the document (100 means 1:100), used by types with <see cref="ObjectType.UsesPlanScale"/>
         /// when an object has no scale of its own. Null: each module's default.
         /// </summary>

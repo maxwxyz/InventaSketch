@@ -30,6 +30,11 @@ namespace InventaSketch.Core
         Loop,
         /// <summary>Plan lines of the same type joined at their ends or butting on each other (walls of rooms).</summary>
         Walls,
+        /// <summary>
+        /// Connection lines and elements with the same designation (<see cref="Designations"/>: "W3" on a wall and its
+        /// continuation): the same name means the same connection, wherever it is drawn on the page.
+        /// </summary>
+        SameName,
     }
 
     /// <summary>
@@ -43,7 +48,7 @@ namespace InventaSketch.Core
     public static class Connectivity
     {
         /// <summary>Kinds offered to the user, in menu order.</summary>
-        public static readonly IReadOnlyList<ConnectKind> Offered = new[] { ConnectKind.Net, ConnectKind.Coupled, ConnectKind.Chain, ConnectKind.Loop, ConnectKind.Walls };
+        public static readonly IReadOnlyList<ConnectKind> Offered = new[] { ConnectKind.Net, ConnectKind.Coupled, ConnectKind.Chain, ConnectKind.Loop, ConnectKind.Walls, ConnectKind.SameName };
 
         /// <summary>Short menu label of a kind.</summary>
         public static I18nText Label(ConnectKind kind) => kind switch
@@ -53,6 +58,7 @@ namespace InventaSketch.Core
             ConnectKind.Chain => new("Following elements", "Folgende Elemente"),
             ConnectKind.Loop => new("Closed loop", "Geschlossene Schleife"),
             ConnectKind.Walls => new("Room walls", "Raumwände"),
+            ConnectKind.SameName => new("Same name", "Gleicher Name"),
             _ => new("Connected", "Verbunden"),
         };
 
@@ -64,6 +70,7 @@ namespace InventaSketch.Core
             ConnectKind.Chain => new("Everything after it along the connectors", "Alles, was entlang der Verbinder danach kommt"),
             ConnectKind.Loop => new("The closed loop it belongs to", "Die geschlossene Schleife, zu der es gehört"),
             ConnectKind.Walls => new("Walls joined with it at corners and ends", "An Ecken und Enden verbundene Wände"),
+            ConnectKind.SameName => new("Lines and elements with the same designation", "Leitungen und Elemente mit derselben Bezeichnung"),
             _ => new("Connected elements", "Verbundene Elemente"),
         };
 
@@ -313,6 +320,7 @@ namespace InventaSketch.Core
                     ConnectKind.Chain => IsLinkage(id) ? Outward(id) : Following(id),
                     ConnectKind.Loop => Loop(id),
                     ConnectKind.Walls => IsWallLike(o) ? WithoutJoints(Reach(Walls, id)) : new[] { id },
+                    ConnectKind.SameName => Designations.SameName(_registry, _doc, id, _ctx.Lang),
                     _ => new[] { id },
                 };
             }

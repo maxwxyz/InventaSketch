@@ -298,6 +298,7 @@ ist.“
   | **Folgende Elemente** | alles danach entlang gerichteter Verbinder, mit den Verbindern; bei einem Koppelgetriebe vom gewählten Glied nach außen (weg vom Gestell) | Ablaufschritt, Block, Verfahrenseinheit, Verbinder |
   | **Geschlossene Schleife** | die Schleife, zu der das Element gehört (nur angeboten, wenn es eine gibt): ein Stromkreis, eine Schleife im Ablaufdiagramm, die Wände um einen Raum, eine Zahnradschleife | Leitung im Stromkreis, Schritt in einer Schleife, Wand |
   | **Raumwände** | an Ecken, Enden und T-Stößen damit verbundene Wände | Wand |
+  | **Gleicher Name** | Leitungen und Elemente mit derselben Bezeichnung auf der Folie; dieselbe Bezeichnung auf anderen Folien wird gemeldet („auch auf Folien 2, 4“, Abschnitt 6b) | Leitung W3, Rohr H1, Relais K1 |
 
 - Überfahren eines Eintrags zeigt ihn vorab mit dem schwächeren Schein; Wählen wählt diese Elemente in PowerPoint aus
   (die Leiste der Mehrfachauswahl bietet dann eine Ansicht für alle, Ausrichten, Diagrammlayout …).
@@ -306,6 +307,78 @@ ist.“
   Raumwände. (Strg+A bleibt PowerPoints „Alles auswählen“.)
 - „Baugruppe wählen“ (Leiste, Tab zum nächsten Teil) ist dasselbe wie „Bewegt sich mit“.
 - Die Regeln kommen aus der Engine (`Connectivity`), so wählen Web-Add-in und LibreOffice dieselben Mengen.
+
+## 6b. Farbe nach Medium und zusammengehörige Namen (26.11.2026)
+
+Maintainer (Planreview 25.11.2026 nachts, Punkte 11 und 12): „Darstellungsoptionen je Medium, wo sinnvoll – Bus vs.
+Energie, DC/AC (Farben L1/L2/L3/N/PE), warm/kalt (Vorlauf/Rücklauf), Druck/Rücklauf/Leckage, Signal – als folienweiter
+Farbmodus“, und „jede Leitung, jedes Kabel und Rohr kann eine Bezeichnung tragen (und wo sinnvoll einen Wert); gleicher
+Name heißt gleiche Verbindung – auch über Folien hinweg: wo eine Leitung die Folie verlässt, steht, wo sie weitergeht,
+‚→ W3 Folie 4‘“.
+
+**Farbe nach Medium (Darstellungsmodus).**
+
+- Ein folienweiter Schalter (Mehr ▸ Farbe nach Medium ▸ Aus / Nach Medium; Folienstil wie die Akzentfarbe). Er färbt jede
+  Verbindungslinie – Leitungen, Kabel, Busse, Rohre, Kanäle, Fluid-, Verfahrens- und Energieleitungen – nach Medium und
+  Funktion. Nur die Darstellung ändert sich: Die Elemente behalten Parameter und Farben, „Aus“ stellt das ursprüngliche
+  Aussehen wieder her. Eigene Formatierung eines Elements (mit PowerPoints Werkzeugen) gewinnt weiterhin, Schwarz-Weiß
+  kommt weiterhin zuletzt, und die Akzentfarbe lässt nach Medium gefärbte Leitungen in Ruhe.
+- Medium und Funktion kommen aus der Engine (`LineMedia.Of`), modulunabhängig: das Medium des Leitungstyps oder des Ports,
+  an dem sie andockt (`Building.LineMedium`), die Funktion aus dem allgemeinen Parameter `lineRole`, dem `MediumRole` eines
+  Typs (Steuer- und Leckölleitungen; Schaltschrankadern melden „eigene“: Sie sind in ihrer echten Aderfarbe gezeichnet und
+  bleiben so) oder aus dem Medium selbst (Heizung Vorlauf/Rücklauf, Warm-/Kaltwasser, Luftarten, Daten → Bus, Gleichstrom →
+  Polarität nicht festgelegt).
+- Leitungen, deren Funktion das Medium nicht verrät, bieten eine Auswahlliste (`line.role`, nie ein Durchschalten):
+  elektrische Leitungen „Leiter ▸ Nicht festgelegt / L1 / L2 / L3 / N / PE / PEN / L+ / L− / M“, Fluidleitungen
+  „Leitungsfunktion ▸ Druckleitung (P) / Rücklaufleitung (T)“, Prozessleitungen „Stoff (DIN 2403) ▸ Wasser / Dampf / Luft /
+  brennbares Gas / Säure / Lauge / brennbare Flüssigkeit / Sauerstoff“.
+- Farbschema (`LineMedia.Scheme`, zweisprachige Namen, jeweils mit Quelle):
+
+  | Funktion | Farbe | Quelle |
+  |---|---|---|
+  | L1 / L2 / L3 | braun / schwarz / grau | IEC 60445 |
+  | N, Mittelleiter M | blau | IEC 60445 |
+  | PE, PEN | grün-gelb (PEN mit blauer Markierung an den Enden) | IEC 60445 |
+  | Gleichstrom L+ / L− / Polarität nicht festgelegt | rot / dunkelblau / orange | Konvention |
+  | Energie (Wechselstrom, Leiter nicht festgelegt) | schwarz | Konvention |
+  | Bus-/Datenleitung, Signal-/Messleitung | violett, orange | Konvention |
+  | Heizung Vorlauf / Rücklauf, Wärme / Kälte | warmes Rot / kaltes Blau | Konvention |
+  | Trinkwasser warm / kalt, Zirkulation, Abwasser | orangerot / grün, pink, braun | Konvention |
+  | Zuluft / Abluft / Außenluft / Fortluft | blau / gelb / grün / braun | Konvention |
+  | Wasser, brennbares Gas | grün, gelb | DIN 2403 |
+  | Hydraulik Druck (P) / Rücklauf (T) / Steuer- / Leckölleitung | rot / blau / orange / petrol | Konvention |
+  | Prozessleitungen nach Stoff | Wasser grün, Dampf rot, Luft grau, brennbares Gas gelb, Säure orange, Lauge violett, brennbare Flüssigkeit braun, Sauerstoff blau | DIN 2403 |
+
+  Leitungen ohne Funktion im Schema (eine einfache Prozessleitung, Leiterbahnen) behalten ihre Farben.
+- „Farbe nach Medium ▸ Legende einfügen“ fügt eine Legende der auf der Folie verwendeten Farben ein (je Farbe eine Linie
+  und ihr Name, mit der Norm, wo es eine gibt) – als gewöhnliche Zeichnung.
+- Das Hervorheben einer verbundenen Menge nach Medium ist „Verbundene auswählen ▸ Netz“ (Abschnitt 6a); der Schein
+  funktioniert mit eingeschaltetem Farbmodus genauso.
+
+**Zusammengehörige Namen.**
+
+- Jede Verbindungslinie trägt eine Bezeichnung und eine optionale Wertangabe (Querschnitt, Typ, Bemessung, DN,
+  Durchfluss). Typen, die schon eine haben, behalten sie und zeichnen sie selbst (Schaltschrankader und -kabel `ref`,
+  Energiekabel `label`, Prozessleitung `lineNo`); jede andere Leitung bekommt das allgemeine `ref` und `value`:
+  „Bezeichnung …“ und „Wertangabe …“ in der Beschriftungsgruppe (Leiste, Kreismenü Bearbeiten). Die Beschriftung
+  „W3 · 3×1.5 mm²“ steht unter dem längsten Abschnitt, aufrecht, und folgt jeder Änderung – sie wird gezeichnet, nicht als
+  eigene Form gespeichert.
+- „Endmarkierungen“ (ein Schalter, angeboten, sobald eine Leitung eine Bezeichnung hat) setzt die Bezeichnung zusätzlich an
+  beide Enden der Leitung.
+- Elemente mit Anschlussports und ohne eigenes Kennzeichen (Pumpen, Ventile und Geräte der TGA …) bekommen ebenfalls
+  „Bezeichnung …“, darüber gezeichnet; Elektrosymbole (Kennzeichen und Wert), Fluidsymbole (Kennzeichen) und
+  Prozessinstrumente (Tag) behalten ihre eigenen Beschriftungen, Werte bleiben bei der Werteangabe (Calc 2).
+- Gleiche Bezeichnungen sind dieselbe Verbindung (verglichen ohne Groß-/Kleinschreibung und ohne führendes
+  IEC-81346-Zeichen: „-W1“ = „W1“). „Verbundene auswählen ▸ Gleicher Name“ wählt die Leitungen und Elemente mit dieser
+  Bezeichnung auf der Folie; dieselbe Bezeichnung auf anderen Folien wird im Menü gemeldet („Gleicher Name: auch auf
+  Folien 2, 4“).
+- Über Folien hinweg (PowerPoint): Jede Einheit speichert ihre Bezeichnungen in einem Form-Tag, so weiß das Add-in, auf
+  welchen anderen Folien eine Bezeichnung vorkommt. Eine Leitung mit einer solchen Bezeichnung zeigt an ihrem freien Ende
+  nächst dem Folienrand eine Fortsetzungsmarke: „→ W3, Folie 4“ („→ W3, slide 4“ auf Englisch); ein freies Ende am
+  Folienrand ohne bekannte Fortsetzung zeigt „→ W3“. Die Marke gehört zur Leitung, also deckt der Auswahlschein sie mit
+  ab. Marken werden aktualisiert, wenn eine Einheit gezeichnet wird (eingefügt, bearbeitet, umgestaltet).
+- Engine zuerst: `Designations` und `LineMedia` in Core; Hosts übergeben die Seitenzuordnung für Fortsetzungsmarken
+  (`RenderContext.Continuations`, Engine `setContinuations`).
 
 ## 7. Rückmeldung und Barrierearmut
 

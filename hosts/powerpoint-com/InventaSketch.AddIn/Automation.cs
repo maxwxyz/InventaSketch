@@ -145,6 +145,57 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Sets the colour mode of connection lines on the current slide ("medium", "" = own colours), as the ribbon menu "Colour by medium".</summary>
+        public bool SetColorBy(string value)
+        {
+            try
+            {
+                return _connect.ApplyColorBy(value);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.SetColorBy", ex);
+                return false;
+            }
+        }
+
+        /// <summary>Inserts the legend of the medium colours used on the current slide ("Colour by medium ▸ Insert legend"); the shape name or "".</summary>
+        public string InsertLegend()
+        {
+            try
+            {
+                return _connect.InsertMediumLegend()?.Name ?? "";
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.InsertLegend", ex);
+                return "";
+            }
+        }
+
+        /// <summary>
+        /// Runs a command that asks for a value (an input action such as "act:line.ref" – "Designation …") with
+        /// <paramref name="input"/> instead of the prompt; false if no unit is selected.
+        /// </summary>
+        public bool CommandWithInput(string commandId, string input)
+        {
+            try
+            {
+                return _connect.RunUnitCommand(commandId, input);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.CommandWithInput " + commandId, ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// The designations on other slides of the selected unit's designations: "W3=2,4;H1=5" (what "Select connected ▸ Same
+        /// name" reports and continuation markers show).
+        /// </summary>
+        public string SameNameElsewhere() => _connect.SameNameElsewhere();
+
         /// <summary>True once PowerPoint has loaded the InventaSketch ribbon tab (false: the ribbon XML was rejected).</summary>
         public bool RibbonLoaded() => _connect.RibbonLoaded;
 

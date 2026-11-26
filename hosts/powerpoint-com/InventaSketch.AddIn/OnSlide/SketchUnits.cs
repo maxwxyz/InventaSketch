@@ -119,6 +119,13 @@ namespace InventaSketch.AddIn.OnSlide
             // The context keeps the slide's stacking order (a new unit is on top): wires drawn later hop over earlier ones.
             var context = NeedsContext(registry, doc) ? WithContext(doc, All(slide), zOrder ?? int.MaxValue) : doc;
             var session = new EditorSession("com", registry, context, lang);
+            // Names that belong together across slides: designations found on other slides become continuation markers.
+            var keys = Continuations.Keys(registry, doc, lang);
+            if (keys.Count > 0)
+            {
+                var map = Continuations.Elsewhere(slide, keys, registry, lang);
+                if (map.Count > 0) { session.Continuations = map; session.PageNames = PageNames.Slides; }
+            }
             var plan = DrawPlanBuilder.Build(session, ids, DrawCapabilities.Full);
             var renderer = new ComRenderer(slide);
             PowerPoint.Shape? result = null;
@@ -129,6 +136,7 @@ namespace InventaSketch.AddIn.OnSlide
                 // The context only shapes the drawing; the stored model holds the unit's own objects.
                 if (!ReferenceEquals(context, doc)) result.Tags.Add("ISK_MODEL", EngineApi.CompactOf(doc, doc.Pages[0], unit.ObjectIds));
                 result.Tags.Add(BoundsTag, FormatBounds(result));
+                Continuations.Tag(result, keys);
                 NativeFormat.Snapshot(result);
             }
             return result;

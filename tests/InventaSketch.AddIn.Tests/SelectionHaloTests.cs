@@ -141,5 +141,22 @@ namespace InventaSketch.AddIn.Tests
             foreach (var k in Connectivity.Offered) Assert.Equal(k, OnSlideController.KindOf(OnSlideController.KindId(k)));
             Assert.Null(OnSlideController.KindOf("nope"));
         }
+
+        [Fact]
+        public void SameNameReportsTheOtherSlides()
+        {
+            var also = Continuations.AlsoOn(new[] { "2", "4" }, Lang.En);
+            Assert.Equal("also on slides 2, 4", also);
+            Assert.Equal("auch auf Folie 3", Continuations.AlsoOn(new[] { "3" }, Lang.De));
+            Assert.Equal("", Continuations.AlsoOn(null, Lang.En));
+            var items = OnSlideController.ConnectItems(new[] { (ConnectKind.SameName, 2) }, Lang.En, also);
+            Assert.Equal(new[] { "connect:samename", "info:samename" }, items.Select(i => i.Id));
+            Assert.Equal("Same name", items[0].Label);
+            Assert.Contains("also on slides 2, 4", items[0].Hint);
+            Assert.False(items[1].Enabled);
+            // Only on other slides: just the report.
+            var only = OnSlideController.ConnectItems(new[] { (ConnectKind.SameName, 1) }, Lang.De, Continuations.AlsoOn(new[] { "5" }, Lang.De));
+            Assert.Equal("Gleicher Name: auch auf Folie 5", only.Single().Label);
+        }
     }
 }

@@ -172,6 +172,26 @@
     Protokollzeilen „Halo: selected=…; connected=…“ und „Select connected (Art): n units: …“; UI-Szenario
     `select-connected`.
 
+- **Farbe nach Medium und Namen über Folien hinweg (26.11.2026):** Regeln in
+  [docs/de/design/interaction-ux.md](../design/interaction-ux.md#6b-farbe-nach-medium-und-zusammengehörige-namen-26112026).
+  - Mehr ▸ „Farbe nach Medium“ ▸ Aus (eigene Farben) / Nach Medium: Teil des Folienstils (`colors=medium` in `ISK_STYLE`),
+    jede Einheit der Folie wird in einem Rückgängig-Schritt neu gezeichnet, neue Einheiten übernehmen ihn
+    (`Connect.ApplyColorBy`). Die Farben setzt die Engine beim Zeichnen (`LineMedia`), daher stellt Ausschalten das
+    ursprüngliche Aussehen wieder her; Schaltschrankadern behalten ihre echte Farbe. „Legende einfügen“ im selben Menü fügt
+    die auf der Folie verwendeten Farben als eine Einheit ein (Beschriftungslinien und Texte, oben rechts).
+  - Leiter und Leitungsfunktion: die Auswahlliste „Leiter ▸“ (elektrische Leitungen), „Leitungsfunktion ▸“
+    (Fluidleitungen) oder „Stoff (DIN 2403) ▸“ (Prozessleitungen) in Leiste und Kreismenü (`act:line.role=<Wert>`).
+  - Bezeichnungen: „Bezeichnung …“ und „Wertangabe …“ (`act:line.ref`, `act:line.value`) an jeder Verbindungslinie ohne
+    eigene Bezeichnung, „Endmarkierungen“ (`act:line.ref.ends`), sobald sie eine hat, „Bezeichnung …“ (`act:elem.ref`) an
+    Elementen mit Anschlussports und ohne eigenes Kennzeichen. Jede Einheit speichert ihre Bezeichnungen im Form-Tag
+    `ISK_REFS`; beim Zeichnen einer Einheit werden Bezeichnungen, die auf anderen Folien vorkommen, zu Fortsetzungsmarken
+    „→ W3, Folie 4“ (`OnSlide/Continuations.cs`, Engine `RenderContext.Continuations`). Marken anderer Folien werden
+    aktualisiert, wenn deren Einheiten neu gezeichnet werden.
+  - „Verbundene auswählen ▸ Gleicher Name“ (`connect:samename`) wählt die Einheiten mit derselben Bezeichnung auf der
+    Folie; das Untermenü meldet die anderen Folien („Gleicher Name: auch auf Folien 2, 4“, Eintrag `info:samename`), die
+    Protokollzeile ebenso. Automation: `SetColorBy`, `InsertLegend`, `CommandWithInput(Befehl, Wert)` (eine Eingabeaktion
+    ohne Abfrage), `SameNameElsewhere()` („W3=2“). UI-Szenario `medium-names`.
+
 - **Teile eines Elements (Diagramme, Abbildungen):** der erste Klick auf eine Kurve, einen Punkt, eine Fläche, eine Achse
   oder eine Grenzlinie eines Diagramms wählt direkt dieses Teil (Gitterlinien und Teilstriche zählen weniger als Kurven).
   Das gewählte Teil leuchtet, der Rest des Elements schwach; die Leiste zeigt den Namen des Teils, seine Auswahlen als

@@ -32,6 +32,7 @@ namespace InventaSketch.AddIn.OnSlide
             ConnectKind.Chain => "chain",
             ConnectKind.Loop => "loop",
             ConnectKind.Walls => "walls",
+            ConnectKind.SameName => "samename",
             _ => "auto",
         };
 
@@ -43,6 +44,7 @@ namespace InventaSketch.AddIn.OnSlide
             "chain" => ConnectKind.Chain,
             "loop" => ConnectKind.Loop,
             "walls" => ConnectKind.Walls,
+            "samename" => ConnectKind.SameName,
             "auto" => ConnectKind.Auto,
             _ => null,
         };
@@ -51,18 +53,41 @@ namespace InventaSketch.AddIn.OnSlide
         /// Pie entries of "Select connected ▸": one per kind that applies, with the number of elements it selects in the
         /// hint, in <see cref="Connectivity.Offered"/> order.
         /// </summary>
-        internal static List<PieItem> ConnectItems(IEnumerable<(ConnectKind Kind, int Count)> options, Lang lang)
+        internal static List<PieItem> ConnectItems(IEnumerable<(ConnectKind Kind, int Count)> options, Lang lang, string? sameNameElsewhere = null)
         {
             var de = lang == Lang.De;
-            return options.Where(o => o.Count > 1)
+            var items = options.Where(o => o.Count > 1)
                 .OrderBy(o => Connectivity.Offered.ToList().IndexOf(o.Kind))
                 .Select(o => new PieItem("connect:" + KindId(o.Kind), Connectivity.Label(o.Kind).Get(lang))
                 {
                     IconId = o.Kind == ConnectKind.Coupled ? IconIds.SelectAssembly : null,
-                    Hint = Connectivity.Hint(o.Kind).Get(lang) + " (" + o.Count + (de ? " Elemente)" : " elements)"),
+                    Hint = Connectivity.Hint(o.Kind).Get(lang) + " (" + o.Count + (de ? " Elemente)" : " elements)")
+                        + (o.Kind == ConnectKind.SameName && !string.IsNullOrEmpty(sameNameElsewhere) ? "; " + sameNameElsewhere : ""),
                 })
                 .ToList();
+            // The same name on other slides: reported (it cannot be selected from here).
+            if (!string.IsNullOrEmpty(sameNameElsewhere))
+                items.Add(new PieItem("info:samename", Connectivity.Label(ConnectKind.SameName).Get(lang) + ": " + sameNameElsewhere, Enabled: false)
+                {
+                    Hint = de ? "Dieselbe Bezeichnung auf anderen Folien (Fortsetzungsmarke an der Leitung)" : "The same designation on other slides (continuation marker at the line)",
+                });
+            return items;
         }
+
+        /// <summary>Designations of the armed unit found on other slides (designation comparison form → slide numbers), from the arm.</summary>
+        private IReadOnlyDictionary<string, IReadOnlyList<string>>? _elsewhere;
+
+        /// <summary>"also on slides 2, 4" for the armed unit's designations found on other slides, else "".</summary>
+        private string SameNameElsewhere()
+        {
+            if (_elsewhere is not { Count: > 0 } map) return "";
+            var slides = map.Values.SelectMany(v => v).Distinct().OrderBy(v => int.TryParse(v, out var n) ? n : 0).ToList();
+            return Continuations.AlsoOn(slides, _lang());
+        }
+
+        /// <summary>The armed unit's designations on other slides as "W3=2,4;H1=5" (automation, UI tests).</summary>
+        internal string SameNameElsewhereText()
+            => _elsewhere is null ? "" : string.Join(";", _elsewhere.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => kv.Key + "=" + string.Join(",", kv.Value)));
 
         private SketchUnit? _connectUnit;
         private List<(ConnectKind Kind, List<SketchUnit> Units)> _connectOptions = new();
@@ -147,12 +172,14 @@ namespace InventaSketch.AddIn.OnSlide
             var others = SketchUnits.All(slide, unit.Id);
             if (kind == ConnectKind.Auto) kind = AutoKindOf(unit, others);
             var units = kind == ConnectKind.Auto ? null : ConnectedSets(unit, others, kind).FirstOrDefault().Units;
+            // "Same name" also reports the other slides it is found on (they cannot be selected from this slide).
+            var elsewhere = kind == ConnectKind.SameName && _unit?.Id == unit.Id ? SameNameElsewhere() : "";
             if (units is null || units.Count < 2)
             {
-                Log.Info("Select connected (" + KindId(kind) + "): nothing connected");
+                Log.Info("Select connected (" + KindId(kind) + "): nothing connected" + (elsewhere.Length > 0 ? " here; " + elsewhere : ""));
                 return;
             }
-            Log.Info("Select connected (" + KindId(kind) + "): " + units.Count + " units: " + string.Join(", ", units.Select(u => u.Shape.Name)));
+            Log.Info("Select connected (" + KindId(kind) + "): " + units.Count + " units: " + string.Join(", ", units.Select(u => u.Shape.Name)) + (elsewhere.Length > 0 ? "; " + elsewhere : ""));
             _haloPreview = null;
             for (var i = 0; i < units.Count; i++) units[i].Shape.Select(i == 0 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse);
         }

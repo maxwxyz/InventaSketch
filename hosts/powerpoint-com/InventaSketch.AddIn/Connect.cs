@@ -538,6 +538,96 @@ namespace InventaSketch.AddIn
             sb.Append("</menu>");
         }
 
+        /// <summary>
+        /// "Colour by medium": a dropdown of the slide's display mode for connection lines (off / by medium, <see cref="LineMedia"/>)
+        /// and a legend of the colours used on the slide.
+        /// </summary>
+        private void AppendColorByMenu(StringBuilder sb)
+        {
+            sb.Append("<menu id=\"IskColorBy\" label=\"").Append(L(T("Colour by medium", "Farbe nach Medium"))).Append("\" imageMso=\"ShapeOutlineColorPicker\" supertip=\"")
+              .Append(X(T("Colours the cables, wires, pipes and ducts of this slide by medium and role: L1 brown, L2 black, L3 grey, N blue, PE green-yellow (IEC 60445); DC + red, − blue; bus and signal lines; heating flow red, return blue; hot and cold water; hydraulic pressure, return, pilot and drain lines; process lines by fluid (DIN 2403). The elements keep their own colours: switch it off to restore them.",
+                          "Färbt Kabel, Leitungen, Rohre und Kanäle dieser Folie nach Medium und Funktion: L1 braun, L2 schwarz, L3 grau, N blau, PE grün-gelb (IEC 60445); Gleichstrom + rot, − blau; Bus- und Signalleitungen; Heizung Vorlauf rot, Rücklauf blau; Warm- und Kaltwasser; Hydraulik Druck-, Rücklauf-, Steuer- und Leckölleitungen; Prozessleitungen nach Stoff (DIN 2403). Die Elemente behalten ihre eigenen Farben: Ausschalten stellt sie wieder her."))).Append("\">");
+            sb.Append("<toggleButton id=\"IskColorByOff\" tag=\"off\" label=\"").Append(L(T("Off (own colours)", "Aus (eigene Farben)"))).Append("\" getPressed=\"GetColorByPressed\" onAction=\"OnColorBy\" />");
+            sb.Append("<toggleButton id=\"IskColorByMedium\" tag=\"medium\" label=\"").Append(L(T("By medium", "Nach Medium"))).Append("\" getPressed=\"GetColorByPressed\" onAction=\"OnColorBy\" />");
+            sb.Append("<menuSeparator id=\"IskColorBySep\" />");
+            sb.Append("<button id=\"IskColorLegend\" label=\"").Append(L(T("Insert legend", "Legende einfügen"))).Append("\" onAction=\"OnToolsMenu\" supertip=\"")
+              .Append(X(T("Inserts a legend of the medium colours used on this slide (one line and name per colour, with its source).",
+                          "Fügt eine Legende der auf dieser Folie verwendeten Medienfarben ein (je Farbe eine Linie und ihr Name, mit Quelle)."))).Append("\" />");
+            sb.Append("</menu>");
+        }
+
+        public bool GetColorByPressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                var current = _app is not null && CurrentSlide(_app) is PowerPoint.Slide slide ? OnSlide.SlideStyle.Current(slide).ColorBy : null;
+                return control.Tag == "medium" ? current == LineMedia.ByMedium : current is null;
+            }
+            catch { return false; }
+        }
+
+        public void OnColorBy(Office.IRibbonControl control, bool pressed)
+        {
+            // A dropdown: the chosen mode stays chosen when clicked again.
+            try { ApplyColorBy(control.Tag == "medium" ? LineMedia.ByMedium : ""); }
+            catch (Exception ex) { Log.Error("OnColorBy", ex); }
+        }
+
+        /// <summary>
+        /// The colour mode of connection lines for the current slide ("medium" or "" for their own colours): stored as the slide
+        /// style and every unit redrawn with it (one undo step); new elements on the slide take it too.
+        /// </summary>
+        internal bool ApplyColorBy(string value)
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return false;
+            var v = (value ?? "").Trim().ToLowerInvariant();
+            if (v.Length > 0 && v != "off" && v != LineMedia.ByMedium) return false;
+            var mode = v == LineMedia.ByMedium ? LineMedia.ByMedium : null;
+            var units = OnSlide.SketchUnits.All(slide);
+            _app.StartNewUndoEntry();
+            OnSlide.SlideStyle.Write(slide, OnSlide.SlideStyle.Current(slide) with { ColorBy = mode });
+            var redrawn = 0;
+            foreach (var u in units)
+            {
+                if (u.Doc.Settings.ColorBy == mode) continue;
+                OnSlide.SketchUnits.Replace(slide, u, u.Doc with { Settings = u.Doc.Settings with { ColorBy = mode } }, _registry, _lang);
+                redrawn++;
+            }
+            _ribbon?.InvalidateControl("IskColorByOff");
+            _ribbon?.InvalidateControl("IskColorByMedium");
+            Log.Info($"Colour by medium {(mode is null ? "off" : "on")} for {units.Count} unit(s), {redrawn} redrawn");
+            return true;
+        }
+
+        /// <summary>
+        /// Inserts a legend of the medium colours used by the connection lines of the current slide (<see cref="LineMedia.Legend"/>)
+        /// as one unit at the top right; the shape name, or null when no line on the slide has a medium colour.
+        /// </summary>
+        internal PowerPoint.Shape? InsertMediumLegend()
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return null;
+            var units = OnSlide.SketchUnits.All(slide);
+            var all = OnSlide.SketchUnits.Combined(units);
+            var used = LineMedia.Used(_registry, all, _lang);
+            if (used.Count == 0)
+            {
+                MessageBox.Show(T("No cable, wire or pipe on this slide has a medium colour yet.", "Auf dieser Folie hat noch kein Kabel, keine Leitung und kein Rohr eine Medienfarbe."),
+                    "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return null;
+            }
+            var pageMm = new Size2(slide.Master.Width / Geo.PtPerMm, slide.Master.Height / Geo.PtPerMm);
+            var objects = LineMedia.Legend(_registry, used, new Vec2(pageMm.W - 75, 12), _lang);
+            if (objects.Count == 0) return null;
+            var doc = SketchDocument.Create(pageMm);
+            doc = Edits.Add(doc, doc.Pages[0].Id, objects.ToArray());
+            // One unit: the legend moves as a whole.
+            doc = Edits.Group(doc, objects.Select(o => o.Id).ToList());
+            _app.StartNewUndoEntry();
+            var shape = OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang);
+            Log.Info($"Medium legend: {used.Count} colour(s): " + string.Join(", ", used.Select(c => c.Id)));
+            return shape;
+        }
+
         private void AppendToolsMenu(StringBuilder sb)
         {
             void Item(string id, string label, string? imageMso)
@@ -551,6 +641,7 @@ namespace InventaSketch.AddIn
               .Append("\" getImage=\"GetLogoSmallImage\" itemSize=\"normal\">");
             AppendLineGroupMenu(sb);
             AppendAccentMenu(sb);
+            AppendColorByMenu(sb);
             AppendSymbolSizeMenu(sb);
             AppendValueLevelMenu(sb);
             sb.Append("<button id=\"IskMenuModules\" label=\"").Append(L(T("Modules \u2026", "Module \u2026"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" supertip=\"")
@@ -643,6 +734,7 @@ namespace InventaSketch.AddIn
                     case "IskMenuSend": Tools.SendSlides(_app, german); break;
                     case "IskMenuSave": Tools.SaveSlides(_app, german); break;
                     case "IskMenuPlanScale": SetPlanScale(); break;
+                    case "IskColorLegend": InsertMediumLegend(); break;
                     case "IskMenuImport": ImportDataFile(); break;
                     case "IskChartFromPicture": ChartFromPictureCommand(); break;
                     case "IskCleanSlides": CleanSlidesCommand(); break;
@@ -1481,6 +1573,8 @@ namespace InventaSketch.AddIn
                 _ribbon.InvalidateControl("IskLineGroup" + g.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_'));
             _ribbon.InvalidateControl("IskAccentNone");
             foreach (var (id, _, _) in Accents.Presets) _ribbon.InvalidateControl("IskAccent_" + id);
+            _ribbon.InvalidateControl("IskColorByOff");
+            _ribbon.InvalidateControl("IskColorByMedium");
             foreach (var f in OnSlide.SymbolSize.Factors)
                 _ribbon.InvalidateControl("IskSymbols" + f.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_'));
         }
@@ -2082,6 +2176,12 @@ namespace InventaSketch.AddIn
 
         /// <summary>Runs a bar/pie command on the selected unit (automation).</summary>
         internal bool RunUnitCommand(string commandId) => _onSlide?.RunCommand(commandId) ?? false;
+
+        /// <summary>Runs an input command with a scripted value instead of the prompt (automation).</summary>
+        internal bool RunUnitCommand(string commandId, string input) => _onSlide?.RunCommand(commandId, input) ?? false;
+
+        /// <summary>The selected unit's designations found on other slides ("W3=2,4"), for UI tests.</summary>
+        internal string SameNameElsewhere() => _onSlide?.SameNameElsewhereText() ?? "";
 
         internal bool ActivateTab()
         {

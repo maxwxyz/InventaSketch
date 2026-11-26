@@ -164,6 +164,26 @@
   - Command ids `connect:net|coupled|chain|loop|walls` (automation `Command`; `assembly` = `connect:coupled`); log lines
     "Halo: selected=…; connected=…" and "Select connected (kind): n units: …"; UI scenario `select-connected`.
 
+- **Colour by medium and names across slides (2026-11-26):** rules in
+  [docs/en/design/interaction-ux.md](../design/interaction-ux.md#6b-colour-by-medium-and-names-that-belong-together-2026-11-26).
+  - More ▸ "Colour by medium" ▸ Off (own colours) / By medium: part of the slide style (`colors=medium` in `ISK_STYLE`),
+    every unit of the slide is redrawn in one undo step and new units take it (`Connect.ApplyColorBy`). The colours are
+    applied by the engine at render time (`LineMedia`), so turning it off restores the original look; cabinet cores keep
+    their real colour. "Insert legend" in the same menu adds the colours used on the slide as one unit (annotation lines
+    and texts, top right).
+  - Conductor and line role: the dropdown "Conductor ▸" (electrical lines), "Line role ▸" (fluid lines) or
+    "Fluid (DIN 2403) ▸" (process lines) in the bar and the pie (`act:line.role=<value>`).
+  - Designations: "Designation …" and "Value label …" (`act:line.ref`, `act:line.value`) on every connection line without
+    its own designation, "End markers" (`act:line.ref.ends`) once it has one, "Designation …" (`act:elem.ref`) on elements
+    with connection ports and no designator of their own. Every unit keeps its designations in the shape tag `ISK_REFS`;
+    when a unit is drawn, designations found on other slides become continuation markers "→ W3, slide 4"
+    (`OnSlide/Continuations.cs`, engine `RenderContext.Continuations`). Markers of other slides are refreshed when their
+    units are drawn again.
+  - "Select connected ▸ Same name" (`connect:samename`) selects the units with the same designation on the slide; the
+    submenu reports the other slides ("Same name: also on slides 2, 4", entry `info:samename`), the log line says it too.
+    Automation: `SetColorBy`, `InsertLegend`, `CommandWithInput(command, value)` (an input action without the prompt),
+    `SameNameElsewhere()` ("W3=2"). UI scenario `medium-names`.
+
 - **Parts of an element (charts, figures):** the first click on a chart's curve, point, area, axis or limit line selects
   that part directly (grid lines and ticks rank below curves). The selected part glows, the rest of the element faintly;
   the bar shows the part's name, its choices as dropdowns and "⋯". Points of a curve are dragged or deleted one by one, a

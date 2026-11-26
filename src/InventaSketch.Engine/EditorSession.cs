@@ -47,7 +47,16 @@ namespace InventaSketch.Engine
 
         public IReadOnlyList<string> Selection => _selection;
 
-        public RenderContext Context(bool monochrome = false) => new(Doc, Lang, monochrome);
+        public RenderContext Context(bool monochrome = false) => new(Doc, Lang, monochrome) { Continuations = Continuations, PageNames = PageNames };
+
+        /// <summary>
+        /// Where else designations occur (comparison form to page labels), set by the host (PowerPoint: other slides); every
+        /// rendering of the session shows continuation markers from it (<see cref="Designations"/>).
+        /// </summary>
+        public IReadOnlyDictionary<string, IReadOnlyList<string>>? Continuations { get; set; }
+
+        /// <summary>How continuation markers name the pages (slides); null = "page".</summary>
+        public PageNames? PageNames { get; set; }
 
         /// <summary>Mechanical coupling for the next edits (<see cref="Coupling"/>); hosts switch it off for free moves (Alt).</summary>
         public bool Couple { get; set; } = true;
