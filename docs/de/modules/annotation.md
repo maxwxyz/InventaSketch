@@ -32,7 +32,7 @@ ist.
 | `ann.hatching` Schraffur | schraffierte Rechtecke, Ellipsen und Polygone mit Werkstoffmustern |
 | `ann.patent` Zeichen für Abbildungen | Bezugslinien mit Bezugszeichen, Abbildungsbezeichnung, Schnittverlauf, Einzelheit-Kreis und -Ansicht, Mittellinie, Bruchlinie, Klammern, Ansichtspfeil, **Änderungswolke** |
 | `ann.mechanics` Technische Mechanik | Kraft, Moment, Koordinatensystem, Schwerpunkt, Boden, Lager, Streckenlast (gleichmäßig, Dreieck, Trapez), Balken, Zwischengelenk, Feder, Dämpfer, Masse, **Schnittgrößenverläufe (Normalkraft, Querkraft, Biegemoment, Biegelinie)** |
-| `ann.flow` Ablaufdiagramm | Ablaufdiagramm-Symbole und Verbinder (siehe [diagrams.md](diagrams.md)) |
+| `ann.flow` Ablaufdiagramm | Ablaufdiagramm-Symbole und Verbinder; Ausgangsbeschriftungen von Verzweigungen (ja/nein oder 1/2/3, wahlweise auch an gezeichneten Ausgängen) und Schrittnummern entlang des Ablaufs, beide standardmäßig aus (siehe [diagrams.md](diagrams.md), „Ausgangsbeschriftungen und Schrittnummern aus dem Ablauf“) |
 
 ## Technische Zeichnungsangaben
 

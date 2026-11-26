@@ -231,11 +231,11 @@ namespace InventaSketch.Core
         public static readonly QuantityKind TemperatureDifference = new("temperatureDifference", T("Temperature difference", "Temperaturdifferenz"), Temp, difference: true);
         public static readonly QuantityKind Density = new("density", T("Density", "Dichte"), Mass / Len.Pow(3));
         public static readonly QuantityKind SpecificHeat = new("specificHeat", T("Specific heat capacity", "Spezifische Wärmekapazität"), Energy_ / Mass / Temp);
-        /// <summary>Energy per mass (specific work of a compressor or turbine w = c_p·ΔT, enthalpy differences): J/kg, kJ/kg.</summary>
         /// <summary>Refractive power of a lens or optical system (dioptres, 1/m).</summary>
         public static readonly QuantityKind OpticalPower = new("opticalPower", T("Refractive power", "Brechkraft"), Dimension.None / Len);
         /// <summary>Line density or spatial frequency (diffraction gratings: lines per mm).</summary>
         public static readonly QuantityKind LineDensity = new("lineDensity", T("Line density", "Strichdichte"), Dimension.None / Len);
+        /// <summary>Energy per mass (specific work of a compressor or turbine w = c_p·ΔT, enthalpy differences): J/kg, kJ/kg.</summary>
         public static readonly QuantityKind SpecificEnergy = new("specificEnergy", T("Specific energy", "Spezifische Energie"), Energy_ / Mass);
         public static readonly QuantityKind HeatTransfer = new("heatTransfer", T("Heat transfer coefficient", "Wärmedurchgangskoeffizient"), Power_ / Len.Pow(2) / Temp);
         public static readonly QuantityKind Irradiance = new("irradiance", T("Irradiance", "Bestrahlungsstärke"), Power_ / Len.Pow(2));
@@ -246,6 +246,19 @@ namespace InventaSketch.Core
         public static readonly QuantityKind TorsionalRate = new("torsionalRate", T("Torsional spring rate", "Drehfederrate"), Energy_ / Ang);
         /// <summary>Relative change per kelvin (PV temperature coefficients, resistance coefficients): %/K, 1/K, ppm/K.</summary>
         public static readonly QuantityKind TemperatureCoefficient = new("temperatureCoefficient", T("Temperature coefficient", "Temperaturkoeffizient"), Dimension.None / Temp);
+        /// <summary>
+        /// Radiant exposure / irradiation H (energy per area, J/m²): the irradiance integrated over a period, such as the
+        /// annual irradiation in the plane of PV modules (kWh/m² per year). Shares its dimension (kg·s⁻²) with the spring
+        /// rate; listed after it, so a calculated N/m stays a spring rate. Also accepts peak-sun hours "h" (hours at the
+        /// standard irradiance 1 kW/m², so 1 h ≙ 1 kWh/m²), the way PV yields are often quoted.
+        /// </summary>
+        public static readonly QuantityKind Irradiation = new("irradiation", T("Irradiation (radiant exposure)", "Einstrahlung (Bestrahlung)"), Energy_ / Len.Pow(2));
+        /// <summary>
+        /// Specific yield of a generator: energy per rated (peak) power, kWh/kWp. Dimensionally a time (energy ÷ power), kept
+        /// as a kind of its own so that time fields do not offer kWh/kWp and a yield field reads "950 kWh/kWp", not "950 h";
+        /// "h" (full-load hours) is accepted as the same value. Listed after time, so a calculated time stays a time.
+        /// </summary>
+        public static readonly QuantityKind SpecificYield = new("specificYield", T("Specific yield", "Spezifischer Ertrag"), Time);
 
         private static readonly List<QuantityKind> AllKinds = new();
 
@@ -367,6 +380,15 @@ namespace InventaSketch.Core
             TemperatureCoefficient.Add("%/K", 0.01, new[] { "%/°C" });
             TemperatureCoefficient.Add("1/K", 1, new[] { "K⁻¹", "1/°C" });
             TemperatureCoefficient.Add("ppm/K", 1e-6, new[] { "ppm/°C" });
+            Irradiation.Add("kWh/m²", 3.6e6, new[] { "kWh/(m²)", "kWh/qm" });
+            Irradiation.Add("MJ/m²", 1e6);
+            Irradiation.Add("Wh/m²", 3600);
+            Irradiation.Add("J/m²", 1);
+            // Peak-sun hours (h at 1 kW/m²); values of the PV yield entered before round 7 of 2026-11-26 were stored in h.
+            Irradiation.Add("h", 3.6e6, new[] { "psh" });
+            SpecificYield.Add("kWh/kWp", 3600, new[] { "kWh/kW", "Wh/Wp", "MWh/MWp" });
+            // Full-load hours: the same value (kWh per kWp = h).
+            SpecificYield.Add("h", 3600);
 
             // Preference order when a calculation result has to be named by its dimension (power before heat flow,
             // energy before torque, frequency before nothing).
@@ -376,7 +398,7 @@ namespace InventaSketch.Core
                 Inductance, Charge, Resistivity, Frequency, RotationalSpeed, Angle, Time_, Length, Area, Volume, Mass_, Force,
                 Energy, Torque, Speed, Acceleration, Pressure, VolumeFlow, MassFlow, Temperature, TemperatureDifference, Density,
                 SpecificHeat, SpecificEnergy, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
-                OpticalPower, LineDensity,
+                OpticalPower, LineDensity, Irradiation, SpecificYield,
             });
         }
 

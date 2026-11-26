@@ -68,13 +68,50 @@ namespace InventaSketch.Modules.Energy.Tests
         public void PvArrayGivesTheAnnualYieldFromIrradiationAndPerformanceRatio()
         {
             var r = Fx.Reg();
-            var pv = Make(r, "energy.pv.array.yield", "pv").WithParam("irradiation", "1100 h");
+            var pv = Make(r, "energy.pv.array.yield", "pv").WithParam("irradiation", "1100 kWh/m²");
             var t = Solve(Doc(pv), r);
             Assert.Empty(t.Conflicts);
-            // Y_f = 1100 h · 0.8 (default PR) = 880 h; E_a = 10 kWp · 880 h = 8800 kWh.
+            // Y_f = 1100 kWh/m² / 1 kW/m² · 0.8 (default PR) = 880 kWh/kWp; E_a = 10 kWp · 880 kWh/kWp = 8800 kWh.
+            Assert.Equal(1100 * KWh, Val(t, "pv", "Hpoa"), 0);
             Assert.Equal(880 * 3600.0, Val(t, "pv", "Ysp"), 3);
             Assert.Equal(8800 * KWh, Val(t, "pv", "Ea"), 0);
             Assert.Equal(Provenance.Default, t.Get("pv", "PR")!.Provenance);
+            // The fields carry the new kinds and show kWh/m² and kWh/kWp.
+            var type = (IValueType)r.Type("energy.pv.array")!;
+            Assert.Same(Quantities.Irradiation, type.Variables.Single(v => v.Key == "Hpoa").Kind);
+            Assert.Same(Quantities.SpecificYield, type.Variables.Single(v => v.Key == "Ysp").Kind);
+            Assert.Equal("880 kWh/kWp", ValueFormat.Format(Val(t, "pv", "Ysp"), type.Variables.Single(v => v.Key == "Ysp").DisplayUnit, Lang.En));
+            Assert.Equal("1100 kWh/m²", ValueFormat.Format(Val(t, "pv", "Hpoa"), type.Variables.Single(v => v.Key == "Hpoa").DisplayUnit, Lang.En));
+        }
+
+        [Theory]
+        [InlineData("1100 h")]
+        [InlineData("1100")]
+        [InlineData("3960 MJ/m²")]
+        public void PvYieldReadsIrradiationStoredInHoursBareOrInOtherUnits(string text)
+        {
+            // Drawings of round 6 stored the irradiation as peak-sun hours ("1100 h") or as a bare number in h.
+            var r = Fx.Reg();
+            var pv = Make(r, "energy.pv.array.yield", "pv").WithParam("irradiation", text);
+            var t = Solve(Doc(pv), r);
+            Assert.Empty(t.Conflicts);
+            Assert.Equal(1100 * KWh, Val(t, "pv", "Hpoa"), 0);
+            Assert.Equal(8800 * KWh, Val(t, "pv", "Ea"), 0);
+        }
+
+        [Fact]
+        public void PvSpecificYieldStoredInFullLoadHoursStillParses()
+        {
+            var r = Fx.Reg();
+            foreach (var text in new[] { "950 h", "950 kWh/kWp", "950" })
+            {
+                var s = Make(r, "energy.pv.string", "s").WithParam("modules", 10).WithParam("power", 400.0).WithParam("specificYield", text);
+                var t = Solve(Doc(s), r);
+                Assert.Empty(t.Conflicts);
+                // 4 kWp · 950 kWh/kWp = 3800 kWh; H_POA = 950 kWh/kWp · 1 kW/m² / 0.8 = 1187.5 kWh/m².
+                Assert.Equal(3800 * KWh, Val(t, "s", "Ea"), 0);
+                Assert.Equal(1187.5 * KWh, Val(t, "s", "Hpoa"), 0);
+            }
         }
 
         [Fact]

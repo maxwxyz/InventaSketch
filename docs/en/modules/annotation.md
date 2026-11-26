@@ -30,7 +30,7 @@ says which kind of mark is meant.
 | `ann.hatching` Hatching | hatched rectangles, ellipses and polygons with material patterns |
 | `ann.patent` Figure marks | leaders with numerals, figure label, section line, detail circle and view, centre line, break line, brackets, view arrow, **revision cloud** |
 | `ann.mechanics` Technical mechanics | force, moment, coordinate system, centre of gravity, ground, supports, distributed load (uniform, triangular, trapezoidal), beam, internal hinge, spring, damper, mass, **internal force diagrams (normal force, shear force, bending moment, deflection line)** |
-| `ann.flow` Flowchart | flowchart symbols and connectors (see [diagrams.md](diagrams.md)) |
+| `ann.flow` Flowchart | flowchart symbols and connectors; decision exit labels (yes/no or 1/2/3, optionally on drawn exits) and step numbering along the flow, both off by default (see [diagrams.md](diagrams.md), "Exit labels and step numbers from the flow") |
 
 ## Technical drawing indications
 

@@ -270,5 +270,34 @@ namespace InventaSketch.Core.Tests
             Assert.False(UnitCalculator.TryEvaluate("20 °C + 20 °C", out _, out _));
             Assert.Throws<FormatException>(() => UnitCalculator.Evaluate("", Lang.De));
         }
+
+        [Fact]
+        public void IrradiationAndSpecificYieldAreKindsOfTheirOwn()
+        {
+            // Irradiation (radiant exposure): kWh/m² default, MJ/m², Wh/m², J/m², peak-sun hours h (1 h ≙ 1 kWh/m²).
+            Assert.Equal(new[] { "kWh/m²", "MJ/m²", "Wh/m²", "J/m²", "h" }, Units.DisplayUnits(Quantities.Irradiation));
+            Near(1100 * 3.6e6, P("1100 kWh/m²", Quantities.Irradiation));
+            Near(1100 * 3.6e6, P("1100 kWh/m2", Quantities.Irradiation));
+            Near(1100 * 3.6e6, P("1100", Quantities.Irradiation));
+            Near(1100 * 3.6e6, P("1100 h", Quantities.Irradiation));
+            Near(3.6e6, P("3,6 MJ/m²", Quantities.Irradiation, null, Lang.De));
+            Near(3.6, Units.Convert(1, "kWh/m²", "MJ/m²"));
+            Assert.Equal("1100 kWh/m²", ValueFormat.Format(1100 * 3.6e6, Quantities.Irradiation, Lang.En));
+            // Specific yield: kWh/kWp default, h (full-load hours) is the same value.
+            Assert.Equal("kWh/kWp", Quantities.SpecificYield.DefaultUnit.Symbol);
+            Near(950 * 3600.0, P("950 kWh/kWp", Quantities.SpecificYield));
+            Near(950 * 3600.0, P("950 h", Quantities.SpecificYield));
+            Near(950 * 3600.0, P("950", Quantities.SpecificYield));
+            Assert.Equal("950 kWh/kWp", ValueFormat.Format(950 * 3600.0, Quantities.SpecificYield, Lang.De));
+            // Neither takes over results named by their dimension, and time and spring-rate fields do not offer their units.
+            Assert.Same(Quantities.Time_, Quantities.ForDimension(Quantities.SpecificYield.Dimension));
+            Assert.Same(Quantities.SpringRate, Quantities.ForDimension(Quantities.Irradiation.Dimension));
+            Assert.Same(Quantities.Time_, UnitCatalog.Find("h")!.Kind);
+            Assert.Null(UnitCatalog.Find("kWh/kWp", Quantities.Time_));
+            Assert.Throws<FormatException>(() => P("950 kWh/kWp", Quantities.Time_));
+            Assert.Throws<FormatException>(() => P("1100 kWh/m²", Quantities.Energy));
+            Assert.Equal(Quantities.Irradiation, Quantities.Get("irradiation"));
+            Assert.Equal(Quantities.SpecificYield, Quantities.Get("specificYield"));
+        }
     }
 }

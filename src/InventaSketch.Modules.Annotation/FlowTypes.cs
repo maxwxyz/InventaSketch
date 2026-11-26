@@ -43,15 +43,14 @@ namespace InventaSketch.Modules.Annotation
 
         /// <summary>
         /// Exits of a decision: the first connector added with "+" is labelled "yes", the second "no" (written in the language
-        /// the drawing is rendered in), or the labels of the parameter <c>exitLabels</c> ("&lt;|=|&gt;").
+        /// the drawing is rendered in), or "1", "2", "3" … (<c>exitStyle = numbers</c>), or the labels of the parameter
+        /// <c>exitLabels</c> ("&lt;|=|&gt;").
         /// </summary>
         public override IReadOnlyDictionary<string, ParamValue>? ChainConnectorParams(SketchObject o, int index)
         {
             if (_shape != FlowShape.Decision) return null;
-            var labels = ExitLabels(o);
-            return index >= 0 && index < labels.Count && labels[index].Length > 0
-                ? new Dictionary<string, ParamValue> { ["exit"] = labels[index] }
-                : null;
+            var label = ExitLabel(o, index);
+            return label.Length > 0 ? new Dictionary<string, ParamValue> { ["exit"] = label } : null;
         }
 
         /// <summary>Exit labels of a decision in quick-add order ("yes", "no" unless <c>exitLabels</c> gives others).</summary>
@@ -61,6 +60,32 @@ namespace InventaSketch.Modules.Annotation
             if (string.IsNullOrWhiteSpace(raw)) return new[] { "yes", "no" };
             return raw.Split(new[] { '|', ';', '\n' }, StringSplitOptions.None).Select(s => s.Trim()).ToList();
         }
+
+        /// <summary>
+        /// The label of the <paramref name="index"/>-th exit of a decision (0 = first): the <c>exitLabels</c> entry if given, else
+        /// "1", "2", "3" … with <c>exitStyle = numbers</c>, else "yes"/"no" for the first two exits; "" if there is none.
+        /// </summary>
+        public static string ExitLabel(SketchObject o, int index)
+        {
+            if (index < 0) return "";
+            if (string.IsNullOrWhiteSpace(o.Str("exitLabels", "")) && o.Str(FlowNumbering.ExitStyleParam, "yesno") == "numbers")
+                return (index + 1).ToString(CultureInfo.InvariantCulture);
+            var labels = ExitLabels(o);
+            return index < labels.Count ? labels[index] : "";
+        }
+
+        /// <summary>The flowchart shape of a type id ("ann.flow.process" → process); null for other types.</summary>
+        public static FlowShape? ShapeOf(string typeId)
+            => typeId.StartsWith("ann.flow.", StringComparison.Ordinal) && ShapesById.TryGetValue(typeId, out var s) ? s : null;
+
+        private static readonly Dictionary<string, FlowShape> ShapesById =
+            Enum.GetValues(typeof(FlowShape)).Cast<FlowShape>().ToDictionary(s => "ann.flow." + s.ToString().ToLowerInvariant(), s => s, StringComparer.Ordinal);
+
+        /// <summary>A flow box rereads the flow when step numbering or automatic exit labels are on (see <see cref="FlowNumbering"/>).</summary>
+        public override bool DependsOnNeighbours => true;
+
+        /// <summary>The other numbered steps of its flow and, for a decision, its exit connectors (their labels follow it).</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => FlowNumbering.DependentsOfBox(o, ctx);
 
         public FlowBoxType(FlowShape shape)
             : base("ann.flow." + shape.ToString().ToLowerInvariant(), Names(shape), AnnCategories.Flowchart, Keys(shape))
@@ -136,14 +161,47 @@ namespace InventaSketch.Modules.Annotation
                 if (_shape == FlowShape.Loop)
                     list.Add(P.Choice("edge", "Loop limit", "Schleifenbegrenzung", "begin", ("begin", "Begin (top corners cut)", "Anfang (oben abgeschrägt)"), ("end", "End (bottom corners cut)", "Ende (unten abgeschrägt)")));
                 if (_shape == FlowShape.Decision)
+                {
                     list.Add(P.Text("exitLabels", "Exit labels (a|b|c)", "Ausgangsbeschriftungen (a|b|c)", null));
+                    list.Add(P.Choice(FlowNumbering.ExitStyleParam, "Exit labels", "Ausgangsbeschriftung", "yesno",
+                        ("yesno", "yes / no", "ja / nein"), ("numbers", "1 / 2 / 3", "1 / 2 / 3")));
+                    list.Add(P.Bool(FlowNumbering.AutoExitsParam, "Label drawn exits automatically", "Gezeichnete Ausgänge automatisch beschriften", false));
+                }
+                // Step numbering along the flow, set on the first element of the flow (off by default).
+                list.Add(P.Bool(FlowNumbering.NumberParam, "Number the steps along the flow", "Schritte entlang des Ablaufs nummerieren", false));
+                list.Add(P.Text(FlowNumbering.PrefixParam, "Step number prefix", "Präfix der Schrittnummer", "S") with { Advanced = true });
+                list.Add(P.Int(FlowNumbering.FirstParam, "First step number", "Erste Schrittnummer", 100, 0, 1000000) with { Advanced = true });
+                list.Add(P.Int(FlowNumbering.IncrementParam, "Step number increment", "Schrittweite der Nummern", 10, 1, 100000) with { Advanced = true });
                 return list;
             }
+        }
+
+        /// <summary>
+        /// Document-aware actions: "Number steps along the flow" on the first element of a flow (no connector leads into it,
+        /// at least one leads out) or wherever it is already on.
+        /// </summary>
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx)
+        {
+            foreach (var a in Actions(o, ctx.Lang)) yield return a;
+            if (o.Flag(FlowNumbering.NumberParam, false) || FlowNumbering.IsFlowStart(o, ctx))
+                yield return Ann.Toggle(o, "ann.flow.number", new I18nText("Number steps along the flow", "Schritte automatisch nummerieren"),
+                    IconIds.Renumber, FlowNumbering.NumberParam, false, "flow");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Ann.Toggle(o, "ann.flow.optional", new I18nText("Optional step (dashed)", "Optionaler Schritt (gestrichelt)"), IconIds.LineDash, "optional", false, "flow");
+            if (_shape == FlowShape.Decision)
+            {
+                yield return Ann.Toggle(o, "ann.flow.exits.auto", new I18nText("Label exits automatically", "Ausgänge automatisch beschriften"),
+                    IconIds.LabelShow, FlowNumbering.AutoExitsParam, false, "exits");
+                foreach (var a in Ann.Choice(o, "ann.flow.exits.style", new I18nText("Exit labels", "Ausgangsbeschriftung"), FlowNumbering.ExitStyleParam, "yesno", "exits",
+                    new (string, I18nText, string?)[]
+                    {
+                        ("yesno", new I18nText("yes / no", "ja / nein"), null),
+                        ("numbers", new I18nText("1 / 2 / 3", "1 / 2 / 3"), null),
+                    })) yield return a;
+            }
             if (_shape == FlowShape.Loop)
             {
                 // Option pictures: the loop limit with its top (begin) or bottom (end) corners cut.
@@ -327,7 +385,9 @@ namespace InventaSketch.Modules.Annotation
                 var (fitted, fs) = Ann.Fit(text, size, w, h);
                 list.Add(Ann.Text(TextCenter(o), fitted, fs));
             }
+            // An entered step number wins; else the number along the flow when numbering is on.
             var step = o.Str("step", "");
+            if (string.IsNullOrEmpty(step)) step = FlowNumbering.StepOf(o, ctx) ?? "";
             if (!string.IsNullOrEmpty(step))
                 list.Add(Ann.Text(new Vec2(o.Size.W / 2 + 1.5, -o.Size.H / 2 - size * 0.45), step, size, AnnTags.Numeral, TextAnchor.Start));
             return list;
@@ -405,6 +465,182 @@ namespace InventaSketch.Modules.Annotation
                 x => x.WithParam("ports", Math.Min(6, x.Int("ports", 3) + 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) < 6 };
             yield return new ContextAction("ann.parallel.fewer", new I18nText("Remove a port per side", "Anschluss je Seite weg"), IconIds.PortRemove,
                 x => x.WithParam("ports", Math.Max(2, x.Int("ports", 3) - 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) > 2 };
+        }
+    }
+
+    /// <summary>
+    /// Flowchart numbering read from the drawn flow (round 7, 2026-11-26). The flow is the directed graph of the flowchart
+    /// symbols (<c>ann.flow.*</c>) joined by connectors whose first and last points are docked on them (from the first to the
+    /// last). Both features are off by default, so existing drawings stay as they are:
+    /// <list type="bullet">
+    /// <item><b>Step numbers</b> (<c>numberSteps</c> on the first element of a flow, usually the start): the steps reachable
+    /// from it are numbered <c>stepPrefix</c> + <c>stepFirst</c>, + <c>stepIncrement</c> … ("S100", "S110" …) in flow order:
+    /// depth first along the exits in drawing order, loop-backs ignored, and a step where branches meet only after all of
+    /// them (topological order). Process, decision, data, document, predefined process, manual operation, preparation,
+    /// delay and loop limit are numbered; start/end, connectors, off-page connectors, stored data and the parallel bar are
+    /// passed through. An entered <c>step</c> wins over the automatic number.</item>
+    /// <item><b>Exit labels</b> (<c>autoExits</c> on a decision): every elbow connector leaving the decision without its own
+    /// text or <c>exit</c> shows the label of its position among the decision's exits in drawing order ("yes", "no", or
+    /// "1", "2", "3" … with <c>exitStyle = numbers</c>, or the <c>exitLabels</c>).</item>
+    /// </list>
+    /// The graph is built once per document (cached weakly).
+    /// </summary>
+    public static class FlowNumbering
+    {
+        public const string NumberParam = "numberSteps", PrefixParam = "stepPrefix", FirstParam = "stepFirst", IncrementParam = "stepIncrement";
+        public const string AutoExitsParam = "autoExits", ExitStyleParam = "exitStyle";
+
+        private sealed class FlowGraph
+        {
+            /// <summary>Flow nodes (flowchart symbols and the parallel bar) → shape (null: the parallel bar).</summary>
+            public readonly Dictionary<string, FlowShape?> Nodes = new(StringComparer.Ordinal);
+            /// <summary>Outgoing (connector id, target) per node, in drawing order.</summary>
+            public readonly Dictionary<string, List<(string Edge, string To)>> Out = new(StringComparer.Ordinal);
+            public readonly HashSet<string> HasIncoming = new(StringComparer.Ordinal);
+            /// <summary>Connector id → (source node, index among the source's exits).</summary>
+            public readonly Dictionary<string, (string From, int Index)> Exits = new(StringComparer.Ordinal);
+            /// <summary>Automatic step number per node, and the nodes numbered from each start.</summary>
+            public readonly Dictionary<string, string> Numbers = new(StringComparer.Ordinal);
+            public readonly Dictionary<string, List<string>> NumberedFrom = new(StringComparer.Ordinal);
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<SketchDocument, FlowGraph> Cache = new();
+
+        private static FlowGraph Graph(SketchDocument doc) => Cache.GetValue(doc, Build);
+
+        /// <summary>True if the step is numbered (process, decision, data …; not start/end, connectors, stored data).</summary>
+        public static bool IsNumbered(FlowShape? shape) => shape is FlowShape s && s is not (FlowShape.Terminator or FlowShape.Connector or FlowShape.End or FlowShape.OffPage or FlowShape.Database);
+
+        private static FlowGraph Build(SketchDocument doc)
+        {
+            var g = new FlowGraph();
+            var order = new List<SketchObject>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var p in doc.Pages)
+                foreach (var id in p.Order)
+                    if (seen.Add(id) && doc.Get(id) is { } o) order.Add(o);
+            foreach (var o in order)
+            {
+                if (FlowBoxType.ShapeOf(o.Type) is FlowShape s) g.Nodes[o.Id] = s;
+                else if (o.Type == "ann.flow.parallel") g.Nodes[o.Id] = null;
+            }
+            foreach (var c in order)
+            {
+                if (c.Attach is not { Count: >= 2 } at || at[0]?.ObjectId is not string from || at[at.Count - 1]?.ObjectId is not string to) continue;
+                if (from == to || !g.Nodes.ContainsKey(from) || !g.Nodes.ContainsKey(to)) continue;
+                if (!g.Out.TryGetValue(from, out var list)) g.Out[from] = list = new List<(string, string)>();
+                g.Exits[c.Id] = (from, list.Count);
+                list.Add((c.Id, to));
+                g.HasIncoming.Add(to);
+            }
+            foreach (var o in order)
+                if (g.Nodes.ContainsKey(o.Id) && o.Flag(NumberParam, false) && !g.NumberedFrom.ContainsKey(o.Id))
+                    NumberFrom(g, o);
+            return g;
+        }
+
+        /// <summary>Numbers the steps reachable from <paramref name="start"/> that no earlier start has numbered.</summary>
+        private static void NumberFrom(FlowGraph g, SketchObject start)
+        {
+            // Depth-first order and loop-back edges (to a node still on the path).
+            var pre = new Dictionary<string, int>(StringComparer.Ordinal);
+            var onPath = new HashSet<string>(StringComparer.Ordinal);
+            var back = new HashSet<string>(StringComparer.Ordinal);
+            var stack = new Stack<(string Node, int Next)>();
+            pre[start.Id] = 0; onPath.Add(start.Id); stack.Push((start.Id, 0));
+            while (stack.Count > 0)
+            {
+                var (n, i) = stack.Pop();
+                var outs = g.Out.TryGetValue(n, out var l) ? l : null;
+                if (outs is null || i >= outs.Count) { onPath.Remove(n); continue; }
+                stack.Push((n, i + 1));
+                var (edge, to) = outs[i];
+                if (onPath.Contains(to)) { back.Add(edge); continue; }
+                if (pre.ContainsKey(to)) continue;
+                pre[to] = pre.Count; onPath.Add(to); stack.Push((to, 0));
+            }
+            // Topological order without the loop-backs; among the ready steps the one met first depth-first comes first.
+            var inDeg = pre.Keys.ToDictionary(k => k, _ => 0, StringComparer.Ordinal);
+            foreach (var n in pre.Keys)
+                if (g.Out.TryGetValue(n, out var outs))
+                    foreach (var (edge, to) in outs)
+                        if (!back.Contains(edge) && inDeg.ContainsKey(to)) inDeg[to]++;
+            var ready = new SortedSet<(int, string)>(pre.Where(kv => inDeg[kv.Key] == 0).Select(kv => (kv.Value, kv.Key)));
+            var prefix = start.Str(PrefixParam, "S");
+            var number = (long)start.Int(FirstParam, 100);
+            var step = (long)Math.Max(1, start.Int(IncrementParam, 10));
+            var numbered = new List<string>();
+            while (ready.Count > 0)
+            {
+                var first = ready.Min;
+                ready.Remove(first);
+                var n = first.Item2;
+                if (IsNumbered(g.Nodes[n]) && !g.Numbers.ContainsKey(n))
+                {
+                    g.Numbers[n] = prefix + number.ToString(CultureInfo.InvariantCulture);
+                    numbered.Add(n);
+                    number += step;
+                }
+                if (g.Out.TryGetValue(n, out var outs))
+                    foreach (var (edge, to) in outs)
+                        if (!back.Contains(edge) && inDeg.ContainsKey(to) && --inDeg[to] == 0) ready.Add((pre[to], to));
+            }
+            g.NumberedFrom[start.Id] = numbered;
+        }
+
+        /// <summary>The automatic step number of a flow box ("S110"), or null (numbering off, not reachable, not a numbered step).</summary>
+        public static string? StepOf(SketchObject o, RenderContext ctx) => Graph(ctx.Doc).Numbers.TryGetValue(o.Id, out var s) ? s : null;
+
+        /// <summary>True if <paramref name="o"/> starts a flow: no connector leads into it and at least one leads out.</summary>
+        public static bool IsFlowStart(SketchObject o, RenderContext ctx)
+        {
+            var g = Graph(ctx.Doc);
+            return !g.HasIncoming.Contains(o.Id) && g.Out.ContainsKey(o.Id);
+        }
+
+        /// <summary>
+        /// The automatic exit label of a connector leaving a decision with <c>autoExits</c> on ("yes", "no", "1" …, not yet
+        /// translated), or null.
+        /// </summary>
+        public static string? AutoExit(SketchObject connector, RenderContext ctx)
+        {
+            if (!Graph(ctx.Doc).Exits.TryGetValue(connector.Id, out var exit) || ctx.Doc.Get(exit.From) is not { } d) return null;
+            if (FlowBoxType.ShapeOf(d.Type) != FlowShape.Decision || !d.Flag(AutoExitsParam, false)) return null;
+            var label = FlowBoxType.ExitLabel(d, exit.Index);
+            return label.Length > 0 ? label : null;
+        }
+
+        /// <summary>Objects to redraw when a flow box changes: the steps numbered with it, and a decision's exit connectors.</summary>
+        public static IEnumerable<string> DependentsOfBox(SketchObject o, RenderContext ctx)
+        {
+            var g = Graph(ctx.Doc);
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var list in g.NumberedFrom.Where(kv => kv.Key == o.Id || kv.Value.Contains(o.Id)).Select(kv => kv.Value))
+                result.UnionWith(list);
+            if (g.Out.TryGetValue(o.Id, out var outs) && FlowBoxType.ShapeOf(o.Type) == FlowShape.Decision)
+                foreach (var (edge, _) in outs) result.Add(edge);
+            result.Remove(o.Id);
+            return result;
+        }
+
+        /// <summary>
+        /// Objects to redraw when a connector of the flow changes: the steps numbered along its flow and the other exits of
+        /// the decision it leaves (their positions shift).
+        /// </summary>
+        public static IEnumerable<string> DependentsOfConnector(SketchObject connector, RenderContext ctx)
+        {
+            var g = Graph(ctx.Doc);
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            if (connector.Attach is not { Count: >= 2 } at) return result;
+            var ends = new[] { at[0]?.ObjectId, at[at.Count - 1]?.ObjectId }.OfType<string>().ToList();
+            // A connector of the flow may join, split or reorder numbered flows: the steps of every numbered flow follow it
+            // (evaluated before and after the edit, so steps that drop out are redrawn too).
+            if (ends.Any(e => g.Nodes.ContainsKey(e)))
+                foreach (var kv in g.NumberedFrom) result.UnionWith(kv.Value);
+            if (at[0]?.ObjectId is string from && g.Out.TryGetValue(from, out var outs))
+                foreach (var (edge, _) in outs) result.Add(edge);
+            result.Remove(connector.Id);
+            return result;
         }
     }
 

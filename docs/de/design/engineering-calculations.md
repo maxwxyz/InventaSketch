@@ -427,7 +427,7 @@ Nutzer ein.
 | Strang / Feld | *U*_Strang = *N*_s·*U*_Modul; *I*_Feld = *N*_p·*I*_Strang; *P* = *N*_s·*N*_p·*P*_Modul | *N*_s (vorhanden: `modules`)*, N*_p | – | [S34] |
 | Höchste Strangspannung | *U*_oc,max = *N*_s·*U*_oc(*θ*_min); kleinste MPP-Spannung *U*_mpp,min = *N*_s·*U*_mpp(*θ*_max) | *θ*_min (Nutzer, Standort), *θ*_max | – | [S33] (IEC 62548-1, Betriebstemperatur) |
 | DC/AC-Verhältnis | *R* = *P*_DC,STC/*P*_AC,Nenn | – | typisch 1,0 … 1,3 | [S34] |
-| Ertragsabschätzung | *E* = *P*_STC·(*H*_POA/1 kW/m²)·PR; spezifischer Ertrag *E*/*P*_STC | *H*_POA (Eingabe), PR (Eingabe, typ. 0,75 … 0,9) | – | [S33] (PR: IEC 61724-1) |
+| Ertragsabschätzung | *E* = *P*_STC·(*H*_POA/1 kW/m²)·PR; spezifischer Ertrag *Y*_f = *E*/*P*_STC = (*H*_POA/1 kW/m²)·PR | *H*_POA (Eingabe, kWh/m², Größenart `irradiation`), PR (Eingabe, typ. 0,75 … 0,9); *Y*_f in kWh/kWp (Größenart `specificYield`) | – | [S33] (PR: IEC 61724-1) |
 | Wechselrichter | *P*_AC = *η*·*P*_DC; *I*_AC = *P*_AC/(√3·*U*·cos *φ*) (3~) | *η, P, U, I* | *η* 0,95 … 0,98 | [S33] (EN 50530) |
 | Batterie | *E* = *U*_nenn·*Q*_n; *E*_nutzbar = *E*·DoD; C-Rate = *I*/(*Q*_n/1 h); *t* = *E*_nutzbar/*P*; Zykluswirkungsgrad *η*_rt | *U, Q*_n [Ah]*, E* [kWh]*, DoD, I, P, t* | 0,2 … 2 C | [S35] (Stromangabe: IEC 61434) |
 | E-Auto laden | *P* = √3·*U*·*I* (3~, z. B. 400 V · 16 A ≈ 11 kW); *t* ≈ Δ*E*/(*P*·*η*) (Ladekurve vernachlässigt, wird angegeben) | *P, U, I, E, t* | – | [S7] |
@@ -1076,7 +1076,13 @@ Dieser Abschnitt hält die Entscheidungen fest, die das Konzept offen ließ. Ma�
   Massenstrom, Temperatur, Temperaturdifferenz, Dichte, spezifische Wärmekapazität, Wärmedurchgangskoeffizient,
   Bestrahlungsstärke, kinematische Viskosität, Trägheitsmoment, Federrate (später auch Drehfederrate,
   Temperaturkoeffizient und seit Runde 4 vom 26.11.2026 **spezifische Energie**: kJ/kg (Standard), J/kg, MJ/kg, kWh/kg,
-  für die spezifische Arbeit von Verdichtern und Turbinen). Drehmoment und Energie, Leistung und
+  für die spezifische Arbeit von Verdichtern und Turbinen; seit Runde 7 vom 26.11.2026 **Einstrahlung** (Bestrahlung,
+  Energie je Fläche: kWh/m² (Standard), MJ/m², Wh/m², J/m² und `h` als Volllaststunden der Sonne bei 1 kW/m²) und
+  **spezifischer Ertrag** (Energie je Nennleistung: kWh/kWp (Standard), auch `h` als Volllaststunden)). Der spezifische
+  Ertrag ist von der Dimension her eine Zeit (kWh/kWp = h), aber eine eigene Größenart, damit Zeitfelder kein kWh/kWp
+  anbieten und ein Ertrag „950 kWh/kWp“ zeigt; *E* = *P*·*Y*_f bleibt ein einfaches Produkt. Die Einstrahlung teilt ihre
+  Dimension (kg·s⁻²) mit der Federrate. Beide neuen Größenarten stehen in der Vorzugsreihenfolge hinter den bisherigen,
+  so bleibt eine berechnete Zeit eine Zeit und ein berechnetes N/m eine Federrate. Drehmoment und Energie, Leistung und
   Wärmestrom, Temperatur und Temperaturdifferenz teilen sich eine Dimension und sind getrennte Größenarten. Die erste
   Einheit einer Größenart ist ihre Anzeigeeinheit (Ladung: Ah, Drehzahl: min⁻¹, Temperatur: °C).
 - **Einheiten** haben Faktor und Nullpunkt zum SI und eine ausdrückliche Liste der SI-Vorsätze, die sie annehmen und
