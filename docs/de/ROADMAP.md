@@ -724,16 +724,15 @@ Schein, Einfügestellen). Noch offen:
 - **Sichtprüfung:** die neue Bedienung im Web-Add-in (Leiste, Kreismenü, Schein, Griffe, Wertekarte, Rechenblatt) hat
   nur Unit-Tests – in der Entwicklerseite und in PowerPoint (Web) prüfen. LibreOffice wurde mit seinen eigenen
   UI-Smoke-Tests geprüft.
-- **Calc 6:** eigene Grenzwerte für Prüfungen; ein eigener Quellenbereich (Rechenblatt und Karte nennen die Quellen);
-  Stummschalten, Einheitenvorlieben und Rechenblatt in der Oberfläche von Web-Add-in und LibreOffice (die
-  Engine-Methoden gibt es).
+- **Calc 6:** eigene Grenzwerte für Prüfungen; ein eigener Quellenbereich (Rechenblatt und Karte nennen die Quellen).
+  Stummschalten, Einheitenvorlieben und Rechenblatt gibt es in COM, Web und LibreOffice (26.11.2026).
 - **Calc 5:** Live-Vorschau des Diagramms beim Ziehen des Betriebspunkts; transitives Neuzeichnen, wenn sich ein Wert
   über einen Nachbarn ändert; Wirkungsgradkennfeld, Affinitätsgesetze, PV bei anderer Einstrahlung/Temperatur.
-- **Farbe nach Medium und Bezeichnungen:** Oberfläche in Web und LibreOffice (die Engine-Methoden gibt es: `setColorBy`,
-  `mediumColours`, `designations`, `setContinuations`); Fortsetzungsmarken auf anderen Folien aktualisieren sich, wenn
-  ihre Einheit neu gezeichnet wird.
-- **Lücken im Web:** Knotensymbole an Leitungskreuzungen, „+“ an freien Linienenden zum Weiterzeichnen, „hier teilen“
-  an einer gewählten Ecke.
+- **Farbe nach Medium und Bezeichnungen:** in COM, Web und LibreOffice (26.11.2026); Fortsetzungsmarken auf anderen
+  Folien aktualisieren sich, wenn ihre Einheit neu gezeichnet wird; LibreOffice Draw ist für Fortsetzungen noch nicht
+  ausgeführt.
+- **Web:** alles nur mit Unit-Tests geprüft – in der Entwicklerseite und in PowerPoint (Web) prüfen; neue Objekte aus
+  Teilen oder Abzweig kommen nur über „Einfügen“ auf die Folie.
 - **Grenzen in LibreOffice (dokumentiert):** keine Ziehgriffe oder Griffe auf der Zeichenfläche (Erweiterungen bekommen
   keine Mausbewegungen), keine Options-Piktogramme in Klapplisten, leere Kontextplätze werden ausgeblendet statt
   ausgegraut.

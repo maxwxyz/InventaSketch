@@ -652,13 +652,14 @@ context places, values panel, calculator, code import, select connected, glow, i
 
 - **Checks by eye:** the web add-in's new interaction (bar, pie, halo, handles, value card, calculation sheet) has only
   unit tests – check it in the dev page and in PowerPoint (web). LibreOffice was checked with its own UI smoke tests.
-- **Calc 6:** own thresholds for checks; a separate sources pane (sheet and card name the sources); mute list, unit
-  preferences and calculation sheet in the web add-in and LibreOffice UI (engine methods exist).
+- **Calc 6:** own thresholds for checks; a separate sources pane (sheet and card name the sources). Mute list, unit
+  preferences and calculation sheet are in COM, web and LibreOffice (2026-11-26).
 - **Calc 5:** live preview of the chart while dragging the operating point; transitive redraw when a value changes
   through a neighbour; efficiency map, pump affinity laws, PV at other irradiance/temperature.
-- **Colour by medium and designations:** web and LibreOffice UI (engine methods exist: `setColorBy`, `mediumColours`,
-  `designations`, `setContinuations`); continuation markers on other slides update when their unit is redrawn.
-- **Web gaps:** junction icons at wire crossings, "+" at free line ends to draw on, "split here" on a selected corner.
+- **Colour by medium and designations:** in COM, web and LibreOffice (2026-11-26); continuation markers on other slides
+  update when their unit is redrawn; LibreOffice Draw is not run for continuations yet.
+- **Web:** everything is unit-tested only – check it in the dev page and in PowerPoint (web); new objects from a split
+  or branch reach the slide only through "Insert".
 - **LibreOffice limits (documented):** no drag grips or on-canvas handles (extensions get no mouse moves), no option
   pictograms in dropdowns, empty context places are hidden instead of greyed.
 - **Engine follow-ups:** module types keep their own `view.*` actions (hidden by `Registry.Actions`); Kloss/pump/PV
