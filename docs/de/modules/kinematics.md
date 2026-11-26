@@ -154,7 +154,7 @@ Anschlag der Kurbel abgefahren).
 
 ## Elementwerte (26.11.2026)
 
-Viergelenk, Schubkurbel, Schnellrücklauf und Kreuzschubkurbel haben Elementwerte (Calc 1, `IValueType`;
+Viergelenk, Schubkurbel, Schnellrücklauf, Kreuzschubkurbel, Malteserkreuzgetriebe und das sechsgliedrige Koppelgetriebe haben Elementwerte (Calc 1, `IValueType`;
 engineering-calculations.md Abschnitte 2.6 und 3.4). Gliedlängen und Antriebswinkel sind die eigenen Parameter des
 Mechanismus: sie sind eingegebene Werte, und die Eingabe einer Länge im Wertefenster ändert die Zeichnung. Alles
 andere folgt aus den Lehrbuchbeziehungen von [S24] (Kerle/Corves/Hüsing; Uicker/Pennock/Shigley). Die
@@ -167,11 +167,18 @@ ihr folgen die Geschwindigkeiten in der aktuellen Stellung. Das Werteetikett (`s
 | Schubkurbel | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v** | H = √((l + r)² − e²) − √((l − r)² − e²) (ohne Versatz 2r); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ |
 | Schnellrücklauf | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 für r/d = 1/2); H aus der Lageanalyse über eine Umdrehung |
 | Kreuzschubkurbel | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
+| Malteserkreuzgetriebe | z (`slots`), C (`centre`), φ (`angle`, Antrieb), n, **β**, **α_s**, α_r, **τ**, a, i, **ω₂** | β = 360°/z (Schaltwinkel); α_s = 180° − 360°/z (Antriebswinkel während der Schaltung), α_r = 180° + 360°/z (während der Rast); τ = α_s/α_r = (z − 2)/(z + 2) (z = 4: 90°/270° = 1/3, z = 6: 1/2); a = C·sin(180°/z); i = ω₂/ω₁ = −λ·(cos φ − λ)/(1 − 2λ·cos φ + λ²) mit λ = sin(180°/z), solange \|φ\| ≤ 90° − 180°/z, sonst 0 (gesperrt; φ = 0 auf der Mittellinie, Spitzenwert −λ/(1 − λ) = −2,414 für z = 4); ω₂ = i·n (negativ: das Rad dreht gegen den Antrieb) |
+| Sechsgliedriges Koppelgetriebe | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ, n, **θ₆**, **μ₁**, **μ₂**, i, **ω₆** | θ₆ = Richtung der Abtriebsschwinge O6 → D (Watt) bzw. O6 → C (Stephenson), gemessen wie φ, aus dem Maschenschluss; μ₁ bei B zwischen Koppel und Schwinge: cos μ₁ = (b² + c² − a² − d² + 2ad·cos φ)/(2bc); μ₂ am Abtriebsgelenk zwischen Abtriebskoppel (Watt C-D, Stephenson P-C) und Abtriebsschwinge; i = dθ₆/dφ (zentraler Differenzenquotient über ±0,01°); ω₆ = i·n. Die weiteren Glieder der Kette stammen aus den Parametern des Elements |
 
 Die Grashof-Klasse ist ein Text, den das Wertesystem (nur Zahlen) nicht aufnehmen kann: sie erscheint als Plakette
 des Viergelenks (`grashof`) und am Vorzeichen von Δ_G; `Linkages.Classify` benennt sie (Kurbelschwinge, Doppelkurbel,
 Schwingkurbel, Doppelschwinge mit umlaufender Koppel, Durchschlaggetriebe, Doppelschwinge Nicht-Grashof).
 Schwingwinkel und Zeitverhältnis gibt es nur bei der Kurbelschwinge (sonst unbekannt).
+
+Die Schlitzanzahl des Malteserkreuzgetriebes ist seine Auswahl `slots` (4 oder 6); eine als Wert eingegebene ganze Zahl
+(3–12) wird ebenfalls gezeichnet, so folgt die Zeichnung dem Wertefenster. Seine Werte sind Winkel je Antriebsumdrehung
+und die Raddrehzahl im aktuellen Antriebswinkel; Prüfungen gibt es dafür nicht. Die Werte des sechsgliedrigen Koppelgetriebes gelten in der
+aktuellen Stellung (noch keine Prüfung über die ganze Bewegung).
 
 **Prüfungen** (Abschnitt 4 von engineering-calculations.md):
 

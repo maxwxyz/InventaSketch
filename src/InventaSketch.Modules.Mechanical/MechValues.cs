@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using InventaSketch.Core;
 
@@ -48,10 +49,13 @@ namespace InventaSketch.Modules.Mechanical
             "mech.gear.spur", "mech.gear.internal", "mech.gear.bevel", "mech.gear.worm", "mech.gear.wormwheel",
         };
 
-        /// <summary>Members that pass the torque of a shaft line on unchanged (shafts and couplings).</summary>
+        /// <summary>
+        /// Members that pass the torque of a shaft line on unchanged (shafts and couplings; the slip clutch while it holds,
+        /// which its check <c>mech.clutch.slip</c> watches).
+        /// </summary>
         public static readonly HashSet<string> PassThrough = new(StringComparer.Ordinal)
         {
-            "mech.shaft", "mech.spline", "mech.coupling.rigid", "mech.coupling.flexible", "mech.joint.universal",
+            "mech.shaft", "mech.spline", "mech.coupling.rigid", "mech.coupling.flexible", "mech.joint.universal", SlipClutch.Id,
         };
 
         /// <summary>Rolling bearings with their life exponent p (3 for ball bearings, 10/3 for roller bearings) [S19].</summary>
@@ -153,6 +157,13 @@ namespace InventaSketch.Modules.Mechanical
             ["mech.spring.compression"] = Spring,
             ["mech.spring.tension"] = Spring,
             ["mech.bearing.plain"] = PlainBearing,
+            ["mech.flywheel"] = Flywheel,
+            ["mech.gearset.harmonic"] = StrainWave,
+            ["mech.gearset.cycloidal"] = Cycloidal,
+            ["mech.gearset.differential"] = Differential,
+            ["mech.gearset.ravigneaux"] = Ravigneaux,
+            ["mech.cvt"] = Cvt,
+            [SlipClutch.Id] = SlipClutchValues,
         };
 
         /// <summary>The values of <paramref name="type"/> (empty for elements without relations yet).</summary>
@@ -188,11 +199,48 @@ namespace InventaSketch.Modules.Mechanical
             return new Spec(vars, new[] { RotPower }, WithShow(PSpeed, PTorque, PPower, PEfficiency), new[] { ModuleMismatch(type), PowerBalance() });
         }
 
-        /// <summary>Rack: P = F·v; the module for the drawing pitch (not linked to a pinion yet).</summary>
+        /// <summary>Pinion of a rack: d_p = m·z_p (zero shift) [S16].</summary>
+        private static readonly Relation PinionPitch =
+            new Relation("mech.rack.pinion.pitch", T("Pitch diameter of the pinion", "Teilkreisdurchmesser des Ritzels"), "{dp} = {m}·{zp}", "dp", "m", "zp") { Source = "S16" }
+                .Solve("dp", "{m}·{zp}", v => v("m") * v("zp"))
+                .Solve("m", "{dp}/{zp}", v => v("dp") / v("zp"))
+                .Solve("zp", "{dp}/{m}", v => v("dp") / v("m"));
+
+        /// <summary>Rack speed from the pinion: v = ω·r = π·d_p·n_p (n in turns per time; d_p/2·n_p with n in rad/s) [S18].</summary>
+        private static readonly Relation RackSpeed =
+            new Relation("mech.rack.pinion.speed", T("Rack speed from the pinion (v = ω·r)", "Zahnstangengeschwindigkeit aus dem Ritzel (v = ω·r)"), "{v} = π·{dp}·{np}", "v", "dp", "np") { Source = "S18" }
+                .Solve("v", "π·{dp}·{np}", v => v("dp") / 2 * v("np"))
+                .Solve("np", "{v}/(π·{dp})", v => 2 * v("v") / v("dp"))
+                .Solve("dp", "{v}/(π·{np})", v => 2 * v("v") / v("np"));
+
+        /// <summary>Rack force from the pinion torque: F = T/r = 2·T_p/d_p [S18].</summary>
+        private static readonly Relation RackForce =
+            new Relation("mech.rack.pinion.force", T("Rack force from the pinion torque (F = T/r)", "Zahnstangenkraft aus dem Ritzelmoment (F = T/r)"), "{F} = 2·{Tp}/{dp}", "F", "Tp", "dp") { Source = "S18" }
+                .Solve("F", "2·{Tp}/{dp}", v => 2 * v("Tp") / v("dp"))
+                .Solve("Tp", "{F}·{dp}/2", v => v("F") * v("dp") / 2)
+                .Solve("dp", "2·{Tp}/{F}", v => 2 * v("Tp") / v("F"));
+
+        /// <summary>
+        /// Rack: P = F·v; the module for the drawing pitch. The pinion that drives it is described on the rack (teeth, speed,
+        /// torque): v = ω·r and F = T/r with r = m·z_p/2. A drawn pinion gear is not linked to the rack (no rack mesh in the
+        /// topology): enter its values on the rack.
+        /// </summary>
         private static Spec Rack(MechType type)
         {
-            var vars = new[] { Module(), LinSpeed(), Force(), Power() };
-            return new Spec(vars, new[] { LinPower }, WithShow(PLinSpeed, PForce, PPower), Array.Empty<ValueCheck>());
+            var vars = new[]
+            {
+                Module(), LinSpeed(), Force(), Power(),
+                V("zp", T("Teeth of the pinion", "Zähnezahl des Ritzels"), T("z_p", "z_p"), Quantities.Count, "", "pinionTeeth", VarRelevance.Panel) with { Min = 1, Max = 1000 },
+                V("dp", T("Pitch diameter of the pinion", "Teilkreisdurchmesser des Ritzels"), T("d_p", "d_p"), Quantities.Length, "mm", "pinionDiameter", VarRelevance.Panel) with { Min = 1e-4, Max = 100 },
+                V("np", T("Speed of the pinion", "Drehzahl des Ritzels"), T("n_p", "n_p"), Quantities.RotationalSpeed, "min⁻¹", "pinionSpeed", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+                V("Tp", T("Torque on the pinion", "Moment am Ritzel"), T("T_p", "M_p"), Quantities.Torque, "N·m", "pinionTorque", VarRelevance.Panel) with { Min = 0, Max = 1e7 },
+            };
+            var ps = WithShow(PLinSpeed, PForce, PPower,
+                Text("pinionTeeth", T("Teeth of the pinion", "Zähnezahl des Ritzels"), ""),
+                Text("pinionDiameter", T("Pitch diameter of the pinion", "Teilkreisdurchmesser des Ritzels"), "mm"),
+                Text("pinionSpeed", T("Speed of the pinion", "Drehzahl des Ritzels"), "min⁻¹"),
+                Text("pinionTorque", T("Torque on the pinion", "Moment am Ritzel"), "N·m"));
+            return new Spec(vars, new[] { LinPower, PinionPitch, RackSpeed, RackForce }, ps, Array.Empty<ValueCheck>());
         }
 
         // planetary set ---------------------------------------------------------
@@ -444,6 +492,347 @@ namespace InventaSketch.Modules.Mechanical
             return new Spec(vars, Life(p), ps, new[] { BearingLife() });
         }
 
+        // flywheel ------------------------------------------------------------------
+
+        /// <summary>
+        /// Moment of inertia of a hollow cylinder J = m·(D² + d_i²)/8 [S18]: solid disc d_i = 0 (J = ½·m·r²), thin rim
+        /// d_i → D (J = m·r²).
+        /// </summary>
+        private static readonly Relation FlywheelInertia =
+            new Relation("mech.flywheel.inertia", T("Moment of inertia of the flywheel", "Trägheitsmoment des Schwungrads"), "{J} = {m}·({D}² + {di}²)/8", "J", "m", "D", "di")
+            {
+                Source = "S18",
+                Validity = T("uniform disc or rim between d_i and D; solid disc d_i = 0 (J = ½·m·r²), thin rim d_i → D (J = m·r²); hub and spokes neglected",
+                             "gleichmäßige Scheibe oder Kranz zwischen d_i und D; Vollscheibe d_i = 0 (J = ½·m·r²), dünner Kranz d_i → D (J = m·r²); Nabe und Speichen vernachlässigt"),
+            }
+                .Solve("J", "{m}·({D}² + {di}²)/8", v => v("m") * (v("D") * v("D") + v("di") * v("di")) / 8)
+                .Solve("m", "8·{J}/({D}² + {di}²)", v => 8 * v("J") / (v("D") * v("D") + v("di") * v("di")))
+                .Solve("D", "√(8·{J}/{m} − {di}²)", v => Math.Sqrt(8 * v("J") / v("m") - v("di") * v("di")))
+                .Solve("di", "√(8·{J}/{m} − {D}²)", v => Math.Sqrt(8 * v("J") / v("m") - v("D") * v("D")));
+
+        /// <summary>Kinetic energy E = ½·J·ω² (ω = 2π·n; n in rad/s internally) [S18].</summary>
+        private static readonly Relation FlywheelEnergy =
+            new Relation("mech.flywheel.energy", T("Kinetic energy of the flywheel", "Kinetische Energie des Schwungrads"), "{E} = ½·{J}·(2π·{n})²", "E", "J", "n") { Source = "S18" }
+                .Solve("E", "½·{J}·(2π·{n})²", v => 0.5 * v("J") * v("n") * v("n"))
+                .Solve("J", "2·{E}/(2π·{n})²", v => 2 * v("E") / (v("n") * v("n")))
+                .Solve("n", "√(2·{E}/{J})/(2π)", v => Math.Sqrt(2 * v("E") / v("J")));
+
+        /// <summary>
+        /// Speed fluctuation for an energy fluctuation: ΔE = ½·J·(ω_max² − ω_min²) = J·ω_m·Δω, i.e. ΔE = 4π²·J·n·Δn with the
+        /// mean speed n [S18].
+        /// </summary>
+        private static readonly Relation FlywheelFluctuation =
+            new Relation("mech.flywheel.fluctuation", T("Speed fluctuation for an energy fluctuation", "Drehzahlschwankung bei einer Energieschwankung"), "{dE} = 4π²·{J}·{n}·{dn}", "dE", "J", "n", "dn")
+            {
+                Source = "S18",
+                Validity = T("n is the mean speed (n_max + n_min)/2, Δn = n_max − n_min", "n ist die mittlere Drehzahl (n_max + n_min)/2, Δn = n_max − n_min"),
+            }
+                .Solve("dE", "4π²·{J}·{n}·{dn}", v => v("J") * v("n") * v("dn"))
+                .Solve("dn", "{dE}/(4π²·{J}·{n})", v => v("dE") / (v("J") * v("n")))
+                .Solve("J", "{dE}/(4π²·{n}·{dn})", v => v("dE") / (v("n") * v("dn")))
+                .Solve("n", "{dE}/(4π²·{J}·{dn})", v => v("dE") / (v("J") * v("dn")));
+
+        /// <summary>Coefficient of speed fluctuation δ = Δn/n [S18].</summary>
+        private static readonly Relation FlywheelDegree =
+            new Relation("mech.flywheel.degree", T("Coefficient of speed fluctuation", "Ungleichförmigkeitsgrad"), "{delta} = {dn}/{n}", "delta", "dn", "n") { Source = "S18" }
+                .Solve("delta", "{dn}/{n}", v => v("dn") / v("n"))
+                .Solve("dn", "{delta}·{n}", v => v("delta") * v("n"))
+                .Solve("n", "{dn}/{delta}", v => v("dn") / v("delta"));
+
+        /// <summary>
+        /// Flywheel: speed (shared with its shaft line), mass, outer and inner diameter, moment of inertia, kinetic energy and
+        /// the speed fluctuation for an energy fluctuation. No torque: the flywheel stores energy but takes no steady torque,
+        /// so it never splits the torque of a shaft line.
+        /// </summary>
+        private static Spec Flywheel(MechType type)
+        {
+            var vars = new[]
+            {
+                Speed(),
+                V("m", T("Mass", "Masse"), T("m", "m"), Quantities.Mass_, "kg", "mass") with { Min = 1e-4, Max = 1e6 },
+                V("D", T("Outer diameter", "Außendurchmesser"), T("D", "D"), Quantities.Length, "mm", "diameter") with { Min = 1e-4, Max = 20 },
+                V("E", T("Kinetic energy", "Kinetische Energie"), T("E", "E"), Quantities.Energy, "kJ", "energy") with { Min = 0, Max = 1e12 },
+                V("J", T("Moment of inertia", "Trägheitsmoment"), T("J", "J"), Quantities.Inertia, "kg·m²", "inertia", VarRelevance.Panel) with { Min = 1e-9, Max = 1e9 },
+                V("di", T("Inner diameter of the rim (0: solid disc)", "Innendurchmesser des Kranzes (0: Vollscheibe)"), T("d_i", "d_i"), Quantities.Length, "mm", "innerDiameter", VarRelevance.Panel) with { Default = 0, Min = 0, Max = 20 },
+                V("dE", T("Energy fluctuation", "Energieschwankung"), T("ΔE", "ΔE"), Quantities.Energy, "kJ", "energyFluctuation", VarRelevance.Panel) with { Min = 0, Max = 1e12 },
+                V("dn", T("Speed fluctuation", "Drehzahlschwankung"), T("Δn", "Δn"), Quantities.RotationalSpeed, "min⁻¹", "speedFluctuation", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+                V("delta", T("Coefficient of speed fluctuation Δn/n", "Ungleichförmigkeitsgrad Δn/n"), T("δ", "δ"), Quantities.Ratio, "", "fluctuationCoefficient", VarRelevance.Engineer) with { Min = 0, Max = 10 },
+            };
+            var ps = WithShow(PSpeed,
+                Text("mass", T("Mass", "Masse"), "kg"),
+                Text("diameter", T("Outer diameter", "Außendurchmesser"), "mm"),
+                Text("energy", T("Kinetic energy", "Kinetische Energie"), "kJ"),
+                Text("inertia", T("Moment of inertia", "Trägheitsmoment"), "kg·m²"),
+                Text("innerDiameter", T("Inner diameter of the rim (0: solid disc)", "Innendurchmesser des Kranzes (0: Vollscheibe)"), "mm"),
+                Text("energyFluctuation", T("Energy fluctuation", "Energieschwankung"), "kJ"),
+                Text("speedFluctuation", T("Speed fluctuation", "Drehzahlschwankung"), "min⁻¹"),
+                Text("fluctuationCoefficient", T("Coefficient of speed fluctuation Δn/n", "Ungleichförmigkeitsgrad Δn/n"), ""));
+            return new Spec(vars, new[] { FlywheelInertia, FlywheelEnergy, FlywheelFluctuation, FlywheelDegree }, ps, Array.Empty<ValueCheck>());
+        }
+
+        // two-shaft gear units (strain wave, cycloidal, CVT) --------------------------
+
+        /// <summary>Speed ratio of a gear unit with input n₁ and output n₂: n₁ = i·n₂ (signed for reducers that reverse) [S18].</summary>
+        private static readonly Relation RatioSpeed =
+            new Relation("mech.ratio.speed", T("Speed ratio input : output", "Drehzahlverhältnis An- : Abtrieb"), "{n1} = {i}·{n2}", "n1", "i", "n2") { Source = "S18" }
+                .Solve("n1", "{i}·{n2}", v => v("i") * v("n2"))
+                .Solve("n2", "{n1}/{i}", v => v("n1") / v("i"))
+                .Solve("i", "{n1}/{n2}", v => v("n1") / v("n2"));
+
+        /// <summary>Output torque of a gear unit: T₂ = |i|·η·T₁ (torques as magnitudes; P₂ = η·P₁) [S18].</summary>
+        private static readonly Relation RatioTorque =
+            new Relation("mech.ratio.torque", T("Output torque of a gear unit", "Abtriebsmoment einer Getriebestufe"), "{T2} = |{i}|·{eta}·{T1}", "T2", "i", "eta", "T1") { Source = "S18" }
+                .Solve("T2", "|{i}|·{eta}·{T1}", v => Math.Abs(v("i")) * v("eta") * v("T1"))
+                .Solve("T1", "{T2}/(|{i}|·{eta})", v => v("T2") / (Math.Abs(v("i")) * v("eta")))
+                .Solve("eta", "{T2}/(|{i}|·{T1})", v => v("T2") / (Math.Abs(v("i")) * v("T1")));
+
+        private static VarDef SignedSpeedVar(string key, I18nText name, string sym, string param, VarRelevance rel) =>
+            V(key, name, T(sym, sym), Quantities.RotationalSpeed, "min⁻¹", param, rel) with { Min = -1e5, Max = 1e5 };
+
+        private static VarDef TorqueVar(string key, I18nText name, string en, string de, string param, VarRelevance rel) =>
+            V(key, name, T(en, de), Quantities.Torque, "N·m", param, rel) with { Min = 0, Max = 1e7 };
+
+        private static VarDef RatioVar(I18nText name, string? param, VarRelevance rel, double min = -1e6, double max = 1e6) =>
+            V("i", name, T("i", "i"), Quantities.Ratio, "", param ?? "ratio", rel) with { Min = min, Max = max };
+
+        /// <summary>Input and output speed, torques and efficiency of a two-shaft gear unit, with their text parameters.</summary>
+        private static (VarDef[] Vars, ParamDef[] Params) InOut(VarRelevance n1, VarRelevance n2, VarRelevance t1, VarRelevance t2, bool signed)
+        {
+            VarDef Spd(string key, I18nText name, string sym, string param, VarRelevance rel) =>
+                signed ? SignedSpeedVar(key, name, sym, param, rel) : V(key, name, T(sym, sym), Quantities.RotationalSpeed, "min⁻¹", param, rel) with { Min = 0, Max = 1e5 };
+            I18nText nIn = T("Input speed", "Antriebsdrehzahl"), nOut = T("Output speed", "Abtriebsdrehzahl");
+            I18nText tIn = T("Input torque", "Antriebsmoment"), tOut = T("Output torque", "Abtriebsmoment");
+            I18nText eta = T("Efficiency", "Wirkungsgrad");
+            var vars = new[]
+            {
+                Spd("n1", nIn, "n₁", "speedIn", n1),
+                Spd("n2", nOut, "n₂", "speedOut", n2),
+                TorqueVar("T1", tIn, "T₁", "M₁", "torqueIn", t1),
+                TorqueVar("T2", tOut, "T₂", "M₂", "torqueOut", t2),
+                Eta(eta),
+            };
+            var ps = new[]
+            {
+                Text("speedIn", nIn, "min⁻¹"), Text("speedOut", nOut, "min⁻¹"),
+                Text("torqueIn", tIn, "N·m"), Text("torqueOut", tOut, "N·m"),
+                Text("efficiency", eta, "%"),
+            };
+            return (vars, ps);
+        }
+
+        /// <summary>
+        /// Strain wave gear with the circular spline fixed, wave generator in, flexspline out: i = −z_f/(z_c − z_f) [S39]
+        /// (Willis' equation with the wave generator as carrier: n_f − n_wg = (z_c/z_f)·(n_c − n_wg), n_c = 0).
+        /// </summary>
+        private static readonly Relation StrainWaveRatio =
+            new Relation("mech.harmonic.ratio", T("Ratio of the strain wave gear", "Übersetzung des Wellgetriebes"), "{i} = −{zf}/({zc} − {zf})", "i", "zf", "zc")
+            {
+                Source = "S39",
+                Validity = T("circular spline fixed, wave generator drives, flexspline output; negative: the output turns against the input",
+                             "Hohlrad (Circular Spline) fest, Wellgenerator treibt, Abtrieb am Flexrad; negativ: der Abtrieb dreht gegen den Antrieb"),
+            }
+                .Solve("i", "−{zf}/({zc} − {zf})", v => -v("zf") / (v("zc") - v("zf")))
+                .Solve("zc", "{zf}·({i} − 1)/{i}", v => v("zf") * (v("i") - 1) / v("i"))
+                .Solve("zf", "{i}·{zc}/({i} − 1)", v => v("i") * v("zc") / (v("i") - 1));
+
+        private static Spec StrainWave(MechType type)
+        {
+            var (io, iops) = InOut(VarRelevance.Panel, VarRelevance.Card, VarRelevance.Panel, VarRelevance.Panel, true);
+            var vars = new List<VarDef>
+            {
+                V("zf", T("Teeth of the flexspline", "Zähnezahl des Flexrads"), T("z_f", "z_f"), Quantities.Count, "", "flexTeeth") with { Default = 200, Min = 2, Max = 10000 },
+                V("zc", T("Teeth of the circular spline", "Zähnezahl des Hohlrads"), T("z_c", "z_c"), Quantities.Count, "", "circularTeeth") with { Default = 202, Min = 2, Max = 10000 },
+                RatioVar(T("Ratio n_in/n_out", "Übersetzung n_an/n_ab"), "ratio", VarRelevance.Card),
+            };
+            vars.AddRange(io);
+            var ps = new List<ParamDef>
+            {
+                Text("flexTeeth", T("Teeth of the flexspline", "Zähnezahl des Flexrads"), ""),
+                Text("circularTeeth", T("Teeth of the circular spline", "Zähnezahl des Hohlrads"), ""),
+                Text("ratio", T("Ratio n_in/n_out", "Übersetzung n_an/n_ab"), ""),
+            };
+            ps.AddRange(iops);
+            return new Spec(vars, new[] { StrainWaveRatio, RatioSpeed, RatioTorque }, WithShow(ps.ToArray()), new[] { StrainWaveTeeth() });
+        }
+
+        /// <summary>Cycloidal drive: one pin more than lobes, z_p = z_d + 1 (as drawn) [S39].</summary>
+        private static readonly Relation CycloidalPins =
+            new Relation("mech.cycloidal.pins", T("Pins of the pin ring", "Bolzen des Bolzenrings"), "{zp} = {zd} + 1", "zp", "zd") { Source = "S39" }
+                .Solve("zp", "{zd} + 1", v => v("zd") + 1)
+                .Solve("zd", "{zp} − 1", v => v("zp") - 1);
+
+        /// <summary>
+        /// Cycloidal drive with the pin ring fixed, eccentric in, disc rotation out (output pins): i = −z_d/(z_p − z_d) [S39]
+        /// (Willis' equation with the eccentric as carrier).
+        /// </summary>
+        private static readonly Relation CycloidalRatio =
+            new Relation("mech.cycloidal.ratio", T("Ratio of the cycloidal drive", "Übersetzung des Zykloidgetriebes"), "{i} = −{zd}/({zp} − {zd})", "i", "zd", "zp")
+            {
+                Source = "S39",
+                Validity = T("pin ring fixed, eccentric drives, output from the disc rotation through the output pins; negative: the output turns against the input",
+                             "Bolzenring fest, Exzenter treibt, Abtrieb aus der Scheibendrehung über die Abtriebsbolzen; negativ: der Abtrieb dreht gegen den Antrieb"),
+            }
+                .Solve("i", "−{zd}/({zp} − {zd})", v => -v("zd") / (v("zp") - v("zd")))
+                .Solve("zp", "{zd}·({i} − 1)/{i}", v => v("zd") * (v("i") - 1) / v("i"))
+                .Solve("zd", "{i}·{zp}/({i} − 1)", v => v("i") * v("zp") / (v("i") - 1));
+
+        private static Spec Cycloidal(MechType type)
+        {
+            var (io, iops) = InOut(VarRelevance.Panel, VarRelevance.Card, VarRelevance.Panel, VarRelevance.Panel, true);
+            var vars = new List<VarDef>
+            {
+                // The lobes are the type's own drawing parameter (5–29, default 11).
+                V("zd", T("Lobes of the cycloid disc", "Höcker der Zykloidscheibe"), T("z_d", "z_d"), Quantities.Count, "", "lobes") with { Default = 11, Min = 2, Max = 1000 },
+                V("zp", T("Pins of the pin ring", "Bolzen des Bolzenrings"), T("z_p", "z_p"), Quantities.Count, "", "pins", VarRelevance.Panel) with { Min = 3, Max = 1001 },
+                RatioVar(T("Ratio n_in/n_out", "Übersetzung n_an/n_ab"), "ratio", VarRelevance.Card),
+            };
+            vars.AddRange(io);
+            var ps = new List<ParamDef>
+            {
+                Text("pins", T("Pins of the pin ring", "Bolzen des Bolzenrings"), ""),
+                Text("ratio", T("Ratio n_in/n_out", "Übersetzung n_an/n_ab"), ""),
+            };
+            ps.AddRange(iops);
+            return new Spec(vars, new[] { CycloidalPins, CycloidalRatio, RatioSpeed, RatioTorque }, WithShow(ps.ToArray()), Array.Empty<ValueCheck>());
+        }
+
+        /// <summary>
+        /// CVT variator: i = n₁/n₂ from the type's own <c>ratio</c> parameter (default 1); n₁ = i·n₂ and T₂ = i·η·T₁ [S18].
+        /// The check <c>mech.cvt.range</c> watches the ratio against the range of that parameter.
+        /// </summary>
+        private static Spec Cvt(MechType type)
+        {
+            var (io, iops) = InOut(VarRelevance.Card, VarRelevance.Card, VarRelevance.Panel, VarRelevance.Panel, false);
+            var vars = new List<VarDef> { RatioVar(T("Ratio n_in/n_out", "Übersetzung n_an/n_ab"), "ratio", VarRelevance.Card, 1e-3, 1e3) with { Default = 1 } };
+            vars.AddRange(io);
+            return new Spec(vars, new[] { RatioSpeed, RatioTorque }, WithShow(iops), new[] { CvtRange(type) });
+        }
+
+        // differential ------------------------------------------------------------------
+
+        /// <summary>Open bevel differential: n_c = (n₁ + n₂)/2 (Willis with the stationary ratio −1) [S39].</summary>
+        private static readonly Relation DifferentialSpeed =
+            new Relation("mech.differential.speed", T("Speeds of the differential", "Drehzahlen des Differentials"), "{nc} = ({n1} + {n2})/2", "nc", "n1", "n2")
+            {
+                Source = "S39",
+                Validity = T("open bevel differential with equal side gears; speeds signed (same sense positive)", "offenes Kegelraddifferential mit gleichen Achswellenrädern; Drehzahlen mit Vorzeichen (gleicher Drehsinn positiv)"),
+            }
+                .Solve("nc", "({n1} + {n2})/2", v => (v("n1") + v("n2")) / 2)
+                .Solve("n1", "2·{nc} − {n2}", v => 2 * v("nc") - v("n2"))
+                .Solve("n2", "2·{nc} − {n1}", v => 2 * v("nc") - v("n1"));
+
+        /// <summary>
+        /// Equal torque split of an open differential (friction neglected) with the torque balance T_c = T₁ + T₂: each half
+        /// shaft takes T_c/2 [S18].
+        /// </summary>
+        private static Relation DifferentialSplit(string id, string key) =>
+            new Relation(id, T("Equal torque split", "Gleiche Momentenaufteilung"), "{" + key + "} = {Tc}/2", key, "Tc")
+            {
+                Source = "S18",
+                Validity = T("open differential, friction neglected (no locking); T_c = T₁ + T₂", "offenes Differential, Reibung vernachlässigt (keine Sperre); M_c = M₁ + M₂"),
+            }
+                .Solve(key, "{Tc}/2", v => v("Tc") / 2)
+                .Solve("Tc", "2·{" + key + "}", v => 2 * v(key));
+
+        private static readonly Relation DifferentialSplit1 = DifferentialSplit("mech.differential.split", "T1");
+        private static readonly Relation DifferentialSplit2 = DifferentialSplit("mech.differential.split2", "T2");
+
+        private static Spec Differential(MechType type)
+        {
+            var vars = new[]
+            {
+                SignedSpeedVar("nc", T("Speed of the case (crown wheel)", "Drehzahl des Ausgleichsgehäuses (Tellerrad)"), "n_c", "speedc", VarRelevance.Card),
+                SignedSpeedVar("n1", T("Speed of the left half shaft", "Drehzahl der linken Achswelle"), "n₁", "speed1", VarRelevance.Card),
+                SignedSpeedVar("n2", T("Speed of the right half shaft", "Drehzahl der rechten Achswelle"), "n₂", "speed2", VarRelevance.Card),
+                TorqueVar("Tc", T("Torque on the case", "Moment am Ausgleichsgehäuse"), "T_c", "M_c", "torquec", VarRelevance.Card),
+                TorqueVar("T1", T("Torque on the left half shaft", "Moment an der linken Achswelle"), "T₁", "M₁", "torque1", VarRelevance.Panel),
+                TorqueVar("T2", T("Torque on the right half shaft", "Moment an der rechten Achswelle"), "T₂", "M₂", "torque2", VarRelevance.Panel),
+            };
+            var ps = WithShow(
+                Text("speedc", T("Speed of the case (crown wheel)", "Drehzahl des Ausgleichsgehäuses (Tellerrad)"), "min⁻¹"),
+                Text("speed1", T("Speed of the left half shaft", "Drehzahl der linken Achswelle"), "min⁻¹"),
+                Text("speed2", T("Speed of the right half shaft", "Drehzahl der rechten Achswelle"), "min⁻¹"),
+                Text("torquec", T("Torque on the case", "Moment am Ausgleichsgehäuse"), "N·m"),
+                Text("torque1", T("Torque on the left half shaft", "Moment an der linken Achswelle"), "N·m"),
+                Text("torque2", T("Torque on the right half shaft", "Moment an der rechten Achswelle"), "N·m"));
+            return new Spec(vars, new[] { DifferentialSpeed, DifferentialSplit1, DifferentialSplit2 }, ps, Array.Empty<ValueCheck>());
+        }
+
+        // Ravigneaux set ------------------------------------------------------------------
+
+        /// <summary>Large sun – long planet – ring: n_s2 − n_c = −(z_r/z_s2)·(n_r − n_c) (Willis, simple planets) [S39].</summary>
+        private static readonly Relation RavigneauxLarge =
+            new Relation("mech.ravigneaux.large", T("Willis equation, large sun", "Willis-Gleichung, große Sonne"), "{ns2} − {nc} = −({zr}/{zs2})·({nr} − {nc})", "ns2", "nr", "nc", "zs2", "zr")
+            {
+                Source = "S39",
+                Validity = T("speeds about the common axis, same sense positive", "Drehzahlen um die gemeinsame Achse, gleicher Drehsinn positiv"),
+            }
+                .Solve("ns2", "{nc} − ({zr}/{zs2})·({nr} − {nc})", v => v("nc") - v("zr") / v("zs2") * (v("nr") - v("nc")))
+                .Solve("nr", "{nc} − ({zs2}/{zr})·({ns2} − {nc})", v => v("nc") - v("zs2") / v("zr") * (v("ns2") - v("nc")))
+                .Solve("nc", "({zs2}·{ns2} + {zr}·{nr})/({zs2} + {zr})", v => (v("zs2") * v("ns2") + v("zr") * v("nr")) / (v("zs2") + v("zr")))
+                .Solve("zs2", "−{zr}·({nr} − {nc})/({ns2} − {nc})", v => -v("zr") * (v("nr") - v("nc")) / (v("ns2") - v("nc")))
+                .Solve("zr", "−{zs2}·({ns2} − {nc})/({nr} − {nc})", v => -v("zs2") * (v("ns2") - v("nc")) / (v("nr") - v("nc")));
+
+        /// <summary>
+        /// Small sun – short planet – long planet – ring: n_s1 − n_c = +(z_r/z_s1)·(n_r − n_c) (Willis with planet pairs: two
+        /// external meshes and the ring, the planet teeth cancel) [S39].
+        /// </summary>
+        private static readonly Relation RavigneauxSmall =
+            new Relation("mech.ravigneaux.small", T("Willis equation, small sun (planet pairs)", "Willis-Gleichung, kleine Sonne (Planetenpaare)"), "{ns1} − {nc} = ({zr}/{zs1})·({nr} − {nc})", "ns1", "nr", "nc", "zs1", "zr")
+            {
+                Source = "S39",
+                Validity = T("speeds about the common axis, same sense positive", "Drehzahlen um die gemeinsame Achse, gleicher Drehsinn positiv"),
+            }
+                .Solve("ns1", "{nc} + ({zr}/{zs1})·({nr} − {nc})", v => v("nc") + v("zr") / v("zs1") * (v("nr") - v("nc")))
+                .Solve("nr", "{nc} + ({zs1}/{zr})·({ns1} − {nc})", v => v("nc") + v("zs1") / v("zr") * (v("ns1") - v("nc")))
+                .Solve("nc", "({zr}·{nr} − {zs1}·{ns1})/({zr} − {zs1})", v => (v("zr") * v("nr") - v("zs1") * v("ns1")) / (v("zr") - v("zs1")))
+                .Solve("zs1", "{zr}·({nr} − {nc})/({ns1} − {nc})", v => v("zr") * (v("nr") - v("nc")) / (v("ns1") - v("nc")))
+                .Solve("zr", "{zs1}·({ns1} − {nc})/({nr} − {nc})", v => v("zs1") * (v("ns1") - v("nc")) / (v("nr") - v("nc")));
+
+        /// <summary>
+        /// Ravigneaux set (small sun, large sun, ring, common carrier with planet pairs): two Willis equations with signed
+        /// speeds. Teeth as drawn: small sun 14, large sun 20, ring 52. Torques are not related (two degrees of freedom; the
+        /// split depends on which members are held).
+        /// </summary>
+        private static Spec Ravigneaux(MechType type)
+        {
+            VarDef Z(string key, I18nText name, string sym, double def) =>
+                V(key, name, T(sym, sym), Quantities.Count, "", key) with { Default = def, Min = 1, Max = 1000, Relevance = VarRelevance.Panel };
+            var vars = new[]
+            {
+                SignedSpeedVar("ns1", T("Speed of the small sun", "Drehzahl der kleinen Sonne"), "n_s1", "speeds1", VarRelevance.Card),
+                SignedSpeedVar("ns2", T("Speed of the large sun", "Drehzahl der großen Sonne"), "n_s2", "speeds2", VarRelevance.Card),
+                SignedSpeedVar("nr", T("Speed of the ring gear", "Drehzahl des Hohlrads"), "n_r", "speedr", VarRelevance.Card),
+                SignedSpeedVar("nc", T("Speed of the carrier", "Drehzahl des Stegs"), "n_c", "speedc", VarRelevance.Card),
+                Z("zs1", T("Teeth of the small sun", "Zähnezahl der kleinen Sonne"), "z_s1", 14),
+                Z("zs2", T("Teeth of the large sun", "Zähnezahl der großen Sonne"), "z_s2", 20),
+                Z("zr", T("Teeth of the ring gear", "Zähnezahl des Hohlrads"), "z_r", 52),
+            };
+            var ps = WithShow(
+                Text("speeds1", T("Speed of the small sun", "Drehzahl der kleinen Sonne"), "min⁻¹"),
+                Text("speeds2", T("Speed of the large sun", "Drehzahl der großen Sonne"), "min⁻¹"),
+                Text("speedr", T("Speed of the ring gear", "Drehzahl des Hohlrads"), "min⁻¹"),
+                Text("speedc", T("Speed of the carrier", "Drehzahl des Stegs"), "min⁻¹"),
+                Text("zs1", T("Teeth of the small sun", "Zähnezahl der kleinen Sonne"), ""),
+                Text("zs2", T("Teeth of the large sun", "Zähnezahl der großen Sonne"), ""),
+                Text("zr", T("Teeth of the ring gear", "Zähnezahl des Hohlrads"), ""));
+            return new Spec(vars, new[] { RavigneauxLarge, RavigneauxSmall }, ps, Array.Empty<ValueCheck>());
+        }
+
+        // slip clutch ------------------------------------------------------------------
+
+        /// <summary>Slip clutch: a shaft-line coupling (n, T, P) with its slip torque T_slip.</summary>
+        private static Spec SlipClutchValues(MechType type)
+        {
+            var vars = new[]
+            {
+                Speed(), Torque(), Power(VarRelevance.Card),
+                V("Ts", T("Slip torque", "Rutschmoment"), T("T_slip", "M_R"), Quantities.Torque, "N·m", "slipTorque") with { Min = 0, Max = 1e7 },
+            };
+            return new Spec(vars, new[] { RotPower }, WithShow(PSpeed, PTorque, PPower, Text("slipTorque", T("Slip torque", "Rutschmoment"), "N·m")),
+                new[] { SlipCheck() });
+        }
+
         // ------------------------------------------------------------------ checks (section 4)
 
         private const double Rel = 1e-6;
@@ -489,6 +878,48 @@ namespace InventaSketch.Modules.Mechanical
                 return !Integer((zs + zr) / n) || ((long)Math.Round(zr - zs)) % 2 != 0;
             })
         { Source = "S39" };
+
+        /// <summary>
+        /// mech.harmonic.teeth: the circular spline of a strain wave gear with a two-lobe wave generator has 2 (or a multiple of
+        /// 2) teeth more than the flexspline [S39].
+        /// </summary>
+        private static ValueCheck StrainWaveTeeth() => new(
+            "mech.harmonic.teeth", CheckSeverity.Warning,
+            T("The circular spline must have more teeth than the flexspline, by the number of lobes of the wave generator (2 for the usual elliptical generator): z_c − z_f = 2.",
+              "Das Hohlrad muss mehr Zähne als das Flexrad haben, und zwar so viele mehr, wie der Wellgenerator Nocken hat (2 beim üblichen elliptischen Generator): z_c − z_f = 2."),
+            "z_c − z_f = 2·k, k ≥ 1",
+            c =>
+            {
+                if (c["zf"] is not double zf || c["zc"] is not double zc) return false;
+                var diff = Math.Round(zc - zf);
+                return Math.Abs(zc - zf - diff) > 1e-9 || diff < 2 || ((long)diff) % 2 != 0;
+            })
+        { Source = "S39" };
+
+        /// <summary>mech.cvt.range: the ratio of the CVT (entered or derived from the speeds) leaves the spread of its <c>ratio</c> parameter [S18].</summary>
+        private static ValueCheck CvtRange(MechType type)
+        {
+            var def = type.Params.FirstOrDefault(p => p.Key == "ratio");
+            double lo = def?.Min ?? 0.4, hi = def?.Max ?? 2.5;
+            string loEn = lo.ToString("0.0#", CultureInfo.InvariantCulture), hiEn = hi.ToString("0.0#", CultureInfo.InvariantCulture);
+            string loDe = loEn.Replace('.', ','), hiDe = hiEn.Replace('.', ',');
+            return new ValueCheck(
+                "mech.cvt.range", CheckSeverity.Warning,
+                T($"The ratio is outside the spread of the variator ({loEn} … {hiEn}): the belt cannot run at these radii. Check the speeds or use a further gear stage.",
+                  $"Die Übersetzung liegt außerhalb der Spreizung des Variators ({loDe} … {hiDe}): das Band kann nicht auf diesen Radien laufen. Drehzahlen prüfen oder eine weitere Getriebestufe vorsehen."),
+                $"{loEn} ≤ i ≤ {hiEn}",
+                c => c["i"] is double i && (i < lo * (1 - Rel) || i > hi * (1 + Rel)))
+            { Source = "S18" };
+        }
+
+        /// <summary>mech.clutch.slip: the torque passed through a slip clutch (its own or its shaft line's) exceeds its slip torque [S18].</summary>
+        private static ValueCheck SlipCheck() => new(
+            "mech.clutch.slip", CheckSeverity.Warning,
+            T("The transmitted torque is above the slip torque: the slip clutch slips and passes only T_slip (heat and wear). Raise the slip torque or lower the load.",
+              "Das übertragene Moment liegt über dem Rutschmoment: die Rutschkupplung rutscht und überträgt nur M_R (Wärme und Verschleiß). Rutschmoment erhöhen oder Last verringern."),
+            "T ≤ T_slip",
+            c => c["Ts"] is double ts && c["T"] is double t && t > ts * (1 + Rel))
+        { Source = "S18" };
 
         /// <summary>mech.bearing.life: L₁₀h below the required life the user entered [S19].</summary>
         private static ValueCheck BearingLife() => new(

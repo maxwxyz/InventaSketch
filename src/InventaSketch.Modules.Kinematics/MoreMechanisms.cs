@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using InventaSketch.Core;
 
@@ -9,9 +10,10 @@ namespace InventaSketch.Modules.Kinematics
     /// Geneva drive (Maltese cross): a driver with crank pin and locking disc turns the slotted wheel by 360°/z per turn
     /// and locks it in between. Driver pivot O1 = (0,0), wheel pivot O2 = (C,0); crank radius a = C·sin(180°/z), slot mouth
     /// at R = C·cos(180°/z) (the pin enters and leaves the slots radially, without shock). Three links (frame, driver,
-    /// wheel), two revolute pairs and one higher pair (pin in slot): F = 1.
+    /// wheel), two revolute pairs and one higher pair (pin in slot): F = 1. Element values (<see cref="MoreKinValues.Geneva"/>):
+    /// indexing angle, driver angles in motion and at rest, their ratio and the wheel speed at the current position.
     /// </summary>
-    internal sealed class GenevaType : MechanismType
+    internal sealed class GenevaType : MechanismType, IValueType, IValueChecks
     {
         public GenevaType() : base("kin.mech.geneva", new I18nText("Geneva drive", "Malteserkreuzgetriebe"), KinCategories.Mechanisms, new Size2(64, 40),
             "geneva", "geneva drive", "maltese cross", "indexing", "intermittent", "malteserkreuz", "genfer trieb", "schrittgetriebe", "schaltgetriebe", "malteser")
@@ -30,14 +32,32 @@ namespace InventaSketch.Modules.Kinematics
             SlotsParam,
             KP.Num("centre", "Centre distance O1-O2", "Achsabstand O1-O2", 30, 0.1, 1e5),
             KP.Dof,
-        };
+        }.Concat(MoreKinValues.Geneva.Params).ToList();
+
+        public IReadOnlyList<VarDef> Variables => MoreKinValues.Geneva.Variables;
+        public IReadOnlyList<Relation> Relations => MoreKinValues.Geneva.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => MoreKinValues.Geneva.Checks;
+
+        /// <summary>
+        /// Number of slots: the choice offers 4 and 6; a whole number entered as a value (3–12) is drawn as well, so the
+        /// drawing follows the values panel.
+        /// </summary>
+        internal static int Slots(SketchObject o)
+        {
+            if (o.Params.TryGetValue("slots", out var v))
+            {
+                if (v.Number is double n) return Math.Max(3, Math.Min(12, (int)Math.Round(n)));
+                if (v.Text is string t && int.TryParse(t.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var z)) return Math.Max(3, Math.Min(12, z));
+            }
+            return 4;
+        }
 
         /// <summary>Proportions of the drive in model mm.</summary>
         internal readonly record struct Shape(int Z, double C, double A, double R, double Pin, double Slot, double Rw, double Lock);
 
         internal static Shape ShapeOf(SketchObject o)
         {
-            var z = o.Str("slots", "4") == "6" ? 6 : 4;
+            var z = Slots(o);
             var c = Len(o, "centre", 30);
             var a = c * Math.Sin(Math.PI / z);
             var r = c * Math.Cos(Math.PI / z);
@@ -360,9 +380,10 @@ namespace InventaSketch.Modules.Kinematics
     /// Six-bar linkage with one degree of freedom (6 links, 7 revolute pairs). Watt type: two four-bars in series, the
     /// rocker of the first is a ternary link (O4, B, C) that drives the second four-bar (O4, C, D, O6). Stephenson type: a
     /// dyad P–C–O6 hangs on the coupler point P of the four-bar (ternary coupler A, B, P). Loop closure by circle
-    /// intersections; the input is the crank O2-A.
+    /// intersections; the input is the crank O2-A. Element values (<see cref="MoreKinValues.SixBar"/>): output angle, the
+    /// transmission angles of both loops, velocity ratio and output speed at the current position.
     /// </summary>
-    internal sealed class SixBarType : MechanismType
+    internal sealed class SixBarType : MechanismType, IValueType, IValueLinks, IValueChecks
     {
         public SixBarType() : base("kin.mech.sixbar", new I18nText("Six-bar linkage", "Sechsgliedriges Koppelgetriebe"), KinCategories.Mechanisms, new Size2(72, 46),
             "six-bar", "sixbar", "watt", "stephenson", "linkage", "sechsgliedrig", "sechsgelenk", "koppelgetriebe", "wattsche kette", "stephensonsche kette")
@@ -391,20 +412,34 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("link6", "Stephenson: output rocker O6-C", "Stephenson: Abtriebsschwinge O6-C", 22, 0.1, 1e5, advanced: true),
             KP.Num("x6", "Stephenson: pivot O6, x", "Stephenson: Drehpunkt O6, x", 62, -1e5, 1e5, advanced: true),
             KP.Num("y6", "Stephenson: pivot O6, y", "Stephenson: Drehpunkt O6, y", -6, -1e5, 1e5, advanced: true),
-        }).ToList();
+        }).Concat(MoreKinValues.SixBar.Params).ToList();
+
+        public IReadOnlyList<VarDef> Variables => MoreKinValues.SixBar.Variables;
+        public IReadOnlyList<Relation> Relations => MoreKinValues.SixBar.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => MoreKinValues.SixBar.Checks;
+
+        /// <summary>Output angle, second transmission angle and velocity ratio from the loop closure of this element's chain.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => MoreKinValues.SixBarLinks(o);
 
         private static bool Watt(SketchObject o) => o.Str("kind", "watt") != "stephenson";
 
-        private static Vec2 O6(SketchObject o)
-            => Watt(o) ? new Vec2(Len(o, "ground", 40) + Len(o, "ground2", 36), 0) : new Vec2(o.Num("x6", 62), o.Num("y6", -6));
+        internal static bool IsWatt(SketchObject o) => Watt(o);
+
+        private static Vec2 O6(SketchObject o) => O6(o, Len(o, "ground", 40));
+
+        private static Vec2 O6(SketchObject o, double ground)
+            => Watt(o) ? new Vec2(ground + Len(o, "ground2", 36), 0) : new Vec2(o.Num("x6", 62), o.Num("y6", -6));
 
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O2", "A") ? (p["O2"], p["A"]) : null;
 
         public override Pose Solve(SketchObject o, double angle)
+            => SolveWith(o, Len(o, "ground", 40), Len(o, "crank", 12), Len(o, "coupler", 36), Len(o, "rocker", 30), angle);
+
+        /// <summary>The position at input angle <paramref name="angle"/> (degrees) with the four-bar lengths given in mm (the values solver passes its own).</summary>
+        internal static Pose SolveWith(SketchObject o, double d, double a, double b, double c, double angle)
         {
-            double d = Len(o, "ground", 40), a = Len(o, "crank", 12), b = Len(o, "coupler", 36), c = Len(o, "rocker", 30);
             var fb = Linkages.FourBar(d, a, b, c, angle, false);
-            var o6 = O6(o);
+            var o6 = O6(o, d);
             Vec2? last = null;
             Vec2 cPoint = default, pPoint = default;
             if (fb is { } f)
