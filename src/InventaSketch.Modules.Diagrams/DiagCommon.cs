@@ -34,6 +34,12 @@ namespace InventaSketch.Modules.Diagrams
         public const string Data = "diag.data";
         /// <summary>Generic GUI wireframes (screens, widgets, pointers).</summary>
         public const string Ui = "diag.ui";
+        /// <summary>Fault tree analysis (gates, events, transfers).</summary>
+        public const string Fta = "diag.fta";
+        /// <summary>Sequential function charts (SFC / GRAFCET style steps, transitions, actions, branches).</summary>
+        public const string Sfc = "diag.sfc";
+        /// <summary>Ishikawa (fishbone) diagrams and mind maps.</summary>
+        public const string Maps = "diag.maps";
     }
 
     /// <summary>Semantic primitive tags used by the diagram types (tests, host naming, style overrides).</summary>
@@ -70,6 +76,12 @@ namespace InventaSketch.Modules.Diagrams
         public const string Ruler = "ruler";
         /// <summary>One field of a data layout (packet, register, memory map).</summary>
         public const string Field = "field";
+        /// <summary>A computed or entered value label (fault tree probability "p = 1e-4").</summary>
+        public const string Value = "value";
+        /// <summary>A category (bone) label of an Ishikawa diagram.</summary>
+        public const string Category = "category";
+        /// <summary>A cause written on a rib of an Ishikawa bone.</summary>
+        public const string Cause = "cause";
     }
 
     /// <summary>
@@ -665,7 +677,7 @@ namespace InventaSketch.Modules.Diagrams
         private static readonly HashSet<string> NoChain = new(StringComparer.Ordinal)
         {
             "diag.activity.swimlane", "diag.uml.package", "diag.sys.container", "diag.seq.lifeline", "diag.state.composite", "diag.bpmn.pool",
-            "diag.seq.fragment", "diag.data.fields", "diag.ctrl.loop",
+            "diag.seq.fragment", "diag.data.fields", "diag.ctrl.loop", "diag.ishikawa",
         };
 
         /// <summary>
@@ -682,6 +694,9 @@ namespace InventaSketch.Modules.Diagrams
                 DiagCategories.Structure => "diag.uml.relation",
                 DiagCategories.Sequence or DiagCategories.Relations => null,
                 DiagCategories.Control => "diag.ctrl.signal",
+                DiagCategories.Fta => "diag.fta.link",
+                DiagCategories.Sfc => "diag.sfc.link",
+                DiagCategories.Maps => "diag.mindmap.link",
                 // Widgets and pointers sit on a screen; screens chain into a screen flow (UiScreenType overrides).
                 DiagCategories.Ui or DiagCategories.Data => null,
                 _ => "diag.uml.relation.directed",

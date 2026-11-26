@@ -49,6 +49,9 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 | Rechnersysteme & Kommunikation | Systemblock-Vorlagen nach Rolle, `diag.sys.bus`, `diag.sys.phone`, `.basestation`, `.router`, `.switch`, `.satellite`, `.iot`, `diag.sys.wireless` |
 | Datenformate | `diag.data.fields` (Zeile, Zeilen fester Bitbreite, Speicherbelegung) |
 | GUI-Wireframes | `diag.ui.screen`, `.button`, `.field`, `.list`, `.checkbox`, `.toggle`, `.slider`, `.image`, `.icon`, `.tabs`, `.touch`, `.cursor` |
+| Fehlerbaumanalyse (FTA) | `diag.fta.event.top`, `.intermediate` (Rechtecke), `diag.fta.gate.and`, `.or`, `.vote` (k aus n), `.inhibit`, `diag.fta.event.basic` (Kreis), `.undeveloped` (Raute), `.house`, `.conditioning` (Ellipse), `diag.fta.transfer` (Dreieck), `diag.fta.link` |
+| Ablaufsprache (SFC, GRAFCET) | `diag.sfc.step.initial` (Doppelrahmen), `diag.sfc.step`, `diag.sfc.transition`, `diag.sfc.action` (optionales Feld für das Bestimmungszeichen), `diag.sfc.branch` (parallel Doppellinie / alternativ Einzellinie), `diag.sfc.link` |
+| Ishikawa & Mindmap | `diag.ishikawa` (Fischgräte), `diag.mindmap.node` (abgerundet, Ellipse, Rechteck, unterstrichen), `diag.mindmap.link` (geschwungener Zweig) |
 
 ## Textkonventionen
 
@@ -272,6 +275,78 @@ Beschriftungsvorlage).
 - Grenzen (Core): nur auf einer Bahnlinie zentrierte Knoten werden mitgenommen; anderswo in einer Bahn platzierte
   Elemente oder Elemente anderer Module (`ann.flow.*`) folgen einem verschobenen Pool nicht. Eine allgemeine
   Enthaltensein-Beziehung bräuchte Unterstützung im Core.
+## Fehlerbäume, Ablaufsprache, Ishikawa-Diagramme und Mindmaps (26.11.2026)
+
+Alle Symbole sind eigenständig nach den üblichen Lehrbuchkonventionen gezeichnet (Fehlerbäume wie z. B. in IEC 61025
+beschrieben, Schritt-Transitions-Pläne im Stil von GRAFCET, IEC 60848); Normkonformität wird nicht behauptet. Jedes
+Element lässt sich ohne Parameter einfügen; Texte sind der Objekttext (Doppelklick oder Textfeld des Hosts), wie bei den
+anderen Diagrammknoten.
+
+**Fehlerbäume** (Kategorie „Fehlerbaumanalyse (FTA)“):
+
+- Ereignisse: Top-Ereignis (Rechteck, kräftigerer Umriss, fette Schrift), Zwischenereignis (Rechteck), Basisereignis
+  (Kreis), nicht entwickeltes Ereignis (Raute), Hausereignis (Hausumriss), Bedingungsereignis (Ellipse; die Bedingung
+  eines Inhibit-Gatters). Gatter: UND (gerade Basis, runde Kuppe), ODER (gewölbte Basis, Spitze oben), k aus n
+  (ODER-Form mit `k/n`, Parameter `k` und `n`, Aktion „k aus n“ fragt nach `2/3`), Inhibit (Sechseck). Gatter haben oben
+  einen Ausgangsstiel (Port `top`) und unten einen Eingangsstiel (Ports `bottom`, `bottom.q1`, `bottom.q3`); der
+  Gattertext (z. B. `G1`) steht rechts neben dem Gatter. Übertragsymbol: Dreieck mit Kennung (`A`).
+- `diag.fta.link` verbindet ein Gatter oder Ereignis (Anfang) mit einem seiner Eingänge (Ende): eine einfache Linie,
+  standardmäßig rechtwinklig. Schnelles Hinzufügen („+“) verkettet alle Fehlerbaumelemente mit dieser Verbindung; „+“
+  unter einem Gatter ergibt die richtige Richtung. Eine von einem Blattereignis (Basis-, nicht entwickeltes, Haus-,
+  Bedingungsereignis) nach oben zu einem Gatter oder Ereignis gezogene Verbindung wird umgekehrt gelesen.
+- **Wahrscheinlichkeiten (optional):** Blattereignisse und das Übertragsymbol nehmen eine Wahrscheinlichkeit `p` auf
+  (Parameter oder Aktion „Wahrscheinlichkeit“, z. B. `1e-4`, `0.001`, `0,001`, `0,5 %`). Jedes Gatter und Ereignis
+  darüber erhält seine Wahrscheinlichkeit, berechnet beim Zeichnen (nie gespeichert): UND und Inhibit = Produkt, ODER =
+  1 − Π(1 − p), k aus n = Wahrscheinlichkeit, dass mindestens k Eingänge eintreten (unabhängige Ereignisse; exakt, nicht
+  die Näherung für seltene Ereignisse); ein Ereignis oder Übertrag mit mehreren Eingängen liest sie als ODER. Blätter
+  zeigen `p = …` unter dem Symbol, Ereignisrechtecke innen unter dem Text, ein Gatter nur, wenn kein Ereignis direkt
+  darüber steht (rechts daneben). Der Wert erscheint nur, wenn alle Eingänge darunter bekannt sind. Deutsche Ausgabe mit
+  Dezimalkomma. Ändert sich ein `p`, ein Gatter oder eine Verbindung, wird alles darüber neu gezeichnet (`Dependents`).
+- **Baum anordnen** (Aktion an jedem verbundenen Fehlerbaumelement): der ganze Baum, zu dem das Element gehört, wird vom
+  Top-Ereignis aus als ordentlicher Baum von oben nach unten angeordnet (Ebenen 8 mm auseinander, oben bündig;
+  Geschwister 6 mm auseinander; jedes Elternelement mittig über seinen Eingängen); das Top-Ereignis behält Oberkante und
+  Mitte, außer der Baum ragte über den Seitenrand. Die Verbindungen werden wieder an den zugewandten Ports unten/oben
+  angedockt. Mehrfach erreichte Elemente werden beim ersten Besuch platziert. Das allgemeine Layout der Mehrfachauswahl
+  (Core `DiagramLayout`) funktioniert ebenfalls für Fehlerbäume.
+
+**Ablaufsprache** (Kategorie „Ablaufsprache (SFC, GRAFCET)“):
+
+- `diag.sfc.step` (Quadrat, Schrittnummer als Text, Platzhalter `1`), `diag.sfc.step.initial` (Doppelrahmen, Platzhalter
+  `0`); Option `active` zeichnet einen Markenpunkt. `diag.sfc.transition`: dicker Querstrich über der Verbindungslinie,
+  die vom Port `top` zum Port `bottom` durch das Element läuft; die Übergangsbedingung (Objekttext) steht rechts neben
+  dem Strich. `diag.sfc.action`: Aktionskasten (am Port `right` des Schritts andocken), optionales
+  `qualifier`-Bestimmungszeichen (N, S, R, D, L, P …, wie in der SFC nach IEC 61131-3) in eigenem Feld; Vorlage
+  „Gespeicherte Aktion (S)“. `diag.sfc.branch`: Parallelverzweigung (Doppellinie) oder Alternativverzweigung
+  (Einzellinie) mit `branches` (2–8) Andockpunkten `b1.top`, `b1.bottom` … sowie `top`/`bottom` in der Mitte; „Zweig
+  hinzufügen/entfernen“ verlängert/verkürzt den Balken um einen Zweigabstand.
+- `diag.sfc.link`: einfache Linie, standardmäßig rechtwinklig. Eine Verbindung, deren Ende über ihrem Anfang liegt
+  (Rücksprung von der letzten Transition zum Anfangsschritt), läuft links herum, `clearance` (10 mm) neben ihren Enden und
+  4 mm frei von jedem Element, das sie sonst kreuzen würde, und trägt in der Mitte ihres aufsteigenden Stücks einen
+  Richtungspfeil (abschaltbar).
+
+**Ishikawa-Diagramm** `diag.ishikawa` (ein Element): Wirkung in einem Kopfkasten rechts (Objekttext, Platzhalter
+„Wirkung“), eine Mittelgräte mit Pfeil in den Kopf, je Kategorie eine schräge Gräte abwechselnd über und unter der
+Mittelgräte, jede Kategorie in einem Rahmen (abschaltbar). `categories` enthält eine Kategorie pro Zeile; Ursachen folgen
+nach einem Doppelpunkt, mit Semikolon getrennt (`Maschine: Verschleiß; Schwingung`), und werden als Nebengräten
+gezeichnet. Solange der Parameter nicht gesetzt ist, erscheinen die sechs klassischen Kategorien in der Sprache des
+Benutzers (Mensch, Maschine, Methode, Material, Messung, Mitwelt / Man, Machine, Method, Material, Measurement,
+Environment). Aktionen: Kategorie hinzufügen/entfernen (bis 8), Ursache hinzufügen (Eingabe `2: Verschleiß`), Kategorie
+n umbenennen, Kategorierahmen.
+
+**Mindmap:** `diag.mindmap.node` (Formen abgerundetes Rechteck, Ellipse, Rechteck, unterstrichener Text; fett), Vorlagen
+„Zentrales Thema“ (Ellipse, fett) und „Zweigtext“ (unterstrichen); `diag.mindmap.link` ist ein geschwungener Zweig
+(kubisch, verlässt und erreicht die Knoten entlang der Hauptrichtung; auf gerade umschaltbar). Schnelles Hinzufügen
+verkettet Knoten mit Zweigen. **Mindmap anordnen ▸** (an einem Knoten mit Zweigen): *Beidseitig* (schon links stehende
+Zweige bleiben links, sonst geht die untere Hälfte nach links), *Nach rechts* oder *Radial* (Tiefe d auf einem Kreis d·R,
+jeder Teilbaum in einem Sektor im Verhältnis seiner Blätter). Verbindungen werden ohne Richtung gelesen; der Knoten, an
+dem die Aktion läuft, ist die Mitte und bleibt stehen (außer die Mindmap ragte über den Seitenrand); die Zweige werden
+wieder an den zugewandten Ports angedockt.
+
+Offen: andere Werte als Wahrscheinlichkeiten (Ausfallraten über eine Missionszeit, minimale Schnittmengen), Behandlung
+gemeinsamer Ursachen bei mehrfach genutzten Basisereignissen (ein geteiltes Ereignis zählt in jedem Gatter als
+unabhängig), SFC-Makroschritte und einschließende Schritte, Zweigfarben je Hauptzweig der Mindmap, ein eigenes „+“, das
+ein Kind eines anderen Typs anlegt (schnelles Hinzufügen kopiert das Element; „nächstes Element“ ersetzt es).
+
 ## Kontextaktionen
 
 | Typ | Aktionen |
@@ -291,6 +366,10 @@ Beschriftungsvorlage).
 | Sequenznachricht | synchron/asynchron/Antwort/Erzeugen, Richtung umkehren |
 | Block | Port links/rechts hinzufügen/entfernen |
 | Lebenslinie, Container, Lolli, Aufgabe, Gateway | zerstört / Akteur-Kopf, gestrichelter Rahmen / Titelband, benötigte Buchse, Teilprozess, Gateway-Markierung ▾ |
+| Fehlerbaumelemente | Wahrscheinlichkeit (Blätter, Übertrag), k aus n (Mehrheitsgatter), Baum anordnen |
+| SFC-Schritt, -Verzweigung, -Verbindung | aktiv (Marke) / Verzweigung ▾ (parallel, alternativ), Zweig hinzufügen/entfernen / Aufwärtspfeil, Richtung umkehren, Führung ▾ |
+| Ishikawa-Diagramm | Kategorie hinzufügen/entfernen, Ursache hinzufügen, Kategorie n umbenennen, Kategorierahmen |
+| Mindmap-Knoten, -Zweig | Form ▾, fett, Mindmap anordnen ▸ (beidseitig, nach rechts, radial) / geschwungen, Richtung umkehren |
 
 Eine hinzugefügte Zeile vergrößert die Box um eine Zeilenhöhe nach unten (Oberkante bleibt stehen); Entfernen
 verkleinert sie entsprechend.
@@ -302,4 +381,7 @@ Formatwerkzeugen des Hosts bearbeitbar. Abgerundete Ecken werden als Pfade ausge
 Schwimmbahnen nutzen um −90° gedrehten Text. Beschriftungen von BPMN-Ereignissen und -Gateways stehen unter dem Symbol,
 außerhalb seiner Box (BPMN-Konvention). Notationsquellen: UML 2.5.1 (OMG) für UML-Formen, BPMN 2.0.2 (OMG) für
 BPMN-Formen, Chen (1976) und die Krähenfuß-Notation (Information Engineering) für ER; alle Symbole sind eigenständig
-gezeichnet.
+gezeichnet. Fehlerbaumgatter sind geschlossene Pfade (kubische Kurven), der SFC-Aufwärtspfeil und die Pfeilspitze der
+Ishikawa-Mittelgräte sind native Formen/Pfeilspitzen, Mindmap-Zweige einzelne kubische Pfade, sodass jeder Host sie als
+native Freihandformen zeichnet. Fehlerbaumwerte sind Textprimitive; Hosts, die Formen getrennt halten (PowerPoint COM),
+zeichnen die Elemente über einem geänderten Ereignis über `Dependents` neu.

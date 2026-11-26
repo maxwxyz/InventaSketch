@@ -87,7 +87,7 @@ namespace InventaSketch.Modules.Diagrams.Tests
         {
             var r = T.Reg();
             var cats = new HashSet<string>(r.Categories.Select(c => c.Id));
-            Assert.Equal(13, cats.Count);
+            Assert.Equal(16, cats.Count);
             foreach (var t in r.Types) Assert.Contains(r.Library, i => i.TypeId == t.Id);
             foreach (var i in r.Library) Assert.Contains(i.Category, cats);
             Assert.Equal(r.Library.Count, r.Library.Select(i => i.Id).Distinct().Count());
@@ -703,12 +703,91 @@ namespace InventaSketch.Modules.Diagrams.Tests
                 html.Append("</div>");
             }
             var scenes = Scenes(r);
-            html.Append("<h2>Scenes</h2>").Append(scenes).Append("</body></html>");
+            var engineering = EngineeringScenes(r);
+            html.Append("<h2>Scenes</h2>").Append(scenes).Append("<h2>Fault tree, SFC, Ishikawa, mind map</h2>").Append(engineering).Append("</body></html>");
             Directory.CreateDirectory(GalleryDir);
             File.WriteAllText(Path.Combine(GalleryDir, "diagrams-scene.html"), "<!doctype html><html><body style=\"margin:0;background:#fff\">" + scenes + "</body></html>");
+            File.WriteAllText(Path.Combine(GalleryDir, "diagrams-engineering.svg"), engineering);
             var file = Path.Combine(GalleryDir, "diagrams-gallery.html");
             File.WriteAllText(file, html.ToString());
             Assert.True(new FileInfo(file).Length > 10000);
+        }
+
+        /// <summary>A fault tree with values, an SFC with a parallel branch and a loop back, an Ishikawa diagram and a mind map.</summary>
+        private static string EngineeringScenes(Registry r)
+        {
+            var doc = SketchDocument.Create(new Size2(300, 220));
+            var pid = doc.Pages[0].Id;
+            SketchObject Add(string item, double x, double y, Func<SketchObject, SketchObject>? f = null)
+            {
+                var o = r.Create(r.Item(item)!, new Vec2(x, y));
+                if (f is not null) o = f(o);
+                doc = Edits.Add(doc, pid, o);
+                return o;
+            }
+            void Link(string item, SketchObject a, (double U, double V) ua, SketchObject b, (double U, double V) ub)
+            {
+                var c = Add(item, 0, 0);
+                doc = D.AttachPoint(doc, c.Id, 0, a.Id, a.BoxPoint(ua.U, ua.V));
+                doc = D.AttachPoint(doc, c.Id, 1, b.Id, b.BoxPoint(ub.U, ub.V));
+            }
+            // Fault tree (scattered, then "Arrange tree").
+            var top = Add("diag.fta.event.top", 60, 12, o => o with { Text = "Loss of cooling" });
+            var or = Add("diag.fta.gate.or", 40, 40);
+            var pump = Add("diag.fta.event.intermediate", 20, 60, o => o with { Text = "Pump fails" });
+            var and = Add("diag.fta.gate.and", 30, 80);
+            var b1 = Add("diag.fta.event.basic", 10, 100, o => o.WithParam("p", "1e-3") with { Text = "Motor" });
+            var b2 = Add("diag.fta.event.basic", 40, 100, o => o.WithParam("p", "0.02") with { Text = "Supply" });
+            var vote = Add("diag.fta.gate.vote", 80, 60);
+            var s1 = Add("diag.fta.event.basic", 70, 90, o => o.WithParam("p", "0.01") with { Text = "S1" });
+            var s2 = Add("diag.fta.event.basic", 90, 90, o => o.WithParam("p", "0.01") with { Text = "S2" });
+            var s3 = Add("diag.fta.event.undeveloped", 110, 90, o => o.WithParam("p", "0.01") with { Text = "S3" });
+            var tr = Add("diag.fta.transfer", 120, 50, o => o.WithParam("p", "1e-4"));
+            Link(Fta.LinkType, top, (0, 0.5), or, (0, -0.5));
+            Link(Fta.LinkType, or, (0, 0.5), pump, (0, -0.5));
+            Link(Fta.LinkType, pump, (0, 0.5), and, (0, -0.5));
+            Link(Fta.LinkType, and, (0, 0.5), b1, (0, -0.5));
+            Link(Fta.LinkType, and, (0, 0.5), b2, (0, -0.5));
+            Link(Fta.LinkType, or, (0, 0.5), vote, (0, -0.5));
+            Link(Fta.LinkType, vote, (0, 0.5), s1, (0, -0.5));
+            Link(Fta.LinkType, vote, (0, 0.5), s2, (0, -0.5));
+            Link(Fta.LinkType, vote, (0, 0.5), s3, (0, -0.5));
+            Link(Fta.LinkType, or, (0, 0.5), tr, (0, -0.5));
+            doc = ContextActions.Run(r, doc, new[] { top.Id }, "diag.fta.arrange", null, Lang.En);
+
+            // SFC: initial step, transition, parallel branch with two steps and actions, join, transition back to the start.
+            var i0 = Add("diag.sfc.step.initial", 190, 12);
+            var t0 = Add("diag.sfc.transition", 190, 25, o => o with { Text = "start" });
+            var fork = Add("diag.sfc.branch", 190, 33);
+            var sa = Add("diag.sfc.step", 173, 44, o => o with { Text = "2" });
+            var sb = Add("diag.sfc.step", 207, 44, o => o with { Text = "3" });
+            var aa = Add("diag.sfc.action", 245, 44, o => o with { Text = "Fill tank", Size = new Size2(26, 8) });
+            var join = Add("diag.sfc.branch", 190, 56);
+            var t1 = Add("diag.sfc.transition", 190, 66, o => o with { Text = "level ≥ max" });
+            Link("diag.sfc.link", i0, (0, 0.5), t0, (0, -0.5));
+            Link("diag.sfc.link", t0, (0, 0.5), fork, (0, -0.5));
+            Link("diag.sfc.link", fork, (-0.425, 0.5), sa, (0, -0.5));
+            Link("diag.sfc.link", fork, (0.425, 0.5), sb, (0, -0.5));
+            Link("diag.sfc.link", sb, (0.5, 0), aa, (-0.5, 0));
+            Link("diag.sfc.link", sa, (0, 0.5), join, (-0.425, -0.5));
+            Link("diag.sfc.link", sb, (0, 0.5), join, (0.425, -0.5));
+            Link("diag.sfc.link", join, (0, 0.5), t1, (0, -0.5));
+            Link("diag.sfc.link", t1, (0, 0.5), i0, (0, -0.5));
+
+            // Ishikawa with causes.
+            Add("diag.ishikawa", 80, 175, o => o.WithParam("categories", "Man: training; fatigue\nMachine: wear\nMethod\nMaterial: batch\nMeasurement: gauge drift\nEnvironment: humidity") with { Text = "Scrap rate", Size = new Size2(150, 70) });
+
+            // Mind map, arranged on both sides.
+            var root = Add("diag.mindmap.node.central", 235, 160, o => o with { Text = "Product" });
+            foreach (var (t, y) in new[] { ("Users", 120.0), ("Price", 130.0), ("Design", 140.0), ("Service", 150.0) })
+            {
+                var k = Add("diag.mindmap.node", 280, y, o => o with { Text = t });
+                Link("diag.mindmap.link", root, (0.5, 0), k, (-0.5, 0));
+            }
+            doc = ContextActions.Run(r, doc, new[] { root.Id }, "diag.mindmap.arrange=sides", null, Lang.En);
+
+            var svg = SvgRenderer.RenderPage(r, doc, doc.Pages[0], new SvgOptions { ObjectIds = false });
+            return svg.Replace("width=\"300mm\" height=\"220mm\"", "width=\"1200\" height=\"880\"");
         }
 
         /// <summary>Example diagrams composed of several objects with attached connectors.</summary>
