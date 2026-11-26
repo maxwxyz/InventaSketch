@@ -302,21 +302,45 @@ namespace InventaSketch.Core
             var links = new List<BoundRelation>();
             var seenLinks = new HashSet<string>(StringComparer.Ordinal);
             var queue = new Queue<string>(start);
-            while (queue.Count > 0 && scope.Count < opt.MaxObjects)
+            void Drain()
             {
-                var id = queue.Dequeue();
-                if (!inScope.Add(id) || doc.Get(id) is not { } o) continue;
-                var type = registry.Type(o.Type);
-                if (type is null) continue;
-                scope.Add(o);
-                if (type is IValueLinks l)
-                    foreach (var b in l.ValueLinks(o, ctx))
-                    {
-                        // Both ends of a link usually report it: keep one (a conflict is then reported once).
-                        if (!seenLinks.Add(LinkKey(b))) continue;
-                        links.Add(b);
-                        foreach (var r in b.Map.Values) if (!inScope.Contains(r.ObjectId)) queue.Enqueue(r.ObjectId);
-                    }
+                while (queue.Count > 0 && scope.Count < opt.MaxObjects)
+                {
+                    var id = queue.Dequeue();
+                    if (!inScope.Add(id) || doc.Get(id) is not { } o) continue;
+                    var type = registry.Type(o.Type);
+                    if (type is null) continue;
+                    scope.Add(o);
+                    if (type is IValueLinks l)
+                        foreach (var b in l.ValueLinks(o, ctx))
+                        {
+                            // Both ends of a link usually report it: keep one (a conflict is then reported once).
+                            if (!seenLinks.Add(LinkKey(b))) continue;
+                            links.Add(b);
+                            foreach (var r in b.Map.Values) if (!inScope.Contains(r.ObjectId)) queue.Enqueue(r.ObjectId);
+                        }
+                }
+            }
+            // The module nets asked for while the scope is built (deterministic: they follow from the scope's types).
+            var nets = new List<ValueNets>();
+            var previousRecorder = ValueNets.BeginRecording(nets);
+            try
+            {
+                Drain();
+                // 1b. Joins across modules: lines of one module docked on elements of another pull their own module's
+                // elements in, then the nets' junctions are linked by physical key (NetKeys). Repeated while that adds objects.
+                var join = new CrossModuleJoin(doc, registry, scope, inScope, queue, links, seenLinks, nets);
+                for (var round = 0; round < 32; round++)
+                {
+                    join.Hop();
+                    join.Link();
+                    if (queue.Count == 0 || scope.Count >= opt.MaxObjects) break;
+                    Drain();
+                }
+            }
+            finally
+            {
+                ValueNets.EndRecording(previousRecorder);
             }
 
             // 2. Variables with their entered values; local relations.
@@ -440,6 +464,174 @@ namespace InventaSketch.Core
             table.Truncated = truncated;
             table.ElapsedMs = sw.Elapsed.TotalMilliseconds;
             return table;
+        }
+
+        /// <summary>Lines docked on each object (target id → line ids in id order), per document (documents are immutable).</summary>
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<SketchDocument, Dictionary<string, List<string>>> Docked = new();
+
+        private static IReadOnlyList<string> DockedOn(SketchDocument doc, string id)
+        {
+            var map = Docked.GetValue(doc, d =>
+            {
+                var m = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                foreach (var o in d.Objects.Values.OrderBy(x => x.Id, StringComparer.Ordinal))
+                {
+                    if (!o.IsPointGeometry || o.Attach is null) continue;
+                    foreach (var a in o.Attach)
+                    {
+                        if (a is null || a.ObjectId == o.Id) continue;
+                        if (!m.TryGetValue(a.ObjectId, out var l)) m[a.ObjectId] = l = new List<string>();
+                        if (!l.Contains(o.Id)) l.Add(o.Id);
+                    }
+                }
+                return m;
+            });
+            return map.TryGetValue(id, out var list) ? list : (IReadOnlyList<string>)Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// Joins across modules (engineering-calculations.md, "Joins across modules"). Each module builds its nets alone
+        /// (<see cref="ValueNets"/>); where a net reaches an element or line of another module (<see cref="NetJunction"/>) the
+        /// variables of the same physical key (<see cref="NetKeys"/>) and quantity kind are linked with an equality: the
+        /// foreign element's own module nets name its variable at that port, else its variable of the key's name. Rules of the
+        /// class are respected conservatively: a shared value (<see cref="NetRule.Equal"/>) joins the whole net; flows, sums and
+        /// spreads only an unbranched run with at most two elements in all. Nothing is linked when the kinds differ or the
+        /// foreign variable is ambiguous; nothing changes when no net crosses a module border.
+        /// </summary>
+        private sealed class CrossModuleJoin
+        {
+            private readonly SketchDocument _doc;
+            private readonly Registry _registry;
+            private readonly List<SketchObject> _scope;
+            private readonly HashSet<string> _inScope;
+            private readonly Queue<string> _queue;
+            private readonly List<BoundRelation> _links;
+            private readonly HashSet<string> _seenLinks;
+            private readonly List<ValueNets> _nets;
+            private readonly HashSet<NetJunction> _done = new();
+            private readonly HashSet<string> _followed = new(StringComparer.Ordinal);
+            private int _hopped;
+
+            public CrossModuleJoin(SketchDocument doc, Registry registry, List<SketchObject> scope, HashSet<string> inScope, Queue<string> queue,
+                List<BoundRelation> links, HashSet<string> seenLinks, List<ValueNets> nets)
+            {
+                _doc = doc; _registry = registry; _scope = scope; _inScope = inScope; _queue = queue; _links = links; _seenLinks = seenLinks; _nets = nets;
+            }
+
+            private void Enqueue(string id) { if (!_inScope.Contains(id)) _queue.Enqueue(id); }
+
+            private IReadOnlyList<VarDef> VariablesOf(SketchObject o) => ValueModel.Variables(_registry.Type(o.Type));
+
+            /// <summary>
+            /// For every new object of the scope: lines of another module docked on it bring that module's elements with values
+            /// (and the lines themselves when they have values) into the scope, following lines of that module docked on each
+            /// other, so that the module's nets are built and its junctions seen (a lamp alone finds the PV string feeding it).
+            /// </summary>
+            public void Hop()
+            {
+                for (; _hopped < _scope.Count; _hopped++)
+                {
+                    var e = _scope[_hopped];
+                    var module = ValueNets.ModuleOf(e.Type);
+                    foreach (var lineId in DockedOn(_doc, e.Id))
+                        if (_doc.Get(lineId) is { } line && ValueNets.ModuleOf(line.Type) != module) Follow(line);
+                }
+            }
+
+            private void Follow(SketchObject first)
+            {
+                var module = ValueNets.ModuleOf(first.Type);
+                var stack = new Stack<SketchObject>();
+                stack.Push(first);
+                while (stack.Count > 0)
+                {
+                    var line = stack.Pop();
+                    if (!_followed.Add(line.Id)) continue;
+                    if (VariablesOf(line).Count > 0) Enqueue(line.Id);
+                    foreach (var a in line.Attach ?? Array.Empty<Attachment?>())
+                    {
+                        if (a is null || a.ObjectId == line.Id || _doc.Get(a.ObjectId) is not { } target || ValueNets.ModuleOf(target.Type) != module) continue;
+                        if (target.IsPointGeometry) stack.Push(target);
+                        else if (VariablesOf(target).Count > 0) Enqueue(target.Id);
+                    }
+                    foreach (var id in DockedOn(_doc, line.Id))
+                        if (_doc.Get(id) is { IsPointGeometry: true } other && ValueNets.ModuleOf(other.Type) == module) stack.Push(other);
+                }
+            }
+
+            /// <summary>Links the junctions of the recorded nets whose objects are all in the scope (the others wait for the next round).</summary>
+            public void Link()
+            {
+                foreach (var nets in _nets.ToList())
+                    foreach (var j in nets.Junctions)
+                        if (!_done.Contains(j) && TryLink(j)) _done.Add(j);
+            }
+
+            /// <summary>False while a foreign object is not in the scope yet (it is queued); true when the junction is settled.</summary>
+            private bool TryLink(NetJunction j)
+            {
+                var key = NetKeys.Of(j.Spec, j.Class);
+                if (key is null || NetKeys.KindOf(key) is not { } kind) return true;
+                var members = new List<VarRef>(j.Elements.Count + j.Lines.Count);
+                members.AddRange(j.Elements);
+                members.AddRange(j.Lines);
+                foreach (var m in members)
+                    if (_doc.Get(m.ObjectId) is not { } mo || VariablesOf(mo).FirstOrDefault(v => v.Key == m.Key) is not { } def || def.Kind.Id != kind.Id) return true;
+
+                var pending = false;
+                var foreign = new List<(VarRef Ref, bool Line)>();
+                foreach (var (obj, port) in j.ForeignPorts)
+                {
+                    if (!_inScope.Contains(obj)) { Enqueue(obj); pending = true; continue; }
+                    if (Resolve(obj, port, key, kind) is { } r && !foreign.Any(f => f.Ref == r)) foreign.Add((r, false));
+                }
+                foreach (var lineId in j.ForeignLines)
+                {
+                    if (!_inScope.Contains(lineId)) { Enqueue(lineId); pending = true; continue; }
+                    if (Resolve(lineId, null, key, kind) is { } r && !foreign.Any(f => f.Ref == r)) foreign.Add((r, true));
+                }
+                if (pending) return false;
+                if (foreign.Count == 0) return true;
+                if (j.Rule != NetRule.Equal && (j.Branched || j.Elements.Count + foreign.Count(f => !f.Line) > 2)) return true;
+
+                var anchor = members.Count > 0 ? members[0] : foreign[0].Ref;
+                var rel = NetKeys.Link(key);
+                foreach (var (r, _) in foreign)
+                {
+                    if (r == anchor) continue;
+                    var b = new BoundRelation(rel, new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["a"] = anchor, ["b"] = r });
+                    if (!_seenLinks.Add(LinkKey(b))) continue;
+                    _links.Add(b);
+                    foreach (var v in b.Map.Values) Enqueue(v.ObjectId);
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// The variable of <paramref name="key"/> of a foreign element at <paramref name="port"/> (null port: a foreign line):
+            /// named by the element's own module nets when they were built in this pass (exactly one), else the first of the key's
+            /// variable names the element has; null when none, ambiguous or of another kind.
+            /// </summary>
+            private VarRef? Resolve(string objectId, string? port, string key, QuantityKind kind)
+            {
+                if (_doc.Get(objectId) is not { } o) return null;
+                var vars = VariablesOf(o);
+                if (vars.Count == 0) return null;
+                var module = ValueNets.ModuleOf(o.Type);
+                var own = _nets.FirstOrDefault(n => n.Spec.Prefix == module);
+                string? name;
+                if (own is not null)
+                {
+                    var spec = own.Spec;
+                    var pvs = port is null ? (spec.IsLine(o) ? spec.LineVars(o) : Array.Empty<PortVar>()) : spec.PortVars(o, port);
+                    var names = pvs.Where(pv => NetKeys.Of(spec, pv.Class) == key).Select(pv => pv.Key).Distinct(StringComparer.Ordinal).ToList();
+                    if (names.Count != 1) return null;
+                    name = names[0];
+                }
+                else name = NetKeys.VariableNames(key).FirstOrDefault(n => vars.Any(v => v.Key == n && v.Kind.Id == kind.Id));
+                var def = name is null ? null : vars.FirstOrDefault(v => v.Key == name);
+                return def is not null && def.Kind.Id == kind.Id ? new VarRef(o.Id, def.Key) : null;
+            }
         }
 
         /// <summary>A value from a relation without inputs (a marking such as "24 V"): named among the values a conflict involves.</summary>

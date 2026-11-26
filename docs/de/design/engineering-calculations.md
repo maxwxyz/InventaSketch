@@ -637,6 +637,79 @@ Teil mit Griff, und die Verknüpfung erscheint als Kettensymbol in der Leiste de
 ist die zusammenhängende Komponente der Auswahl; der Hintergrunddurchlauf deckt die Folie ab. In den ersten Fassungen
 wird nichts über Foliengrenzen weitergegeben.
 
+### 6.1 Verknüpfung über Modulgrenzen (Core, 26.11.2026)
+
+Jedes Modul baut seine eigenen Netze (`ValueNets`, je Modul eine `NetSpec`: Energie, Fluidtechnik, Verfahrenstechnik,
+Gebäudetechnik). Wo ein Netz ein Element oder eine Leitung **eines anderen Moduls** erreicht – das Präfix der Typ-ID weicht
+von `NetSpec.Prefix` ab und das Modul nennt dort keine Größe dieser Klasse –, hält das Netz eine **Übergangsstelle** fest
+(`ValueNets.Junctions`, `NetJunction`). Die eigenen Beziehungen der Netze beachten sie nicht; eine Zeichnung, deren
+Leitungen in einem Modul bleiben, wird genau wie bisher gelöst.
+
+Der Löser (`ValueSolver`, Schritt 1b) verknüpft Übergangsstellen über einen gemeinsamen **physikalischen Schlüssel**
+(`NetKeys`):
+
+| Schlüssel | Größenart | Netzklassen, die als Schlüssel gelesen werden | Gesuchte Größen an einem Element ohne Netze |
+|---|---|---|---|
+| `U` | Spannung | `U`, `Uac` (Energie AC), `Ustr` (MPP-Spannung des Strings) | `U` |
+| `I` | Strom | `I` | `I` |
+| `P` | Leistung | `P`, `Pac`, `Pdc` | `Pel`, dann `P` |
+| `f` | Frequenz | `f` | `f` |
+| `n` | Drehzahl | `n` | `n` |
+| `T` | Drehmoment | `T` | `T` |
+| `Vdot` | Volumenstrom | `Vdot`, `Q` (Fluidtechnik) | `Vdot`, `Q` |
+| `m` | Massenstrom | `m` | `m` |
+| `p` | Druck | `p` | `p` |
+| `theta` | Temperatur | `theta` | `theta` |
+
+- **Welche Größe des fremden Elements.** Hat das Modul des fremden Elements im selben Löserdurchlauf Netze, nennen dessen
+  eigene `NetSpec.PortVars` die Größe an diesem Anschluss (der Vorlaufanschluss eines Heizkörpers liefert `thf` für
+  `theta`); genau eine muss passen, sonst wird nichts verknüpft. Andernfalls (Elektrotechnik, Maschinen, Mechanik,
+  Schaltanlagen haben keine `NetSpec`) gilt die erste Größe aus der Liste des Schlüssels, die das Element hat (`Pel` vor
+  `P`, ein Motor wird also mit seiner elektrischen Seite verknüpft).
+- **Größenprüfung.** Jedes Mitglied des Netzes und die fremde Größe müssen die Größenart des Schlüssels haben; bei einer
+  Abweichung bleibt die Übergangsstelle unverknüpft.
+- **Regeln, vorsichtig.** Ein gemeinsamer Wert (`NetRule.Equal`: Spannung, Druck) verknüpft das ganze Netz. Ströme, Summen
+  und Verteilungen nur einen unverzweigten Strang mit höchstens zwei Elementen insgesamt (wie `ValueNets` selbst); eine
+  verzweigte Summe (Sammelschiene mit Einspeisungen) wird nicht über Modulgrenzen aufgeteilt.
+- **Grenzwerte bleiben drinnen.** Klassen ohne Schlüssel (`UocMax`, `UmppMin`, `Isc`, `pmax`) werden nie verknüpft.
+- **Bereich.** Leitungen eines anderen Moduls, die an einem Element im Bereich angedockt sind, holen die Elemente dieses
+  Moduls mit Werten in den Bereich (auch über aneinander angedockte Leitungen dieses Moduls); so findet die Werteanzeige
+  einer einzelnen Lampe den PV-String, der sie speist. Die Beziehung heißt `net.cross.<Schlüssel>` („… modulübergreifend
+  weitergegeben"), die Werte gelten als *übernommen*.
+- **Medien** werden beim Bauen der Leitungen geprüft (`PortMedia.Fits`, mit den Gleichsetzungen unten); die
+  Werteverknüpfung selbst stützt sich auf das Andocken, den Schlüssel und die Größenart.
+
+Getestet mit dem Standardkatalog (`tests/InventaSketch.Engine.Tests/CrossModuleValueTests.cs`): ein PV-String speist über
+ein Energiekabel eine Lampe der Elektrotechnik (U = U_mpp,S, P = Stringleistung; I und R aus den Beziehungen der Lampe),
+eine Prozessleitung gibt V̇ und θ an einen Heizkörper, ein Rohr der Gebäudetechnik an einer Prozesspumpe übernimmt deren
+V̇, und ein Sammelschienennetz teilt U, aber nicht die summierte P. Die Antriebswelle einer Maschine und eine mechanische
+Welle waren bereits über `Coupling` verknüpft (Maschinen `EMachineOnAShaftDrivesAGearStage`).
+
+**Gleichgesetzte Medien** (`PortMedia.Equivalents`, nur von `PortMedia.Fits` genutzt; `Covers` bleibt ein Präfixtest):
+`thermal.heat` ≡ `heating` (Vor- und Rücklauf passen weiterhin nie zueinander, Kälte nie zu Heizung),
+`process.water` ≡ `water`, `process.air` ≡ `air`, `process.gas` ≡ `gas`, `process.hydrogen` ≡ `hydrogen` (Wasserstoff ist
+kein Erdgas), `process.refrigerant` ≡ `refrigerant`, `process.vacuum` ≡ `vacuum`, `air.compressed` ≡ `fluid.pneumatic`.
+Neue Medien-IDs: `air.compressed`, `refrigerant`, `vacuum`, `optical` (Lichtwellenleiter, getrennt von Kupfer-`data`),
+`mech.shaft` (Wortschatz für Wellenenden; Wellen docken geometrisch über Naben an). Das Farbschema „nach Medium" hat
+Einträge für die ersten vier (Druckluft in der Luftfarbe nach DIN 2403, die übrigen als Konvention gekennzeichnet).
+
+**Was Module übernehmen können**, um davon zu profitieren (hier nicht geändert, Dateien anderer Module):
+
+- Verfahrenstechnik: Anschlussmedien nach Stoff angeben, wo bekannt (`process.water`, `process.air`, `process.gas`,
+  `process.steam`, …), statt nur `process`, und `theta` an Pumpenanschlüssen ergänzen (`Through` gibt es schon weiter).
+- Fluidtechnik: pneumatische Anschlüsse und Leitungen als `fluid.pneumatic` (dann passen Druckluftleitungen der Anlage);
+  `Q` der Fluidtechnik wird bereits als Volumenstrom gelesen.
+- Gebäudetechnik: ein Kältemedium (`thermal.cooling` oder `refrigerant`) für Kältemaschinen/Split-Geräte; Anschlüsse der
+  Wärmepumpe können `refrigerant` für den Kältekreis angeben.
+- Energie: den Wärmeanschlüssen Werte geben (`Vdot`, `theta`) und das Wärmerohr (`energy.line.pipe.heat`) in `IsLine`
+  aufnehmen, damit Wärmenetze der Energie mit der Gebäudeheizung verknüpft werden; die Schlüssel ggf. über
+  `NetSpec.Keys` ausdrücklich angeben.
+- Elektrotechnik / Schaltanlagen: entweder eine `NetSpec` mit `PortVars` (Pins mit `U`, `I`, `P`) oder die schlichten
+  Namen `U`, `I`, `P` an Elementen behalten, die über Leitungen anderer Module gespeist werden; die elektrische
+  Aufnahmeleistung eines Motors als `Pel`.
+- Maschinen / Mechanik: Wellenenden können `PortMedia.MechShaft` für die „+"-Angebote angeben; Werte laufen bereits über
+  `Coupling`.
+
 ---
 
 ## 7. Umsetzungsplan

@@ -55,6 +55,11 @@ namespace InventaSketch.Core
         public Func<string, I18nText> Name { get; init; } = c => new I18nText(c);
         /// <summary>The classes in a fixed order (deterministic relation order).</summary>
         public IReadOnlyList<string> Classes { get; init; } = Array.Empty<string>();
+        /// <summary>
+        /// The physical key of a class for joins with other modules (<see cref="NetKeys"/>: "Uac" → "U"), null = not joined;
+        /// unset = the shared vocabulary <see cref="NetKeys.ForClass"/>.
+        /// </summary>
+        public Func<string, string?>? Keys { get; init; }
 
         /// <summary>The nets built for this spec, per document (documents are immutable).</summary>
         internal ConditionalWeakTable<SketchDocument, ValueNets> Cache { get; } = new();
@@ -74,8 +79,47 @@ namespace InventaSketch.Core
         private static readonly Dictionary<string, Relation> Equalities = new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Relation> Sums = new(StringComparer.Ordinal);
 
+        private readonly List<NetJunction> _junctions = new();
+
+        /// <summary>The spec the nets were built for.</summary>
+        public NetSpec Spec { get; }
+
+        /// <summary>
+        /// Places where a net of this module meets an element or line of another module (type id prefix other than
+        /// <see cref="NetSpec.Prefix"/>), per class, in class and net order. The nets' own relations ignore them; the solver
+        /// joins them by physical key (<see cref="NetKeys"/>).
+        /// </summary>
+        public IReadOnlyList<NetJunction> Junctions => _junctions;
+
+        /// <summary>The nets asked for during the running solver pass on this thread (null outside a pass).</summary>
+        [ThreadStatic] private static List<ValueNets>? _recorder;
+
+        /// <summary>Starts recording the nets asked for on this thread; returns the previous recorder (pass it to <see cref="EndRecording"/>).</summary>
+        internal static List<ValueNets>? BeginRecording(List<ValueNets> into)
+        {
+            var previous = _recorder;
+            _recorder = into;
+            return previous;
+        }
+
+        internal static void EndRecording(List<ValueNets>? previous) => _recorder = previous;
+
         /// <summary>The nets of <paramref name="doc"/> (cached per document and spec).</summary>
-        public static ValueNets Of(SketchDocument doc, NetSpec spec) => spec.Cache.GetValue(doc, d => new ValueNets(d, spec));
+        public static ValueNets Of(SketchDocument doc, NetSpec spec)
+        {
+            var nets = spec.Cache.GetValue(doc, d => new ValueNets(d, spec));
+            if (_recorder is { } rec && !rec.Contains(nets)) rec.Add(nets);
+            return nets;
+        }
+
+        /// <summary>The module of a type id: the part before the first dot ("energy.pv.string" → "energy").</summary>
+        internal static string ModuleOf(string typeId)
+        {
+            var dot = typeId.IndexOf('.');
+            return dot < 0 ? typeId : typeId.Substring(0, dot);
+        }
+
+        private static bool IsForeign(NetSpec spec, SketchObject o) => spec.Prefix.Length > 0 && ModuleOf(o.Type) != spec.Prefix;
 
         /// <summary>Port relations that involve <paramref name="objectId"/>.</summary>
         public IReadOnlyList<BoundRelation> For(string objectId)
@@ -93,6 +137,8 @@ namespace InventaSketch.Core
 
         private ValueNets(SketchDocument doc, NetSpec spec)
         {
+            Spec = spec;
+            var foreignLines = new List<(string LineNode, string Foreign)>();
             var objects = doc.Objects.Values.OrderBy(o => o.Id, StringComparer.Ordinal).ToList();
             var lines = objects.Where(o => o.IsPointGeometry && spec.IsLine(o)).ToList();
             var edges = new List<(string A, string B)>();
@@ -111,7 +157,12 @@ namespace InventaSketch.Core
                     if (a is null || a.ObjectId == line.Id || doc.Get(a.ObjectId) is not { } target) continue;
                     if (target.IsPointGeometry)
                     {
-                        if (!spec.IsLine(target)) continue;
+                        if (!spec.IsLine(target))
+                        {
+                            // A line of another module docked on: a junction, not part of the net.
+                            if (IsForeign(spec, target)) foreignLines.Add((ln, target.Id));
+                            continue;
+                        }
                         Node(LineNode(target.Id));
                         edges.Add((ln, LineNode(target.Id)));
                         tees.Add(ln);
@@ -180,10 +231,18 @@ namespace InventaSketch.Core
                 _ports[cls] = portsOf;
 
                 var rule = spec.Rule(cls);
+                var foreignLinesOf = new Dictionary<int, List<string>>();
+                foreach (var (lineNode, foreign) in foreignLines)
+                {
+                    var c = compOf[lineNode];
+                    if (!foreignLinesOf.TryGetValue(c, out var fl)) foreignLinesOf[c] = fl = new List<string>();
+                    if (!fl.Contains(foreign)) fl.Add(foreign);
+                }
                 for (var c = 0; c < comps.Count; c++)
                 {
                     var elementMembers = new List<(string Obj, string Key, PortRole Role)>();
                     var lineMembers = new List<(string Obj, string Key)>();
+                    var foreignPorts = new List<(string Obj, string Port)>();
                     var branched = false;
                     var portList = new List<(string, string)>();
                     foreach (var n in comps[c])
@@ -200,12 +259,23 @@ namespace InventaSketch.Core
                         portList.Add((parts[1], parts[2]));
                         if (degree.TryGetValue(n, out var deg) && deg > 1) branched = true;
                         if (doc.Get(parts[1]) is not { } o) continue;
+                        var member = false;
                         foreach (var pv in spec.PortVars(o, parts[2]))
-                            if (pv.Class == cls && !elementMembers.Any(m => m.Obj == o.Id && m.Key == pv.Key)) elementMembers.Add((o.Id, pv.Key, pv.Role));
+                        {
+                            if (pv.Class != cls) continue;
+                            member = true;
+                            if (!elementMembers.Any(m => m.Obj == o.Id && m.Key == pv.Key)) elementMembers.Add((o.Id, pv.Key, pv.Role));
+                        }
+                        if (!member && IsForeign(spec, o)) foreignPorts.Add((o.Id, parts[2]));
                     }
                     portsOf[c] = portList;
                     elementMembers.Sort((x, y) => string.CompareOrdinal(x.Obj + "\u0001" + x.Key, y.Obj + "\u0001" + y.Key));
                     lineMembers.Sort((x, y) => string.CompareOrdinal(x.Obj + "\u0001" + x.Key, y.Obj + "\u0001" + y.Key));
+                    foreignLinesOf.TryGetValue(c, out var foreignLinesHere);
+                    if (foreignPorts.Count > 0 || foreignLinesHere is { Count: > 0 })
+                        _junctions.Add(new NetJunction(spec, cls, rule, branched,
+                            elementMembers.Select(m => new VarRef(m.Obj, m.Key)).ToList(), lineMembers.Select(m => new VarRef(m.Obj, m.Key)).ToList(),
+                            foreignPorts, (IReadOnlyList<string>?)foreignLinesHere ?? Array.Empty<string>()));
 
                     var totals = elementMembers.Where(m => m.Role == PortRole.Total).ToList();
                     var simple = elementMembers.Count <= 2 && !branched;
@@ -285,6 +355,105 @@ namespace InventaSketch.Core
                 rel.Solve(kk, "{s} − " + string.Join(" − ", others.Select(x => "{" + x + "}")), v => v("s") - others.Sum(x => v(x)));
             }
             return rel;
+        }
+    }
+
+    /// <summary>
+    /// One net of a module (for one class) that reaches elements or lines of another module: its members as the module's net
+    /// sees them and the foreign ports (element, port id) and foreign lines docked into it. Resolved by the solver
+    /// (<see cref="ValueSolver"/>, cross-module join).
+    /// </summary>
+    public sealed class NetJunction
+    {
+        internal NetJunction(NetSpec spec, string cls, NetRule rule, bool branched, IReadOnlyList<VarRef> elements, IReadOnlyList<VarRef> lines,
+            IReadOnlyList<(string Obj, string Port)> foreignPorts, IReadOnlyList<string> foreignLines)
+        {
+            Spec = spec; Class = cls; Rule = rule; Branched = branched; Elements = elements; Lines = lines; ForeignPorts = foreignPorts; ForeignLines = foreignLines;
+        }
+
+        public NetSpec Spec { get; }
+        public string Class { get; }
+        public NetRule Rule { get; }
+        /// <summary>The net branches (a tee of lines or a port with more than one line).</summary>
+        public bool Branched { get; }
+        /// <summary>Element variables of the class in the net (sorted by object id and key).</summary>
+        public IReadOnlyList<VarRef> Elements { get; }
+        /// <summary>Line variables of the class in the net.</summary>
+        public IReadOnlyList<VarRef> Lines { get; }
+        /// <summary>Ports of elements of other modules in the net (that the spec gives no variable of the class there).</summary>
+        public IReadOnlyList<(string Obj, string Port)> ForeignPorts { get; }
+        /// <summary>Lines of other modules that a line of the net is docked on.</summary>
+        public IReadOnlyList<string> ForeignLines { get; }
+    }
+
+    /// <summary>
+    /// The shared vocabulary of physical keys that joins the values of different modules where their connections meet
+    /// (engineering-calculations.md, section "Joins across modules"). A key names one quantity at a port: its quantity kind
+    /// (both ends must have exactly this kind), the class names modules use for it (energy "Uac", "Ustr" → U; fluid power "Q"
+    /// → V̇) and the variable names looked up on an element whose module describes no ports (an electrical lamp: U, I, P;
+    /// for P an electrical input power "Pel" first, so a motor joins with its electrical side).
+    /// </summary>
+    public static class NetKeys
+    {
+        public const string Voltage = "U";
+        public const string Current = "I";
+        public const string Power = "P";
+        public const string Frequency = "f";
+        public const string Speed = "n";
+        public const string Torque = "T";
+        public const string VolumeFlow = "Vdot";
+        public const string MassFlow = "m";
+        public const string Pressure = "p";
+        public const string Temperature = "theta";
+
+        private sealed record Entry(string Key, QuantityKind Kind, I18nText Name, string[] Classes, string[] Variables);
+
+        private static readonly Entry[] Table =
+        {
+            new(Voltage, Quantities.Voltage, new("Voltage passed on between modules", "Spannung modulübergreifend weitergegeben"), new[] { "U", "Uac", "Ustr" }, new[] { "U" }),
+            new(Current, Quantities.Current, new("Current passed on between modules", "Strom modulübergreifend weitergegeben"), new[] { "I" }, new[] { "I" }),
+            new(Power, Quantities.Power, new("Power passed on between modules", "Leistung modulübergreifend weitergegeben"), new[] { "P", "Pac", "Pdc" }, new[] { "Pel", "P" }),
+            new(Frequency, Quantities.Frequency, new("Frequency passed on between modules", "Frequenz modulübergreifend weitergegeben"), new[] { "f" }, new[] { "f" }),
+            new(Speed, Quantities.RotationalSpeed, new("Speed passed on between modules", "Drehzahl modulübergreifend weitergegeben"), new[] { "n" }, new[] { "n" }),
+            new(Torque, Quantities.Torque, new("Torque passed on between modules", "Drehmoment modulübergreifend weitergegeben"), new[] { "T" }, new[] { "T" }),
+            new(VolumeFlow, Quantities.VolumeFlow, new("Volume flow passed on between modules", "Volumenstrom modulübergreifend weitergegeben"), new[] { "Vdot", "Q" }, new[] { "Vdot", "Q" }),
+            new(MassFlow, Quantities.MassFlow, new("Mass flow passed on between modules", "Massenstrom modulübergreifend weitergegeben"), new[] { "m" }, new[] { "m" }),
+            new(Pressure, Quantities.Pressure, new("Pressure passed on between modules", "Druck modulübergreifend weitergegeben"), new[] { "p" }, new[] { "p" }),
+            new(Temperature, Quantities.Temperature, new("Temperature passed on between modules", "Temperatur modulübergreifend weitergegeben"), new[] { "theta" }, new[] { "theta" }),
+        };
+
+        private static readonly Dictionary<string, Relation> Links = new(StringComparer.Ordinal);
+
+        /// <summary>Every key, in vocabulary order.</summary>
+        public static IReadOnlyList<string> All { get; } = Table.Select(e => e.Key).ToArray();
+
+        private static Entry? Find(string? key) => key is null ? null : Table.FirstOrDefault(e => e.Key == key);
+
+        /// <summary>The key of a net class by the shared vocabulary ("Uac" → "U", "Q" → "Vdot"), or null (not joined: limits as "UocMax").</summary>
+        public static string? ForClass(string cls) => Table.FirstOrDefault(e => e.Classes.Contains(cls))?.Key;
+
+        /// <summary>The key of <paramref name="cls"/> in <paramref name="spec"/> (its own <see cref="NetSpec.Keys"/>, else the vocabulary).</summary>
+        public static string? Of(NetSpec spec, string cls)
+        {
+            var key = spec.Keys is { } k ? k(cls) : ForClass(cls);
+            return Find(key)?.Key;
+        }
+
+        /// <summary>The quantity kind of a key, or null for an unknown key.</summary>
+        public static QuantityKind? KindOf(string key) => Find(key)?.Kind;
+
+        /// <summary>Variable names looked up, in order, on an element whose module describes no net ports.</summary>
+        public static IReadOnlyList<string> VariableNames(string key) => Find(key)?.Variables ?? Array.Empty<string>();
+
+        /// <summary>The link relation "value passed on between modules" of a key (shared instance).</summary>
+        internal static Relation Link(string key)
+        {
+            lock (Links)
+            {
+                if (!Links.TryGetValue(key, out var rel))
+                    Links[key] = rel = Relation.Equality("net.cross." + key, Find(key)?.Name ?? new I18nText(key + " passed on between modules", key + " modulübergreifend weitergegeben"));
+                return rel;
+            }
         }
     }
 }
