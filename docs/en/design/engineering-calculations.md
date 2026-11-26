@@ -607,6 +607,13 @@ in the document's check settings, because the binding limit is in a standard or 
 | `heat.circuit.balance` | circulator pump | the smallest consumer circuit sum is more than 25 % below the largest (own threshold, not from a standard) | hint | [S30] |
 | `fluid.circuit.losses` | cylinder | *p*_av = *p*_supply − ΣΔ*p* ≤ 0 | warning | [S26] |
 | `fluid.cyl.force.losses` | cylinder | *F*_req > *p*_av·*A*·*η*_hm (suppressed when `fluid.cyl.force` fires) | warning | [S26] |
+| `energy.feedin.limit` | grid connection point | Σ*P*_AC of the inverters > feed-in limit *P*_lim | hint | – (limit of the grid operator) |
+| `energy.balance` | grid connection point | self-consumption *E*_SC > min(*E*_PV, *E*_load) (impossible balance) | warning | [S1] |
+| `sw.disconnect` | MCB, RCBO | *I*_k1 at the board < *I*_a (no disconnection in time; estimate, not IEC 60909) | warning | [S10] |
+| `sw.breaking` | overcurrent protective device | *I*_k3 > *I*_cn (breaking capacity exceeded) | warning | [S11] |
+| `sw.selectivity` | overcurrent protective device | upstream *I*_n < 1.6·*I*_n (rule of thumb) | hint | [S11] |
+| `sw.selectivity.instant` | overcurrent protective device | *I*_k3 ≥ *I*_a of the upstream MCB (both trip instantaneously) | hint | [S11] |
+| `sw.rcd.type` | RCD, RCBO | a frequency converter below needs type F (single-phase) or B (three-phase) | hint | [S11] |
 | `optics.light.none` | detector, lens, arrow | the page has traced rays, none ends at the element | info | – (consistency) |
 | `optics.light.nosource` | detector | only rays without a light source arrive (power unknown) | info | – (consistency) |
 | `optics.light.estimate` | detector | power passed a schematic splitter or grating (equal shares assumed) | hint | – (assumption) |

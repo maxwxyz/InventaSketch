@@ -627,6 +627,13 @@ Datenblatt steht, das wir nicht übernehmen.
 | `heat.circuit.balance` | Umwälzpumpe | die kleinste Kreissumme eines Verbrauchers liegt mehr als 25 % unter der größten (eigene Schwelle, nicht aus einer Norm) | Hinweis | [S30] |
 | `fluid.circuit.losses` | Zylinder | *p*_verf = *p*_Versorgung − ΣΔ*p* ≤ 0 | Warnung | [S26] |
 | `fluid.cyl.force.losses` | Zylinder | *F*_erf > *p*_verf·*A*·*η*_hm (unterdrückt, wenn `fluid.cyl.force` anschlägt) | Warnung | [S26] |
+| `energy.feedin.limit` | Netzanschlusspunkt | Σ*P*_AC der Wechselrichter > Einspeisegrenze *P*_lim | Hinweis | – (Grenze des Netzbetreibers) |
+| `energy.balance` | Netzanschlusspunkt | Eigenverbrauch *E*_EV > min(*E*_PV, *E*_V) (unmögliche Bilanz) | Warnung | [S1] |
+| `sw.disconnect` | LS, FI/LS | *I*_k1 an der Verteilung < *I*_a (keine rechtzeitige Abschaltung; Schätzung, nicht IEC 60909) | Warnung | [S10] |
+| `sw.breaking` | Überstromschutzgerät | *I*_k3 > *I*_cn (Schaltvermögen überschritten) | Warnung | [S11] |
+| `sw.selectivity` | Überstromschutzgerät | vorgeschaltetes *I*_n < 1,6·*I*_n (Faustregel) | Hinweis | [S11] |
+| `sw.selectivity.instant` | Überstromschutzgerät | *I*_k3 ≥ *I*_a des vorgeschalteten LS (beide lösen unverzögert aus) | Hinweis | [S11] |
+| `sw.rcd.type` | FI, FI/LS | ein Frequenzumrichter darunter braucht Typ F (einphasig) oder B (dreiphasig) | Hinweis | [S11] |
 | `optics.light.none` | Detektor, Linse, Pfeil | die Seite hat verfolgte Strahlen, keiner endet am Element | Info | – (Konsistenz) |
 | `optics.light.nosource` | Detektor | nur Strahlen ohne Lichtquelle kommen an (Leistung unbekannt) | Info | – (Konsistenz) |
 | `optics.light.estimate` | Detektor | Leistung lief über schematischen Strahlteiler oder Gitter (gleiche Anteile angenommen) | Hinweis | – (Annahme) |
