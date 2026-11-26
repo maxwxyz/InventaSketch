@@ -8,8 +8,10 @@ namespace InventaSketch.Modules.Kinematics
     /// <summary>
     /// Kinematics module: kinematic diagram symbols in the style of ISO 3952 (drawn independently) – joints and
     /// supports, links and bodies – plus predefined planar mechanisms (four-bar, slider-crank, scotch yoke, toggle,
-    /// quick-return) rendered at an input angle with exact loop closure, and motion annotations (paths, ghost
-    /// positions, angle limits, degree-of-freedom badge). Kinematic sketches only, not a dynamics simulation.
+    /// quick-return, Geneva drive, ratchet, Watt and Stephenson six-bar, pantograph) rendered at an input angle with exact
+    /// loop closure, element values of the linkages (Grashof class, transmission angles, stroke, time ratio, speeds), and
+    /// motion annotations (paths, ghost positions, angle limits, degree-of-freedom badge). Kinematic sketches only, not a
+    /// dynamics simulation.
     /// </summary>
     public sealed class KinematicsModule : IModule
     {
@@ -17,6 +19,7 @@ namespace InventaSketch.Modules.Kinematics
         {
             new BinaryLinkType(), new TernaryLinkType(), new SpringType(), new DamperType(), new CamFollowerType(), new CamDiscType(),
             new FourBarType(), new SliderCrankType(), new ScotchYokeType(), new ToggleType(), new QuickReturnType(),
+            new GenevaType(), new RatchetType(), new SixBarType(), new PantographType(),
             new MotionPathType(), new AngleLimitType(), new DofBadgeType(),
         }).ToList());
 
@@ -24,7 +27,7 @@ namespace InventaSketch.Modules.Kinematics
 
         public string Id => "kinematics";
         public I18nText Name => new("Kinematics & mechanisms", "Kinematik & Mechanismen");
-        public string Version => "0.2.0";
+        public string Version => "0.3.0";
         public IEnumerable<ObjectType> Types => AllTypes.Value;
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -108,6 +111,16 @@ namespace InventaSketch.Modules.Kinematics
             Add("toggle", "kin.mech.toggle", "Toggle mechanism", "Kniehebel", "schematic");
             Add("toggle.ghosts", "kin.mech.toggle", "Toggle mechanism with stroke", "Kniehebel mit Hubstellungen", "schematic", P(("ghosts", 2)));
             Add("quickreturn", "kin.mech.quickreturn", "Quick-return mechanism", "Schnellrücklaufgetriebe", "schematic");
+            Add("fourbar.grashof", "kin.mech.fourbar", "Four-bar with Grashof class", "Viergelenkgetriebe mit Grashof-Klasse", "schematic", P(("grashof", true)), "grashof", "crank-rocker", "kurbelschwinge");
+            Add("geneva", "kin.mech.geneva", "Geneva drive (4 slots)", "Malteserkreuzgetriebe (4 Schlitze)", "schematic");
+            Add("geneva.6", "kin.mech.geneva", "Geneva drive (6 slots)", "Malteserkreuzgetriebe (6 Schlitze)", "schematic", P(("slots", "6")), "6 slots", "6 schlitze");
+            Add("geneva.detailed", "kin.mech.geneva", "Geneva drive (detailed)", "Malteserkreuzgetriebe (detailliert)", "detailed");
+            Add("ratchet", "kin.ratchet", "Ratchet and pawl", "Klinkengesperre", "schematic");
+            Add("ratchet.detailed", "kin.ratchet", "Ratchet and pawl (detailed)", "Klinkengesperre (detailliert)", "detailed");
+            Add("sixbar.watt", "kin.mech.sixbar", "Six-bar linkage (Watt)", "Sechsgliedriges Koppelgetriebe (Watt)", "schematic");
+            Add("sixbar.stephenson", "kin.mech.sixbar", "Six-bar linkage (Stephenson)", "Sechsgliedriges Koppelgetriebe (Stephenson)", "schematic", P(("kind", "stephenson")), "stephenson");
+            Add("pantograph", "kin.mech.pantograph", "Pantograph", "Storchschnabel (Pantograph)", "schematic");
+            Add("pantograph.path", "kin.mech.pantograph", "Pantograph with traced figure", "Storchschnabel mit Vorlage und Kopie", "schematic", P(("path", true)), "copy", "kopie");
 
             // motion annotations
             Add("path", "kin.motion.path", "Motion path", "Bahnkurve");

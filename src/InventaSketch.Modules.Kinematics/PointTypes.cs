@@ -90,7 +90,7 @@ namespace InventaSketch.Modules.Kinematics
         }
 
         /// <summary>Outline of the union of circles (radius rr) around the vertices of a triangle (convex hull).</summary>
-        private static List<Vec2> RoundedHull(IReadOnlyList<Vec2> tri, double rr)
+        internal static List<Vec2> RoundedHull(IReadOnlyList<Vec2> tri, double rr)
         {
             var pts = tri.ToList();
             if (Geo.PolygonArea(pts) < 0) pts.Reverse(); // positive area = clockwise on screen (y down)

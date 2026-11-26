@@ -8,8 +8,9 @@ ISO 3952 (kinematic diagrams – graphical symbols); they are drawn independentl
 standard's figures. No claim of standards compliance is made.
 
 **Scope and limits.** This is a *kinematic sketch*, not a dynamics simulation: positions are computed by
-closed-form loop closure at one input angle. There are no masses, forces, velocities, time integration,
-collision checks or tolerance analysis. The input force arrow of the toggle mechanism and the drive arrow of the
+closed-form loop closure at one input angle. There are no masses, forces, time integration, collision checks
+or tolerance analysis; speeds exist only as first-order element values at the current position (see "Element
+values"). The input force arrow of the toggle mechanism and the drive arrow of the
 crank are symbols only.
 
 ## Conventions
@@ -71,15 +72,46 @@ bearing blocks, hatched sliders).
 | `kin.mech.scotchyoke` | Scotch yoke / Kreuzschubkurbel | `crank` 12 | crank angle, default −60° | 1 |
 | `kin.mech.toggle` | Toggle mechanism / Kniehebel | `link1` 26, `link2` 26, `force` | angle of the upper link from the guide axis (0° = stretched), default 30° | 1 |
 | `kin.mech.quickreturn` | Quick-return mechanism / Schnellrücklaufgetriebe | `ground` 20, `crank` 10, `lever` 40, `link` 16, `ram` 44 | crank angle, default −30° | 1 |
+| `kin.mech.geneva` | Geneva drive / Malteserkreuzgetriebe (2026-11-26) | `slots` 4/6, `centre` 30 (O1-O2) | driver angle, default −20° | 1 |
+| `kin.ratchet` | Ratchet and pawl / Klinkengesperre (2026-11-26) | `teeth` 12, `spring` (pawl spring shown) | wheel angle, default 0° | 1 |
+| `kin.mech.sixbar` | Six-bar linkage / Sechsgliedriges Koppelgetriebe (2026-11-26) | `kind` watt/stephenson, `ground` 40, `crank` 12, `coupler` 36, `rocker` 30; Watt: `arm` 24, `armAngle` 60°, `ground2` 36, `coupler2` 28, `rocker2` 22; Stephenson: `cpu` 0.5, `cpv` −0.3, `link5` 40, `link6` 22, `x6` 62, `y6` −6 | crank angle, default −60° | 1 |
+| `kin.mech.pantograph` | Pantograph / Storchschnabel (Pantograph) (2026-11-26) | `length` 40, `scale` 2, `reach` 20, `trace` 5 | position of the tracer on the traced circle, default −90° | 2 |
 
-Common parameters: `angle`, `ghosts` (0–12), `path` (motion path), `dof` (degree-of-freedom badge).
+Common parameters: `angle`, `ghosts` (0–12), `path` (motion path), `dof` (degree-of-freedom badge). The Geneva drive
+and the ratchet have no ghosts and no motion path (a second wheel would cover the drawing); they animate like the
+others. The four-bar also has `grashof` (Grashof class badge at the top right, e.g. "Crank-rocker" / "Kurbelschwinge").
+
+**Geneva drive.** Driver pivot O1, wheel pivot O2 at the centre distance C; crank radius a = C·sin(180°/z), slot mouth
+at R = C·cos(180°/z), so the pin enters and leaves the slots radially. While the pin is in a slot (|φ| ≤ 90° − 180°/z)
+the slot follows the pin, otherwise the wheel is locked at 180°/z (one slot pitch per turn of the driver, dwell in
+between). The wheel is drawn with parallel slots, concave locking arcs (radius of the locking disc) and short horns;
+the driver with its locking disc, relieved towards the pin. `Linkages.GenevaWheelAngle` gives the wheel orientation.
+
+**Ratchet and pawl.** A saw-tooth wheel and a pawl on a second fixed pivot, held on the teeth by a spring (thin zigzag
+from a hatched frame point). `angle` turns the wheel; the pawl rests at its first contact with the actual tooth
+outline, so in motion it rides up each flank and drops behind the tooth (clockwise is the free direction; turning
+back, the steep face runs against the pawl).
+
+**Six-bar.** Watt: two four-bars in series, the rocker of the first is a ternary link O4–B–C (drawn as a plate) that
+drives the second four-bar O4–C–D–O6. Stephenson: the coupler A–B–P is a ternary link and the dyad P–C–O6 hangs on its
+coupler point P. Both by circle intersections; the motion path traces D (Watt) or P (Stephenson). Six links, seven
+revolute pairs: F = 1. "Explode" gives fixed pivots, binary links and one ternary link docked onto each other.
+
+**Pantograph.** Fixed pivot O, long bars O–B and B–P (`length`), short bars C–T and T–D (`length`/k) forming the
+parallelogram C–B–D–T. O, the tracer T and the pen P stay on one line with OP = k·OT (`Linkages.Pantograph`). The
+tracer runs round a circle (`trace` radius, centre at `reach` from O); with `path` the traced circle and the pen's
+enlarged copy are drawn. Five links, five revolute pairs: F = 2 (the badge says so); the input angle only moves the
+tracer along the drawn figure.
 
 **Loop closure.** Four-bar: the coupler/rocker joint B is the intersection of the circles around the crank pin A
 (radius coupler) and the rocker pivot O4 (radius rocker); the assembly mode (`open`/`crossed`) selects the
 solution side and is kept over the whole revolution. Slider-crank: B = (A.x + √(rod² − (offset − A.y)²), offset).
 Toggle: C lies on the guide axis through the fixed pivot. Quick-return (crank and slotted lever with ram link):
 the crank pin slides on the lever O4–T, the link T–B drives the ram slider on a horizontal guide. The public
-`Linkages` class exposes the solvers (`FourBar`, `SliderCrank`, `CircleCircle`, `Grubler`, `IsGrashof`).
+`Linkages` class exposes the solvers (`FourBar`, `SliderCrank`, `CircleCircle`, `Grubler`, `IsGrashof`) and, since
+2026-11-26, the analysis behind the element values (`Classify`, `GrashofMargin`, `TransmissionAngles`, `RockerSwing`,
+`CrankAngleDifference`, `TimeRatio`, `VelocityRatio`, `SliderStroke`, `QuickReturnRam`, `GenevaWheelAngle`,
+`Pantograph`, …).
 
 **No assembly possible.** If the loop cannot be closed at the given angle (e.g. a non-Grashof chain or a crank
 longer than the rod), the frame and the input link are drawn, and an italic note "no assembly possible" /
@@ -114,6 +146,40 @@ has a `Port` at its centre so it snaps onto a joint.
 (`ObjectType.JointLimits`, page degrees; the range mirrors and turns with the symbol). Dragging in motion mode stops at
 the stops, and the coupler curve and the ghost positions end there (the chain is walked until a stop holds the crank).
 
+## Element values (2026-11-26)
+
+The four-bar, slider-crank, quick-return mechanism and scotch yoke have element values (Calc 1, `IValueType`;
+engineering-calculations.md sections 2.6 and 3.4). Link lengths and the input angle are the mechanism's own parameters:
+they are entered values, and entering one in the values panel changes the drawing. Everything else is derived with
+the textbook relations of [S24] (Kerle/Corves/Hüsing; Uicker/Pennock/Shigley). The input speed `n` is optional (text
+parameter `inputSpeed`, min⁻¹; positive = clockwise, like the grip); with it the speeds at the current position follow.
+The values label (`showValues`) shows the card values.
+
+| Element | Variables (card values in **bold**) | Relations |
+|---|---|---|
+| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n |
+| Slider-crank | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v** | H = √((l + r)² − e²) − √((l − r)² − e²) (2r without offset); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ |
+| Quick-return | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 for r/d = 1/2); H from the position analysis over a turn |
+| Scotch yoke | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
+
+The Grashof class is a text, which the value system (numbers only) cannot hold: it is shown as the four-bar's badge
+(`grashof`) and by the sign of Δ_G; `Linkages.Classify` names it (crank-rocker, double-crank, rocker-crank,
+double-rocker with the coupler turning, change point, double-rocker non-Grashof). Swing angle and time ratio exist only
+for a crank-rocker (unknown otherwise).
+
+**Checks** (section 4 of engineering-calculations.md):
+
+| Id | Elements | Rule | Severity | Source |
+|---|---|---|---|---|
+| `kin.transmission` | four-bar, slider-crank | μ leaves 40° … 140° somewhere in the motion (μ_min < 40° or μ_max > 140°) | warning | [S24] |
+| `kin.grashof` | four-bar | the crank cannot turn fully (not Grashof with the crank or the frame shortest) | hint | [S24] |
+
+**Linked chart.** The four-bar implements `ICharacteristics` (Calc 5): the set `transfer`, "Output angle over input
+angle" / "Abtriebswinkel über Antriebswinkel", output angle ψ₄ over the input angle φ (−180° … 180°, one sample per
+degree, gaps where it cannot be assembled) and the transmission angle μ in a second panel with lines at 40° and 140°.
+The current position is a point; dragging it along φ enters a new input angle. "Characteristic chart ▸" inserts the
+chart; the four-bar names its linked charts as dependents.
+
 ## Context actions
 
 | Action id | Label (EN / DE) | Icon | Applies to |
@@ -122,6 +188,10 @@ the stops, and the coupler curve and the ghost positions end there (the chain is
 | `kin.ghosts` | Ghost positions / Zwischenlagen (toggles 0 ↔ last count, default 4) | `cmd-animate` | mechanisms |
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | mechanisms |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | mechanisms, cam follower |
+| `kin.grashof.badge` | Show Grashof class / Grashof-Klasse zeigen | `cmd-values` | four-bar |
+| `kin.slots=4/6` | Number of slots ▾ / Schlitzanzahl ▾ (choice) | `cmd-option` | Geneva drive |
+| `kin.sixbar.kind=watt/stephenson` | Chain ▾ / Kette ▾ (choice) | `cmd-option` | six-bar |
+| `values.chart=transfer` | Characteristic chart ▸ / Kennlinie ▸ (menu, needs the Charts module) | `cmd-option` | four-bar |
 | `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage (names `branch` in `ParamKeys`: hosts that show the assembly mode dropdown leave it out) | `cmd-swap` | four-bar |
 | `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (choice) | `cmd-option` | cam follower, cam disc |
 | `kin.joint.start` / `kin.joint.end` | Joint at start / end | `cmd-arrow-start` / `cmd-arrow-end` | rigid link |
@@ -139,6 +209,9 @@ parameters of the type get a grip:
 | Element | Key | Grip on | Motion | Parameter | Snap |
 |---|---|---|---|---|---|
 | Four-bar, slider-crank, scotch yoke, quick-return | `angle` | crank pin A | free; the crank turns towards the pointer about its frame pivot | `angle` | 1°, normalised to (−180°, 180°] |
+| Geneva drive, six-bar | `angle` | crank pin A | about O1 / O2 | `angle` | 1° |
+| Ratchet | `angle` | tip of tooth 0 | about the wheel pivot | `angle` | 1° |
+| Pantograph | `angle` | tracer T | about the centre of the traced circle | `angle` | 1° |
 | Toggle | `angle` | knee B | about the upper pivot A | `angle` | 1° |
 | Cam with follower | `angle` | cam nose (outermost point) | about the cam pivot | `angle` | 1° |
 | Piston and cylinder | `stroke` | rod end | along the cylinder axis | `stroke` | 5 %, 0 … 1 |
@@ -161,3 +234,8 @@ needed.
 Mechanisms provide `AnimationFrames(o, count)`: the current state, then the input angle stepped like the ghost
 positions (a full turn, or the toggle range). Hosts turn them into a slide sequence (PowerPoint COM: "Animate as
 slides" with Morph transitions); every frame keeps the box.
+
+"Explode" (`Parts`) exists for the four-bar, slider-crank, scotch yoke, toggle, quick-return, cam and the six-bar (both
+chains). The Geneva drive, the ratchet and the pantograph do not explode: the self-built linkage has no intermittent
+pin-in-slot pair, no pawl contact, and no bar with three joints in a row; they move by their grip and animation frames.
+Wheels, discs and pawls are white-filled polygons (`wheel`, `disc`, `pawl` tags), native freeforms in PowerPoint.

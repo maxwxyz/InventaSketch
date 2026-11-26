@@ -5,8 +5,12 @@ using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Kinematics
 {
-    /// <summary>Four-bar linkage (crank O2-A, coupler A-B, rocker B-O4, frame O2-O4); analytic loop closure.</summary>
-    internal sealed class FourBarType : MechanismType
+    /// <summary>
+    /// Four-bar linkage (crank O2-A, coupler A-B, rocker B-O4, frame O2-O4); analytic loop closure. Element values
+    /// (<see cref="KinValues.FourBar"/>): Grashof margin, transmission angles, rocker swing, time ratio and the output speed
+    /// at the current position; the Grashof class can be shown as a badge.
+    /// </summary>
+    internal sealed partial class FourBarType : MechanismType, IValueType, IValueLinks, IValueChecks
     {
         public FourBarType() : base("kin.mech.fourbar", new I18nText("Four-bar linkage", "Viergelenkgetriebe"), KinCategories.Mechanisms, new Size2(60, 44),
             "four-bar", "fourbar", "linkage", "crank-rocker", "coupler curve", "viergelenk", "koppelgetriebe", "kurbelschwinge", "koppelkurve", "gelenkviereck")
@@ -24,14 +28,45 @@ namespace InventaSketch.Modules.Kinematics
             KP.Choice("branch", "Assembly mode", "Montagelage", "open", ("open", "Open", "Offen"), ("crossed", "Crossed", "Gekreuzt")),
             KP.Num("cpu", "Coupler point along coupler", "Koppelpunkt längs Koppel", 0.5, -2, 3, null, 0.05, advanced: true),
             KP.Num("cpv", "Coupler point offset (× coupler)", "Koppelpunkt-Versatz (× Koppel)", 0, -3, 3, null, 0.05, advanced: true),
-        }).ToList();
+            GrashofParam,
+        }).Concat(KinValues.FourBar.Params).ToList();
+
+        private static readonly ParamDef GrashofParam = KP.Bool("grashof", "Show Grashof class", "Grashof-Klasse zeigen", false);
+
+        public IReadOnlyList<VarDef> Variables => KinValues.FourBar.Variables;
+        public IReadOnlyList<Relation> Relations => KinValues.FourBar.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => KinValues.FourBar.Checks;
+
+        /// <summary>The velocity ratio at the current position, for the assembly mode of the element.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+        {
+            yield return BoundRelation.Local(o.Str("branch", "open") == "crossed" ? KinValues.RatioCrossed : KinValues.RatioOpen, o.Id);
+        }
+
+        /// <summary>Link lengths (frame, crank, coupler, rocker) of the element in model mm.</summary>
+        internal static (double D, double A, double B, double C) Lengths(SketchObject o) => (Len(o, "ground", 40), Len(o, "crank", 12), Len(o, "coupler", 36), Len(o, "rocker", 30));
+
+        /// <summary>The Grashof class of the element.</summary>
+        public static GrashofClass ClassOf(SketchObject o)
+        {
+            var (d, a, b, c) = Lengths(o);
+            return Linkages.Classify(d, a, b, c);
+        }
+
+        protected override bool ReservesTop(SketchObject o) => base.ReservesTop(o) || o.Flag("grashof", false);
+
+        /// <summary>The Grashof class badge ("Crank-rocker" / "Kurbelschwinge") at the top right when "grashof" is on.</summary>
+        protected override void DrawAnnotations(Scene s, SketchObject o, Lang lang, double used)
+        {
+            if (o.Flag("grashof", false)) RightBadge(s, Linkages.ClassName(ClassOf(o)).Get(lang), KinTags.Grashof, used);
+        }
 
         /// <summary>Input grip on the crank pin A, turning the crank about O2.</summary>
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O2", "A") ? (p["O2"], p["A"]) : null;
 
         public override Pose Solve(SketchObject o, double angle)
         {
-            double d = Len(o, "ground", 40), a = Len(o, "crank", 12), b = Len(o, "coupler", 36), c = Len(o, "rocker", 30);
+            var (d, a, b, c) = Lengths(o);
             var crossed = o.Str("branch", "open") == "crossed";
             var fb = Linkages.FourBar(d, a, b, c, angle, crossed);
             var p = new Pose(fb is not null);
@@ -95,11 +130,12 @@ namespace InventaSketch.Modules.Kinematics
             var crossed = o.Str("branch", "open") == "crossed";
             yield return new ContextAction("kin.branch", new I18nText("Crossed assembly mode", "Gekreuzte Montagelage"), IconIds.Toggle,
                 x => x.WithParam("branch", x.Str("branch", "open") == "crossed" ? "open" : "crossed")) { IsActive = crossed, Group = "param", ParamKeys = new[] { "branch" } };
+            yield return KA.Toggle(o, "kin.grashof.badge", new I18nText("Show Grashof class", "Grashof-Klasse zeigen"), IconIds.Values, "grashof", false, "annotation");
         }
     }
 
     /// <summary>Slider-crank (crank O-A, connecting rod A-B, slider B on a guide, optional offset).</summary>
-    internal sealed class SliderCrankType : MechanismType
+    internal sealed class SliderCrankType : MechanismType, IValueType, IValueChecks
     {
         public SliderCrankType() : base("kin.mech.slidercrank", new I18nText("Slider-crank", "Schubkurbel"), KinCategories.Mechanisms, new Size2(70, 34),
             "slider-crank", "slider crank", "crank", "piston", "connecting rod", "engine", "schubkurbel", "kurbeltrieb", "pleuel", "kolben", "schubkurbelgetriebe")
@@ -113,7 +149,12 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("crank", "Crank length", "Kurbellänge", 12, 0.1, 1e5),
             KP.Num("rod", "Connecting rod length", "Pleuellänge", 36, 0.1, 1e5),
             KP.Num("offset", "Offset (eccentricity)", "Versatz (Exzentrizität)", 0, -1e5, 1e5),
-        }).ToList();
+        }).Concat(KinValues.SliderCrank.Params).ToList();
+
+        /// <summary>Stroke, time ratio, smallest transmission angle and slider speed (<see cref="KinValues.SliderCrank"/>).</summary>
+        public IReadOnlyList<VarDef> Variables => KinValues.SliderCrank.Variables;
+        public IReadOnlyList<Relation> Relations => KinValues.SliderCrank.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => KinValues.SliderCrank.Checks;
 
         /// <summary>Input grip on the crank pin A, turning the crank about O.</summary>
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O", "A") ? (p["O"], p["A"]) : null;
@@ -188,7 +229,7 @@ namespace InventaSketch.Modules.Kinematics
     }
 
     /// <summary>Scotch yoke: crank pin slides in a slotted yoke that translates on a guide (pure harmonic motion).</summary>
-    internal sealed class ScotchYokeType : MechanismType
+    internal sealed class ScotchYokeType : MechanismType, IValueType
     {
         public ScotchYokeType() : base("kin.mech.scotchyoke", new I18nText("Scotch yoke", "Kreuzschubkurbel"), KinCategories.Mechanisms, new Size2(64, 34),
             "scotch yoke", "slotted link", "harmonic", "yoke", "kreuzschleife", "kreuzschubkurbel", "kurbelschleife", "schleife")
@@ -200,7 +241,11 @@ namespace InventaSketch.Modules.Kinematics
         public override IReadOnlyList<ParamDef> Parameters => MotionParams(DefaultAngle).Concat(new[]
         {
             KP.Num("crank", "Crank length", "Kurbellänge", 12, 0.1, 1e5),
-        }).ToList();
+        }).Concat(KinValues.ScotchYoke.Params).ToList();
+
+        /// <summary>Stroke H = 2r and the yoke speed (<see cref="KinValues.ScotchYoke"/>).</summary>
+        public IReadOnlyList<VarDef> Variables => KinValues.ScotchYoke.Variables;
+        public IReadOnlyList<Relation> Relations => KinValues.ScotchYoke.Relations;
 
         /// <summary>Input grip on the crank pin A, turning the crank about O.</summary>
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O", "A") ? (p["O"], p["A"]) : null;
@@ -390,7 +435,7 @@ namespace InventaSketch.Modules.Kinematics
     /// Crank and slotted lever quick-return mechanism (shaper drive): crank O2-A drives a block sliding on the lever
     /// O4-T; link T-B drives the ram slider B on a horizontal guide. Six links, seven lower pairs, F = 1.
     /// </summary>
-    internal sealed class QuickReturnType : MechanismType
+    internal sealed class QuickReturnType : MechanismType, IValueType
     {
         public QuickReturnType() : base("kin.mech.quickreturn", new I18nText("Quick-return mechanism", "Schnellrücklaufgetriebe"), KinCategories.Mechanisms, new Size2(60, 64),
             "quick return", "quick-return", "shaper", "slotted lever", "crank and slotted lever", "schnellrücklauf", "kurbelschwinge", "shaping", "stoßmaschine", "kulisse")
@@ -406,7 +451,11 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("lever", "Lever length", "Schwingenlänge", 40, 0.1, 1e5),
             KP.Num("link", "Link length", "Koppellänge", 16, 0.1, 1e5),
             KP.Num("ram", "Ram guide height above O4", "Höhe Stößelführung über O4", 44, 0.1, 1e5),
-        }).ToList();
+        }).Concat(KinValues.QuickReturn.Params).ToList();
+
+        /// <summary>Lever swing, time ratio and ram stroke (<see cref="KinValues.QuickReturn"/>).</summary>
+        public IReadOnlyList<VarDef> Variables => KinValues.QuickReturn.Variables;
+        public IReadOnlyList<Relation> Relations => KinValues.QuickReturn.Relations;
 
         /// <summary>Input grip on the crank pin A, turning the crank about O2.</summary>
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O2", "A") ? (p["O2"], p["A"]) : null;
