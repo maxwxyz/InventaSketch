@@ -12,6 +12,18 @@ namespace InventaSketch.Modules.Process
     internal readonly record struct Port(string Id, double X, double Y);
 
     /// <summary>
+    /// Drive shaft of a rotating machine in design coordinates: the shaft end (X, Y), where a driving shaft docks with the
+    /// machine's <see cref="AnchorRole.Hub"/> anchor, and the point (FromX, FromY) where the shaft leaves the body. A drive
+    /// (motor, turbine) also exposes the stub between the two as a shaft <see cref="AnchorRole.Axis"/>, so the hub of a
+    /// driven machine or a part docks on it.
+    /// </summary>
+    internal readonly record struct ShaftEnd(double X, double Y, double FromX, double FromY)
+    {
+        /// <summary>A shaft end on the body outline (driven machines: the drive docks here).</summary>
+        public static ShaftEnd At(double x, double y) => new(x, y, x, y);
+    }
+
+    /// <summary>
     /// Data-driven box type used for the equipment, fittings and instruments of the module: a P&amp;ID symbol drawn in design
     /// millimetres and stretched to the object size, optionally a block view for block flow diagrams, nozzles as
     /// <see cref="AnchorRole.Port"/> anchors (the same ids in every view), optional parameters and an equipment tag
@@ -63,8 +75,15 @@ namespace InventaSketch.Modules.Process
         public bool Part { get; init; } = true;
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
         public IReadOnlyList<string> CompanionIds { get; init; } = Array.Empty<string>();
+        /// <summary>Drive shaft of a rotating machine (pumps, compressors, fans, turbines, motors); null = no shaft.</summary>
+        public Func<SketchObject, ShaftEnd>? Shaft { get; init; }
+        /// <summary>The machine drives its shaft (motor, turbine): it exposes the shaft stub as an axis and leads a docked shaft.</summary>
+        public bool Drive { get; init; }
 
         public override bool IsPart => Part;
+
+        /// <summary>A drive whose hub sits on a shaft takes the shaft along when moved (<see cref="Coupling"/>).</summary>
+        public override bool DrivesShaft => Drive && Shaft is not null;
 
         private static readonly ParamDef TagParam = P.Text(TagKey, "Tag (equipment number)", "Kennzeichen (Anlagenkennzeichen)", "");
         private static readonly ParamDef ShowTagParam = P.Flag(ShowTagKey, "Show tag", "Kennzeichen anzeigen", true);
@@ -82,8 +101,13 @@ namespace InventaSketch.Modules.Process
         public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
         public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
 
+        /// <summary>Net links of the nozzles and, for rotating machines, the shaft links to the drive or shaft they sit on.</summary>
         public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
-            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : ProcessValues.Links(o, ctx);
+        {
+            if (ValueSpec.Variables.Count == 0) return Array.Empty<BoundRelation>();
+            var links = ProcessValues.Links(o, ctx);
+            return Shaft is null ? links : links.Concat(ShaftLinks.For(o, ctx, Owner));
+        }
 
         /// <summary>The object with every missing parameter set to its default, so drawings and ports read one value.</summary>
         public SketchObject Normalize(SketchObject o)
@@ -254,6 +278,38 @@ namespace InventaSketch.Modules.Process
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             foreach (var p in LocalPorts(o)) yield return Anchor.Point(AnchorRole.Port, p.P, p.Id);
+            if (LocalShaft(o) is not { } s) yield break;
+            if (Drive && s.From.DistanceTo(s.End) > 1e-9)
+            {
+                // The shaft stub: a driven machine's hub or a mechanical part docks on it; the outer end is marked, so
+                // "build +" continues the shaft there and not inside the body.
+                yield return Anchor.Segment(AnchorRole.Axis, s.From, s.End) with { Id = "shaft" };
+                yield return Anchor.Point(AnchorRole.End, s.End, "shaftEnd");
+            }
+            // Bore unknown (radius 0): the machine docks and couples on a shaft but keeps its size.
+            yield return Anchor.Point(AnchorRole.Hub, s.End, "hub");
+        }
+
+        /// <summary>
+        /// The drive shaft in local coordinates (stub start on the body, shaft end), or null without a shaft. In the block view
+        /// the shaft end moves to the nearest edge of the block like a nozzle.
+        /// </summary>
+        public (Vec2 From, Vec2 End)? LocalShaft(SketchObject o)
+        {
+            if (Shaft is null) return null;
+            var n = Normalize(o);
+            var d = Design(n);
+            double sx = o.Size.W / d.W, sy = o.Size.H / d.H;
+            var s = Shaft(n);
+            var end = new Vec2(s.X * sx, s.Y * sy);
+            var from = new Vec2(s.FromX * sx, s.FromY * sy);
+            if (ViewOf(o) == ProcessViews.Block)
+            {
+                double hw = o.Size.W / 2, hh = o.Size.H / 2;
+                end = hw - Math.Abs(end.X) < hh - Math.Abs(end.Y) ? new Vec2(Math.Sign(end.X) * hw, end.Y) : new Vec2(end.X, end.Y < 0 ? -hh : hh);
+                from = end;
+            }
+            return (from, end);
         }
 
         /// <summary>

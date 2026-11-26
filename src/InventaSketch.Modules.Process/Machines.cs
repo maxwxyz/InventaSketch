@@ -29,6 +29,8 @@ namespace InventaSketch.Modules.Process
             {
                 Params = new[] { Base },
                 Ports = Fixed(new Port("S", -6, 0.6), new Port("D", 6, -4)),
+                // End-suction pump: the shaft leaves the casing opposite the suction.
+                Shaft = _ => ShaftEnd.At(4.6, 0.6),
                 Block = true, TagPrefix = "P-101", CompanionIds = Companions,
                 Extra = o => new[] { Toggle(o, "process.pump.base", T("Base frame", "Grundrahmen"), "base", true) },
             };
@@ -39,6 +41,7 @@ namespace InventaSketch.Modules.Process
             {
                 Params = new[] { PdKind },
                 Ports = Fixed(new Port("S", -6, 0), new Port("D", 6, 0)),
+                Shaft = _ => ShaftEnd.At(0, -5),
                 Block = true, TagPrefix = "P-102", CompanionIds = Companions,
                 Extra = o => Choice(o, "process.pump.kind", T("Pump type", "Pumpenbauart"), PdKind),
             };
@@ -49,6 +52,7 @@ namespace InventaSketch.Modules.Process
             {
                 Params = new[] { CompKind },
                 Ports = Fixed(new Port("S", -7, 0), new Port("D", 7, 0)),
+                Shaft = _ => ShaftEnd.At(0, -5),
                 Block = true, TagPrefix = "K-101", CompanionIds = Companions,
                 Extra = o => Choice(o, "process.compressor.kind", T("Compressor type", "Verdichterbauart"), CompKind),
             };
@@ -58,6 +62,8 @@ namespace InventaSketch.Modules.Process
                 "turbine", "dampfturbine", "gasturbine", "entspannungsturbine", "expander")
             {
                 Ports = Fixed(new Port("I", -7, 0), new Port("O", 7, 0)),
+                // Output shaft stub below the casing: a driven compressor, pump or generator docks on its end.
+                Shaft = _ => new ShaftEnd(0, 6, 0, 5), Drive = true,
                 Block = true, TagPrefix = "TB-101", CompanionIds = new[] { "process.line", "process.motor", "process.hx.shelltube", "process.pump.centrifugal" },
             };
 
@@ -69,6 +75,8 @@ namespace InventaSketch.Modules.Process
                 Ports = o => o.Str("kind", "radial") == "axial"
                     ? new[] { new Port("I", -6, 0), new Port("O", 6, 0) }
                     : new[] { new Port("I", -6, 0.5), new Port("O", 6, -4.5) },
+                // Radial fan: shaft opposite the axial inlet; axial fan: shaft on the casing (motor beside the duct).
+                Shaft = o => o.Str("kind", "radial") == "axial" ? ShaftEnd.At(0, -5) : ShaftEnd.At(5, 0.5),
                 Block = true, TagPrefix = "B-101",
                 CompanionIds = new[] { "process.line", "process.hvac.filter", "process.hvac.coil", "process.hvac.damper", "process.motor" },
                 Extra = o => Choice(o, "process.fan.kind", null, FanKind),
@@ -78,6 +86,7 @@ namespace InventaSketch.Modules.Process
                 "motor", "electric motor", "drive", "driver", "antrieb", "elektromotor", "motor", "e-motor")
             {
                 Ports = Fixed(new Port("shaft", 5, 0)),
+                Shaft = _ => new ShaftEnd(5, 0, 4.5, 0), Drive = true,
                 Block = true, TagPrefix = "M-101", CompanionIds = new[] { "process.pump.centrifugal", "process.compressor", "process.fan" },
             };
         }
@@ -167,6 +176,8 @@ namespace InventaSketch.Modules.Process
             var b = Geo.DegToRad(62);
             p.Line(Math.Cos(a) * r, -Math.Sin(a) * r, Math.Cos(b) * r, -Math.Sin(b) * r, S.Sym, "channel");
             p.Line(Math.Cos(a) * r, Math.Sin(a) * r, Math.Cos(b) * r, Math.Sin(b) * r, S.Sym, "channel");
+            // Output shaft stub below the casing.
+            p.Line(0, r, 0, 6, S.Bold, "shaft");
         }
 
         private static void Fan(Pen p, SketchObject o)

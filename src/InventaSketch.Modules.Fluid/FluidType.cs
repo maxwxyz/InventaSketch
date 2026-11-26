@@ -13,6 +13,13 @@ namespace InventaSketch.Modules.Fluid
     /// </summary>
     internal readonly record struct Port(string Id, double X, double Y);
 
+    /// <summary>
+    /// Drive shaft of a pump or motor in design coordinates: the shaft end (X, Y), where the machine's
+    /// <see cref="AnchorRole.Hub"/> anchor sits, and the point (FromX, FromY) where the shaft leaves the body. A motor (a drive)
+    /// also exposes the stub between the two as a shaft <see cref="AnchorRole.Axis"/>.
+    /// </summary>
+    internal readonly record struct ShaftEnd(double X, double Y, double FromX, double FromY);
+
     /// <summary>One representation (view) of a fluid power object type.</summary>
     internal sealed class ViewSpec
     {
@@ -101,6 +108,13 @@ namespace InventaSketch.Modules.Fluid
         public string RefPrefix { get; init; } = "1Z1";
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
         public IReadOnlyList<string> CompanionIds { get; init; } = Array.Empty<string>();
+        /// <summary>Drive shaft (pump, motor); null = no shaft.</summary>
+        public Func<SketchObject, ShaftEnd>? Shaft { get; init; }
+        /// <summary>The machine drives its shaft (motor): the stub is a shaft axis and the motor leads a docked shaft.</summary>
+        public bool Drive { get; init; }
+
+        /// <summary>A drive whose hub sits on a shaft takes the shaft along when moved (<see cref="Coupling"/>).</summary>
+        public override bool DrivesShaft => Drive && Shaft is not null;
 
         public IReadOnlyList<ViewSpec> ViewSpecs => _views;
 
@@ -126,9 +140,16 @@ namespace InventaSketch.Modules.Fluid
         public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
         public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
 
-        /// <summary>Net links (flow, pressure) for every element on a fluid net; elements without values take part as pass-through only.</summary>
+        /// <summary>
+        /// Net links (flow, pressure) for every element on a fluid net; elements without values take part as pass-through only.
+        /// Pumps and motors also share the shaft speed (and torque over a direct coupling) with the drive or shaft they sit on.
+        /// </summary>
         public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
-            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : FluidValues.Links(o, ctx);
+        {
+            if (ValueSpec.Variables.Count == 0) return Array.Empty<BoundRelation>();
+            var links = FluidValues.Links(o, ctx);
+            return Shaft is null ? links : links.Concat(ShaftLinks.For(o, ctx, Owner));
+        }
 
         public ViewSpec Spec(string? view) => _views.FirstOrDefault(v => v.Id == view) ?? _views[0];
         public ViewSpec Spec(SketchObject o) => Spec(ViewOf(o));
@@ -251,10 +272,24 @@ namespace InventaSketch.Modules.Fluid
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             foreach (var p in LocalPorts(o)) yield return Anchor.Point(AnchorRole.Port, p.P, p.Id);
-            if (Mounts is null) yield break;
             var n = Normalize(o);
             var d = Spec(n).DesignOf(n);
             double sx = o.Size.W / d.W, sy = o.Size.H / d.H;
+            if (Shaft is not null)
+            {
+                var s = Shaft(n);
+                var end = new Vec2(s.X * sx, s.Y * sy);
+                var from = new Vec2(s.FromX * sx, s.FromY * sy);
+                if (Drive && from.DistanceTo(end) > 1e-9)
+                {
+                    // Output shaft stub: a pump's hub or a mechanical part docks on it; only the outer end continues ("build +").
+                    yield return Anchor.Segment(AnchorRole.Axis, from, end) with { Id = "shaft" };
+                    yield return Anchor.Point(AnchorRole.End, end, "shaftEnd");
+                }
+                // Bore unknown (radius 0): docks and couples on a shaft, keeps its size.
+                yield return Anchor.Point(AnchorRole.Hub, end, "hub");
+            }
+            if (Mounts is null) yield break;
             foreach (var m in Mounts(n)) yield return Anchor.Point(AnchorRole.Mount, new Vec2(m.X * sx, m.Y * sy), m.Id);
         }
 
@@ -265,7 +300,8 @@ namespace InventaSketch.Modules.Fluid
         public override PortConnection? Connection(SketchObject o, Anchor port)
         {
             if (port.Id is null) return null;
-            var pilot = port.Id is "X" or "Y" or "Z" && (_id.StartsWith("fluid.valve.directional", StringComparison.Ordinal) || _id == "fluid.valve.check" || _id == "fluid.actuation");
+            var pilot = port.Id is "X" or "Y" or "Z" && (_id.StartsWith("fluid.valve.directional", StringComparison.Ordinal) || _id == "fluid.valve.check"
+                || _id == "fluid.valve.pilotcheck" || _id == "fluid.valve.counterbalance" || _id == "fluid.actuation");
             if (pilot) return PortConnection.Of(PortMedia.Fluid, "fluid.line.pilot");
             if (port.Id == "L") return PortConnection.Of(PortMedia.Fluid, "fluid.line.drain");
             return PortConnection.Of(PortMedia.Fluid, "fluid.line");

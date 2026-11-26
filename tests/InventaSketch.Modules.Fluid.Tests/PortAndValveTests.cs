@@ -63,6 +63,11 @@ namespace InventaSketch.Modules.Fluid.Tests
         [InlineData("fluid.frl", "P,A")]
         [InlineData("fluid.crossing", "W,E,N,S")]
         [InlineData("fluid.coupling", "1,2")]
+        [InlineData("fluid.pilotcheck", "P,A,X")]
+        [InlineData("fluid.pilotcheck.double", "A1,A2,B1,B2")]
+        [InlineData("fluid.counterbalance", "C,V,X")]
+        [InlineData("fluid.vacuum", "P,R,V")]
+        [InlineData("fluid.suctioncup", "V")]
         public void PortIdsAreTheConventionalNames(string itemId, string ids)
         {
             var r = Fx.Reg();

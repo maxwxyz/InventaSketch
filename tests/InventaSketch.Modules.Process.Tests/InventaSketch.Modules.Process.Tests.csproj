@@ -11,5 +11,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\InventaSketch.Modules.Process\InventaSketch.Modules.Process.csproj" />
+    <!-- Shaft docking tests only: a machines motor or a mechanical shaft drives the pump. -->
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Machines\InventaSketch.Modules.Machines.csproj" />
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Mechanical\InventaSketch.Modules.Mechanical.csproj" />
   </ItemGroup>
 </Project>

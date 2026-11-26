@@ -108,6 +108,7 @@ namespace InventaSketch.Modules.Process
                 category: ProcessCategories.Hvac, kw: new[] { "mixing", "mischventil", "motor", "stellantrieb", "heizkreis" });
             Add("fitting.reducer.eccentric", "process.fitting.reducer", "Eccentric reducer", "Exzentrisches Reduzierstück", P(("eccentric", true)), kw: new[] { "eccentric", "exzentrisch" });
             Add("fitting.strainer.y", "process.fitting.strainer", "Y-strainer", "Schmutzfänger (Y-Form)", P(("kind", "y")), kw: new[] { "y", "schmutzfänger" });
+            Add("silo.level", "process.silo", "Silo with fill level", "Silo mit Füllstand", P(("level", true)), ProcessCategories.Vessels, "level", "füllstand");
 
             // Instrumentation
             Add("instrument.tic", Instruments.BubbleId, "Temperature controller TIC (control room)", "Temperaturregelung TIC (Leitwarte)",

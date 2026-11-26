@@ -57,9 +57,29 @@ Switching the FRL view keeps the visual scale and takes the proportions of the t
   docks there with its `mount` anchor.
 
 **Build "+" (connections).** Every free port offers a line (medium `fluid`): pilot ports X/Y/Z of directional valves,
-piloted check valves and pilot actuators a pilot line, leakage ports L a drain line, all others a working line; then the
-components with a port that fits. The free end of a line offers "+" to continue it or to dock the next component with
-its facing port.
+piloted check valves, the pilot-operated check valve, the counterbalance valve and pilot actuators a pilot line, leakage
+ports L a drain line, all others a working line; then the components with a port that fits. The free end of a line offers
+"+" to continue it or to dock the next component with its facing port.
+
+## Drive shafts (a motor drives the pump)
+
+Pumps/compressors and motors have a real mechanical shaft, with the same contract as the shafts and drives of the
+mechanical and machines modules ([mechanical-drives.md](mechanical-drives.md)):
+
+- `fluid.pump` has a `Hub` anchor (id `hub`) at the end of its drawn shaft (right edge, on the shaft line). It is
+  driven: the shaft axis of a drive (an e-machine of the machines module, the stub of the machines motor symbol, the
+  output stub of a hydraulic motor) or a mechanical shaft (`mech.shaft`) that passes through this point carries the pump.
+- `fluid.motor` is a drive (`ObjectType.DrivesShaft`): its shaft stub is an `Axis` segment (id `shaft`) with the hub and
+  an `End` mark at the outer end. A pump's hub or a mechanical part docks on the stub; a mechanical shaft continued from
+  the shaft end carries the motor, and moving the motor takes the shaft along.
+- The hub has no bore radius (0), so a pump or motor seated on a shaft keeps its size. Docking uses the normal snapping
+  (hub onto an axis) and the core coupling ("moves along": the shaft or drive carries the pump). The pump's shaft points to
+  the right: flip it (or the drive) to place it on the other side.
+- **Values:** pump and motor share the speed *n* with the element they are coupled to. The torque *T* is passed over a
+  direct one-to-one coupling (e-machine on the pump hub, neither coupled to a third element with a torque) and from the
+  mechanical shaft or coupling they sit on when that shaft line has at most two members that take or give torque (the
+  rule of the mechanical module). Example: an e-machine at 1450 min⁻¹ drives a 10 cm³ pump at 100 bar: *Q* = 14.5 l/min,
+  *T* = *V*_g·*p*/(2π) = 15.9 N·m is the e-machine's load torque, *P* = 2.42 kW.
 
 ## Context actions
 
@@ -76,6 +96,8 @@ its facing port.
 | `fluid.variable`, `fluid.flow=one/two` | `Toggle`/`Option` | pumps/motors: variable displacement, flow directions ▾ |
 | `fluid.cyl.rod=…`, `fluid.cyl.cushion=…`, `fluid.cyl.spring=…` | `Option` | piston rod ▾, cushioning ▾, spring ▾ |
 | `fluid.spring`, `fluid.piloted`, `fluid.adjustable`, `fluid.check` | `Toggle` | check, throttle and pressure valve options |
+| `fluid.pilotcheck.twin` | `Toggle` | pilot-operated check valve: single / double (cross-piloted); the size follows the design box |
+| `fluid.suctioncup.bellows` | `Toggle` | suction cup with bellows |
 | `fluid.line.kind=…`, `fluid.line.route=orthogonal/free` | `Option`/route pictograms | line type ▾; routing ▾ |
 | `fluid.ports` | `Text` | show port names |
 | `fluid.label` | `Text` | show/hide the designator (adds a suggestion such as `1V1` if empty) |
@@ -85,15 +107,20 @@ its facing port.
 
 | Category | Types (`fluid.*`) |
 |---|---|
-| Pumps, motors & cylinders | `pump` (pump/compressor; `variable`, `flow`), `motor` (`variable`, `flow`), `cylinder.double` (`rod` single/through, `cushion` none/fixed/adjustable), `cylinder.single` (`spring` return/extend/none), `rotary` |
+| Pumps, motors & cylinders | `pump` (pump/compressor; `variable`, `flow`; shaft hub), `motor` (`variable`, `flow`; output shaft axis), `cylinder.double` (`rod` single/through, `cushion` none/fixed/adjustable), `cylinder.single` (`spring` return/extend/none), `rotary`, `suctioncup` (suction cup / Sauggreifer; `bellows`; port `V`) |
 | Directional control valves | `valve.directional` (`ways` 2/2, 3/2, 4/2, 4/3, 5/2, 5/3; `normal`; `centre`; `actLeft`/`actRight`: none, manual, push button, lever, pedal, roller, spring, solenoid, pressure pilot; `centring`; `detent`), `actuation` (separate actuation symbol incl. detent) |
-| Non-return, flow & pressure valves | `valve.check` (`spring`, `piloted`), `valve.throttle` (`adjustable`, `check` = one-way flow control), `valve.relief`, `valve.reducing`, `valve.sequence` (drain port `L`), `valve.shuttle` (OR), `valve.twopressure` (AND), `valve.quickexhaust` |
-| Supply, conditioning & accumulators | `tank` (open/closed), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (detailed/simplified), `accumulator` (gas/spring/weight) |
+| Non-return, flow & pressure valves | `valve.check` (`spring`, `piloted`), `valve.throttle` (`adjustable`, `check` = one-way flow control), `valve.relief`, `valve.reducing`, `valve.sequence` (drain port `L`), `valve.shuttle` (OR), `valve.twopressure` (AND), `valve.quickexhaust`, `valve.pilotcheck` (pilot-operated check valve / entsperrbares Rückschlagventil with pilot piston; `spring` (on), `twin` = double, cross-piloted: ports `P`, `A`, `X`; double `A1`, `A2`, `B1`, `B2`), `valve.counterbalance` (counterbalance valve / Senkbremsventil: normally closed pressure valve from the load port `C` to the valve port `V`, internal pilot from `C`, external pilot `X`, bypass check valve for free flow `V` → `C`; `adjustable`) |
+| Supply, conditioning & accumulators | `tank` (open/closed), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (detailed/simplified), `accumulator` (gas/spring/weight), `vacuum.generator` (vacuum generator / ejector – Vakuumerzeuger: driving nozzle and diffuser, ports `P` supply, `R` exhaust, `V` vacuum) |
 | Measuring & signalling | `gauge`, `pressureswitch`, `flowmeter`, `thermometer` |
 | Lines & connections | `line` (point object), `junction`, `crossing` (plain or with bridge), `plug`, `coupling` (coupled/uncoupled, with non-return valves), `enclosure` (dash-dot assembly boundary) |
 
 Companions ("Insert ▸"): a line offers valves, cylinders, gauges and junctions; a cylinder offers directional valves,
-throttles and check valves; a directional valve offers actuations, lines, cylinders and throttles.
+throttles and check valves; a directional valve offers actuations, lines, cylinders and throttles; a vacuum generator
+offers the suction cup and vice versa.
+
+Library items of the new elements: `fluid.pilotcheck`, `fluid.pilotcheck.double`, `fluid.counterbalance`,
+`fluid.vacuum`, `fluid.suctioncup`, `fluid.suctioncup.bellows` (the older `fluid.check.piloted`, a check valve with the
+`piloted` option, stays).
 
 ## Connection list export
 
@@ -139,7 +166,9 @@ section of the inspector). Speeds are magnitudes, *P* = 2π·*n*·*T* (German *M
 - *p* (pressure) is shared by the whole net; *p*_max is the relief valve's set pressure, passed to the cylinders.
 - Directional valves pass *Q*, *p* and *p*_max between P, A and B (supply view; T/R/S stay apart); non-return valves,
   flow meters, filters, coolers, heaters, FRL units, crossings and coupled quick couplings pass all three; throttles pass
-  *Q* and *p*_max but not *p*; reducing valves pass *Q* and set *p* at A to *p*_set.
+  *Q* and *p*_max but not *p*; reducing valves pass *Q* and set *p* at A to *p*_set. The pilot-operated check valve
+  passes all three (P–A; double: A1–A2 and B1–B2), the counterbalance valve only *Q* (C–V: the load pressure is held).
+- Pump and motor share *n* (and *T* as described under "Drive shafts") with the drive or shaft they are coupled to.
 - Line and valve losses are not modelled.
 
 Example (accept criterion): a pump with *V*_g = 10 cm³ at 1450 min⁻¹ gives *Q* = 14.5 l/min; through a 4/3 valve to a
@@ -165,5 +194,7 @@ picture fallback is needed. Rounded rectangles (closed reservoir, accumulator) u
 - A line end docked on another line (its rail) is attached to it (a branch): it follows the line and the connection
   list joins both lines; a junction dot is optional.
 - Labels and port names lie outside the object box, so host selection frames do not include them.
+- Shaft tests (`ShaftTests`) use the mechanical and machines modules as test references only; the module itself
+  depends on Core alone (the shaft links read the core coupling and the value keys `n`/`T`).
 - Visual review: `dotnet test` writes an SVG gallery (ports as red circles, valve variants, sample circuit) to
   `tests/InventaSketch.Modules.Fluid.Tests/bin/Debug/net10.0/gallery/index.html`.

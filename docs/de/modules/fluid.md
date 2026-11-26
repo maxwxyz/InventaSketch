@@ -60,9 +60,32 @@ Beim Umschalten der FRL-Ansicht bleibt der optische Maßstab erhalten, die Propo
   (`fluid.actuation`) dockt dort mit seinem Anker `mount` an.
 
 **Weiterbauen mit „+“ (Anschlüsse).** Jeder freie Anschluss bietet eine Leitung an (Medium `fluid`): Steueranschlüsse
-X/Y/Z von Wegeventilen, entsperrbaren Rückschlagventilen und Vorsteuerungen eine Steuerleitung, Leckanschlüsse L eine
-Leckleitung, alle anderen eine Arbeitsleitung; danach die Bauteile mit einem passenden Anschluss. Das freie Ende einer
-Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Bauteils mit dem zugewandten Anschluss.
+X/Y/Z von Wegeventilen, entsperrbaren Rückschlagventilen (beide Typen), dem Senkbremsventil und Vorsteuerungen eine
+Steuerleitung, Leckanschlüsse L eine Leckleitung, alle anderen eine Arbeitsleitung; danach die Bauteile mit einem
+passenden Anschluss. Das freie Ende einer Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Bauteils mit
+dem zugewandten Anschluss.
+
+## Antriebswellen (ein Motor treibt die Pumpe)
+
+Pumpen/Verdichter und Motoren haben eine echte mechanische Welle mit demselben Vertrag wie die Wellen und Antriebe des
+Mechanik- und des Maschinenmoduls ([mechanical-drives.md](mechanical-drives.md)):
+
+- `fluid.pump` hat einen `Hub`-Anker (Id `hub`) am Ende ihrer gezeichneten Welle (rechter Rand, auf der Wellenlinie).
+  Sie wird angetrieben: die Wellenachse eines Antriebs (E-Maschine des Maschinenmoduls, Wellenstumpf des
+  Motorsymbols, Abtriebsstumpf eines Hydromotors) oder eine mechanische Welle (`mech.shaft`) durch diesen Punkt trägt
+  die Pumpe.
+- `fluid.motor` ist ein Antrieb (`ObjectType.DrivesShaft`): sein Wellenstumpf ist ein `Axis`-Segment (Id `shaft`) mit
+  Nabe und `End`-Marke am äußeren Ende. Die Nabe einer Pumpe oder ein Mechanikteil dockt am Stumpf an; eine vom
+  Wellenende fortgesetzte mechanische Welle trägt den Motor, und Verschieben des Motors nimmt die Welle mit.
+- Die Nabe hat keinen Bohrungsradius (0): Pumpe oder Motor behalten auf einer Welle ihre Größe. Angedockt wird mit dem
+  normalen Fangen (Nabe auf Achse) und der Kopplung des Kerns („bewegt sich mit“: Welle oder Antrieb trägt die Pumpe). Die
+  Welle der Pumpe zeigt nach rechts: zum Anbau auf der anderen Seite die Pumpe (oder den Antrieb) spiegeln.
+- **Werte:** Pumpe und Motor teilen die Drehzahl *n* mit dem gekoppelten Element. Das Drehmoment *M* geht über eine
+  direkte Eins-zu-eins-Kupplung (E-Maschine an der Pumpennabe, keines von beiden mit einem dritten Element mit Moment
+  gekoppelt) und von der mechanischen Welle oder Kupplung, auf der sie sitzen, wenn dieser Wellenstrang höchstens zwei
+  Glieder hat, die Moment aufnehmen oder abgeben (die Regel des Mechanikmoduls). Beispiel: eine E-Maschine mit
+  1450 min⁻¹ treibt eine 10-cm³-Pumpe bei 100 bar: *Q* = 14,5 l/min, *M* = *V*_g·*p*/(2π) = 15,9 N·m ist das
+  Lastmoment der E-Maschine, *P* = 2,42 kW.
 
 ## Kontextaktionen
 
@@ -79,6 +102,8 @@ Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Bauteils 
 | `fluid.variable`, `fluid.flow=one/two` | `Toggle`/`Option` | Pumpen/Motoren: verstellbar, Stromrichtungen ▾ |
 | `fluid.cyl.rod=…`, `fluid.cyl.cushion=…`, `fluid.cyl.spring=…` | `Option` | Kolbenstange ▾, Dämpfung ▾, Feder ▾ |
 | `fluid.spring`, `fluid.piloted`, `fluid.adjustable`, `fluid.check` | `Toggle` | Optionen von Rückschlag-, Drossel- und Druckventilen |
+| `fluid.pilotcheck.twin` | `Toggle` | entsperrbares Rückschlagventil: einfach / doppelt (gegenseitig entsperrt); die Größe folgt der Entwurfsbox |
+| `fluid.suctioncup.bellows` | `Toggle` | Sauggreifer mit Faltenbalg |
 | `fluid.line.kind=…`, `fluid.line.route=orthogonal/free` | `Option`/Führungs-Piktogramme | Leitungsart ▾; Führung ▾ |
 | `fluid.ports` | `Text` | Anschlussnamen anzeigen |
 | `fluid.label` | `Text` | Kennzeichen ein-/ausblenden (setzt bei Bedarf einen Vorschlag wie `1V1`) |
@@ -88,15 +113,20 @@ Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Bauteils 
 
 | Kategorie | Typen (`fluid.*`) |
 |---|---|
-| Pumpen, Motoren & Zylinder | `pump` (Pumpe/Verdichter; `variable`, `flow`), `motor` (`variable`, `flow`), `cylinder.double` (`rod` einseitig/durchgehend, `cushion` keine/fest/einstellbar), `cylinder.single` (`spring` Rückstellung/Vorhub/keine), `rotary` |
+| Pumpen, Motoren & Zylinder | `pump` (Pumpe/Verdichter; `variable`, `flow`; Wellennabe), `motor` (`variable`, `flow`; Abtriebswelle als Achse), `cylinder.double` (`rod` einseitig/durchgehend, `cushion` keine/fest/einstellbar), `cylinder.single` (`spring` Rückstellung/Vorhub/keine), `rotary`, `suctioncup` (Sauggreifer; `bellows` Faltenbalg; Anschluss `V`) |
 | Wegeventile | `valve.directional` (`ways` 2/2, 3/2, 4/2, 4/3, 5/2, 5/3; `normal`; `centre`; `actLeft`/`actRight`: keine, Muskelkraft, Druckknopf, Hebel, Pedal, Rolle, Feder, Elektromagnet, Druckansteuerung; `centring`; `detent`), `actuation` (separates Betätigungssymbol inkl. Rastung) |
-| Sperr-, Strom- & Druckventile | `valve.check` (`spring`, `piloted`), `valve.throttle` (`adjustable`, `check` = Drosselrückschlagventil), `valve.relief`, `valve.reducing`, `valve.sequence` (Leckanschluss `L`), `valve.shuttle` (ODER), `valve.twopressure` (UND), `valve.quickexhaust` |
-| Versorgung, Aufbereitung & Speicher | `tank` (offen/geschlossen), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (ausführlich/vereinfacht), `accumulator` (Gas/Feder/Gewicht) |
+| Sperr-, Strom- & Druckventile | `valve.check` (`spring`, `piloted`), `valve.throttle` (`adjustable`, `check` = Drosselrückschlagventil), `valve.relief`, `valve.reducing`, `valve.sequence` (Leckanschluss `L`), `valve.shuttle` (ODER), `valve.twopressure` (UND), `valve.quickexhaust`, `valve.pilotcheck` (entsperrbares Rückschlagventil mit Steuerkolben; `spring` (ein), `twin` = doppelt, gegenseitig entsperrt: Anschlüsse `P`, `A`, `X`; doppelt `A1`, `A2`, `B1`, `B2`), `valve.counterbalance` (Senkbremsventil: in Ruhe geschlossenes Druckventil vom Lastanschluss `C` zum Ventilanschluss `V`, interne Vorsteuerung von `C`, externe Vorsteuerung `X`, Bypass-Rückschlagventil für freien Durchfluss `V` → `C`; `adjustable`) |
+| Versorgung, Aufbereitung & Speicher | `tank` (offen/geschlossen), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (ausführlich/vereinfacht), `accumulator` (Gas/Feder/Gewicht), `vacuum.generator` (Vakuumerzeuger / Ejektor: Treibdüse und Diffusor, Anschlüsse `P` Versorgung, `R` Abluft, `V` Vakuum) |
 | Messen & Melden | `gauge`, `pressureswitch`, `flowmeter`, `thermometer` |
 | Leitungen & Verbindungen | `line` (Punktobjekt), `junction`, `crossing` (einfach oder mit Brücke), `plug`, `coupling` (gekuppelt/entkuppelt, mit Rückschlagventilen), `enclosure` (strichpunktierte Baugruppenumrahmung) |
 
 Begleiter („Einfügen ▸“): Eine Leitung bietet Ventile, Zylinder, Manometer und Verbindungspunkte an; ein Zylinder
-Wegeventile, Drosseln und Rückschlagventile; ein Wegeventil Betätigungen, Leitungen, Zylinder und Drosseln.
+Wegeventile, Drosseln und Rückschlagventile; ein Wegeventil Betätigungen, Leitungen, Zylinder und Drosseln; ein
+Vakuumerzeuger den Sauggreifer und umgekehrt.
+
+Bibliothekselemente der neuen Bauteile: `fluid.pilotcheck`, `fluid.pilotcheck.double`, `fluid.counterbalance`,
+`fluid.vacuum`, `fluid.suctioncup`, `fluid.suctioncup.bellows` (das ältere `fluid.check.piloted`, ein Rückschlagventil
+mit der Option `piloted`, bleibt).
 
 ## Export Verbindungsliste
 
@@ -146,7 +176,9 @@ Leitungen). Je Netz gilt:
 - Wegeventile geben *Q*, *p* und *p*_max zwischen P, A und B weiter (Versorgungssicht; T/R/S bleiben getrennt);
   Rückschlagventile, Durchflussmesser, Filter, Kühler, Heizer, Wartungseinheiten, Kreuzungen und gekuppelte
   Schnellkupplungen geben alle drei weiter; Drosseln geben *Q* und *p*_max weiter, aber nicht *p*; Druckminderventile
-  geben *Q* weiter und setzen *p* an A auf *p*_E.
+  geben *Q* weiter und setzen *p* an A auf *p*_E. Das entsperrbare Rückschlagventil gibt alle drei weiter (P–A; doppelt
+  A1–A2 und B1–B2), das Senkbremsventil nur *Q* (C–V: der Lastdruck wird gehalten).
+- Pumpe und Motor teilen *n* (und *M* wie unter „Antriebswellen“ beschrieben) mit dem gekoppelten Antrieb oder der Welle.
 - Verluste in Leitungen und Ventilen werden nicht abgebildet.
 
 Beispiel (Abnahmekriterium): eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ liefert *Q* = 14,5 l/min; über ein
@@ -174,5 +206,7 @@ Speicher) nutzen den Eckenradius des Rechtecks.
 - Ein auf einer anderen Leitung (deren Schiene) angedocktes Leitungsende hängt an ihr (Abzweig): Es folgt der Leitung,
   und die Verbindungsliste fasst beide Leitungen zusammen; ein Verbindungspunkt ist optional.
 - Kennzeichen und Anschlussnamen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
+- Die Wellentests (`ShaftTests`) nutzen das Mechanik- und das Maschinenmodul nur als Testreferenzen; das Modul selbst
+  hängt allein vom Kern ab (die Wellenverknüpfungen lesen die Kopplung des Kerns und die Wertschlüssel `n`/`T`).
 - Sichtprüfung: `dotnet test` schreibt eine SVG-Galerie (Anschlüsse als rote Kreise, Ventilvarianten, Beispielschaltung)
   nach `tests/InventaSketch.Modules.Fluid.Tests/bin/Debug/net10.0/gallery/index.html`.

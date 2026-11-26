@@ -74,6 +74,7 @@ namespace InventaSketch.Modules.Process.Tests
         public static readonly string[] AllTypeIds =
         {
             "process.vessel.vertical", "process.vessel.horizontal", "process.vessel.tank", "process.column", "process.reactor",
+            "process.cyclone", "process.silo", "process.valve.steamtrap", "process.rupturedisc", "process.sightglass",
             "process.hx.shelltube", "process.hx.plate", "process.hx.general", "process.hx.aircooler", "process.hx.coolingtower",
             "process.pump.centrifugal", "process.pump.displacement", "process.compressor", "process.turbine", "process.fan", "process.motor",
             "process.valve.manual", "process.valve.control", "process.valve.check", "process.valve.safety", "process.valve.threeway",
