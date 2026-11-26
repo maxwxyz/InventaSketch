@@ -103,7 +103,10 @@ namespace InventaSketch.Core
             }
 
             // Fractions and lists: "20/0,4", "3:1", "230/12 V" (a '/' followed by a letter belongs to a unit: "1500/min").
-            var parts = SplitParts(main);
+            // A unit with a number after its slash ("16 kWh/100 km") is one value, not a fraction.
+            var parts = ScanNumber(main.Trim(), out _, out var unitAfter) && unitAfter.IndexOf('/') > 0 && UnitCatalog.Find(unitAfter, kind) is not null
+                ? new List<string> { main.Trim() }
+                : SplitParts(main);
             var raw = new List<(double Number, Unit? Unit, bool Typed)>();
             foreach (var p in parts)
             {
@@ -171,7 +174,7 @@ namespace InventaSketch.Core
 
             // Unit of this kind (German: "°C" also for a temperature difference).
             if (kind.IsDifference && lang == Lang.De && UnitCatalog.Norm(unitText) == "°C") { unit = kind.DefaultUnit; return true; }
-            var u = UnitCatalog.Find(unitText, kind);
+            var u = UnitCatalog.Find(unitText, kind) ?? kind.LegacyUnit(unitText);
             if (u is not null) { unit = u; return true; }
             // A bare prefix ("2.5k", "100n") multiplies the kind's coherent unit.
             var px = unitText == "u" || unitText == "μ" ? "µ" : unitText == "K" ? "k" : unitText;

@@ -85,7 +85,7 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
-        public void TextValuedVariablesAreMarkedReadOnly()
+        public void TextValuedVariablesAndResultsAreMarkedReadOnly()
         {
             var api = Api.Value;
             var session = Call(api, "createSession", new { lang = "en" }).GetProperty("session").GetString()!;
@@ -94,7 +94,12 @@ namespace InventaSketch.Engine.Tests
             var cls = vars.Single(v => v.GetProperty("key").GetString() == "cls");
             Assert.True(cls.GetProperty("readOnly").GetBoolean());
             Assert.False(string.IsNullOrEmpty(cls.GetProperty("display").GetString()));
-            Assert.All(vars.Where(v => v.GetProperty("key").GetString() != "cls"), v => Assert.False(v.GetProperty("readOnly").GetBoolean()));
+            // Rule (round 8): only text-valued variables and pure results of the drawing (one-way relations at the current
+            // position: ω₃, α₃, α₄, v_P, a_P) are read-only; lengths, angle, speeds and the other values stay editable.
+            var results = new[] { "cls", "w3", "alpha3", "alpha4", "vP", "aP" };
+            Assert.All(vars.Where(v => results.Contains(v.GetProperty("key").GetString())), v => Assert.True(v.GetProperty("readOnly").GetBoolean()));
+            Assert.All(vars.Where(v => !results.Contains(v.GetProperty("key").GetString())), v => Assert.False(v.GetProperty("readOnly").GetBoolean()));
+            Assert.Contains(vars, v => v.GetProperty("key").GetString() == "phi");
         }
 
         private static void ThrowIfError(string json)

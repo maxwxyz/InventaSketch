@@ -122,7 +122,7 @@ and "Show values" (`showValues`) draws the values label below the element.
 |---|---|---|---|
 | `auto.motion.resistance` | `v` (km/h), `m` (kg), `F` total resistance (N), `P` power at the wheels (kW); panel: `c_w` (default 0.30), `A` frontal area (default 2.2 m²), `f_R` rolling coefficient (default 0.012), `q` gradient (default 0 %), `a` acceleration (default 0), `F_roll`, `F_air`, `F_grade`, `P_max`; engineer: `ρ` (default 1.2 kg/m³), `F_acc` | `auto.resistance.roll`: F_roll = m·g·f_R·cos α; `auto.resistance.air`: F_air = ½·ρ·c_w·A·v²; `auto.resistance.grade`: F_grade = m·g·sin α (tan α = q); `auto.resistance.accel`: F_acc = m·a; `auto.resistance.total`: F = ΣF; `auto.resistance.power`: P = F·v | `auto.drive.power` (warning): P > P_max |
 | `auto.motion.turning` | `L` wheelbase, `δ` steering angle, `R` radius of the front axle centre, `D` turning circle (track of the outer front wheel); panel: `R_r` radius of the rear axle centre, `b` track (default 1.6 m), `v`, `a_y`, `μ` | `auto.turn.radius`: R = L/sin δ; `auto.turn.rear`: R_r = L/tan δ; `auto.turn.circle`: D = 2·√((R_r + b/2)² + L²); `auto.turn.lateral`: a_y = v²/R | `auto.turn.friction` (warning): a_y > μ·g |
-| `auto.sub.battery` | `E` usable energy (kWh), `c` consumption per 100 km (entered as energy, kWh), `R` range (km); panel: `d` planned trip (km) | `auto.ev.range`: R = E/c·100 km | `auto.ev.range` (warning): R < d |
+| `auto.sub.battery` | `E` usable energy (kWh), `c` consumption (energy per distance, kWh/100 km), `R` range (km); panel: `d` planned trip (km) | `auto.ev.range`: R = E/c | `auto.ev.range` (warning): R < d |
 | `auto.fov` | `v` (km/h), `r_S` sensor range (m), `s` stopping distance (m), `t_P` preview time (s); panel: `t_r`, `a`, `s_r`, `s_b`, `μ` | the three braking relations of the safety distance; `auto.fov.preview`: t_P = r_S/v | `auto.fov.range` (warning): s > r_S; `auto.braking.friction` |
 | `auto.motion.safetydistance` | as above, plus panel `μ` friction coefficient (no default) | – | `auto.braking.friction` (warning): a > μ·g |
 
@@ -134,8 +134,10 @@ and "Show values" (`showValues`) draws the values label below the element.
 - **Turning circle:** single-track model at low speed (kinematic steering, no slip angles); D is the track circle of the
   outer front wheel — the wall-to-wall circle adds the front overhang. An entered turning circle and wheelbase give the
   steering angle. Example: L = 2.7 m, δ = 30° → R = 5.4 m, D = 12.2 m.
-- **Battery range:** the consumption per 100 km is entered as an energy ("16 kWh"), since the value model has no
-  energy-per-distance kind; it is the mean over the trip (speed profile, temperature and auxiliary loads included).
+- **Battery range:** the consumption is an energy per distance (Core kind `energyPerDistance`, round 8 of 2026-11-26):
+  "16 kWh/100 km" (default unit), "160 Wh/km" or "0.16 kWh/km"; it is the mean over the trip (speed profile, temperature
+  and auxiliary loads included). Documents from round 7 stored it as an energy ("16 kWh", meaning per 100 km); that text
+  still reads as 16 kWh/100 km (a legacy unit of the kind), so they load and solve unchanged.
 - **Sensor range:** the sensor range is the drawn `range` divided by `scale` (mm per m, default 10, as for the safety
   distance) unless it is entered (`sensorRange`). With a speed, the field of view computes the stopping distance and warns
   when the sensor sees less far than the vehicle needs to stop; the preview time is the sensor range over the speed.
@@ -144,8 +146,8 @@ and "Show values" (`showValues`) draws the values label below the element.
 - **Sources:** textbook vehicle mechanics; the source catalogue has no vehicle dynamics textbook yet, so none is cited
   (`g` = 9.80665 m/s², conventional value [S1]).
 - Library presets: "Driving resistance", "Driving resistance and power at 100 km/h" (1500 kg), "Driving resistance uphill
-  (8 %)", "Turning circle", "Turning circle of a car (L = 2.7 m, δ = 30°)", "Battery pack with range" (60 kWh, 16 kWh per
-  100 km → 375 km) and "Radar field of view with stopping check" (160 m at 130 km/h → s = 117.6 m, t_P = 4.4 s).
+  (8 %)", "Turning circle", "Turning circle of a car (L = 2.7 m, δ = 30°)" (values label with R and D), "Battery pack with range" (60 kWh, 16 kWh/100 km
+  → 375 km; twice the scene scale, values label with E and R) and "Radar field of view with stopping check" (160 m at 130 km/h → s = 117.6 m, t_P = 4.4 s).
 
 ## Snapping and attachments
 

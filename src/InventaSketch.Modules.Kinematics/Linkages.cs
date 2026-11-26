@@ -420,6 +420,32 @@ namespace InventaSketch.Modules.Kinematics
             return d / (2 * DerivativeStep);
         }
 
+        /// <summary>
+        /// First and second derivative (per radian of the input angle) of the coupler angle θ₃ (direction A → B) or, with
+        /// <paramref name="rocker"/>, of the rocker angle θ₄ (direction O4 → B), same sense as the input positive; at constant
+        /// input speed n the angular acceleration is n²·d²θ/dφ². Null where a sample cannot be assembled.
+        /// </summary>
+        public static (double D1, double D2)? LinkAngleDerivatives(double ground, double crank, double coupler, double rocker, double angleDeg, bool crossed, bool ofRocker)
+        {
+            double? Theta(double a)
+            {
+                if (FourBar(ground, crank, coupler, rocker, a, crossed) is not { } p) return null;
+                var from = ofRocker ? p.O4 : p.A;
+                return Math.Atan2(p.B.Y - from.Y, p.B.X - from.X);
+            }
+            if (Theta(angleDeg) is not double t0) return null;
+            // Unwrapped about the angle at the position itself (the samples lie within a few milliradians of it).
+            double? Unwrapped(double a)
+            {
+                if (Theta(a) is not double t) return null;
+                var d = t - t0;
+                while (d > Math.PI) d -= 2 * Math.PI;
+                while (d <= -Math.PI) d += 2 * Math.PI;
+                return t0 + d;
+            }
+            return Derivatives(Unwrapped, angleDeg);
+        }
+
         /// <summary>d²x_B/dφ² of the slider-crank (mm per radian²); NaN where it cannot be assembled.</summary>
         public static double SliderAccelerationFactor(double crank, double rod, double offset, double angleDeg)
         {

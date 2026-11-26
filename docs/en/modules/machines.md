@@ -265,7 +265,7 @@ torques and powers stay magnitudes; the sign of the slip is not used to switch t
   switchgear frequency inverter does not report an output frequency yet, so "inverter frequency → motor speed" needs a
   value port on the switchgear side (open).
 - Library: "Driven load (block)", "Flywheel load on a shaft (symbol)", "E-motor with run-up time" (1450 min⁻¹, 20 N·m
-  load, 60 N·m during the run-up, *J* = 0.01 + 0.09 kg·m² → *t*_a = 0.38 s).
+  load, 60 N·m during the run-up, *J* = 0.01 + 0.09 kg·m² → *t*_a = 0.38 s; the values label shows *t*_a).
 
 Not yet: slot/pole numbers, DC machine constants, efficiency classes (IE codes need the limit table of IEC 60034-30-1,
 which is not reproduced), duty types S1–S10, battery, inverter and DC link values (Calc 4 with the energy module).

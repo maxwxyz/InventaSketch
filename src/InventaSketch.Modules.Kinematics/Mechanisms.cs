@@ -39,14 +39,17 @@ namespace InventaSketch.Modules.Kinematics
         public IEnumerable<ValueCheck> ValueChecks => KinValues.FourBar.Checks;
 
         /// <summary>
-        /// The velocity ratio, the coupler's angular velocity and the coupler point's speed and acceleration at the current
-        /// position (for the assembly mode and coupler point of the element), and the shaft line on the crank pivot's hub.
+        /// The velocity ratio, the coupler's angular velocity, the angular accelerations of coupler and rocker and the coupler
+        /// point's speed and acceleration at the current position (for the assembly mode and coupler point of the element), and
+        /// the shaft line on the crank pivot's hub.
         /// </summary>
         public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
         {
             var crossed = o.Str("branch", "open") == "crossed";
             yield return BoundRelation.Local(crossed ? KinValues.RatioCrossed : KinValues.RatioOpen, o.Id);
             yield return BoundRelation.Local(crossed ? KinValues.CouplerSpeedCrossed : KinValues.CouplerSpeedOpen, o.Id);
+            yield return BoundRelation.Local(crossed ? KinValues.CouplerAccCrossed : KinValues.CouplerAccOpen, o.Id);
+            yield return BoundRelation.Local(crossed ? KinValues.RockerAccCrossed : KinValues.RockerAccOpen, o.Id);
             double u = o.Num("cpu", 0.5), v = o.Num("cpv", 0);
             yield return BoundRelation.Local(KinValues.CouplerPointSpeed(crossed, u, v), o.Id);
             yield return BoundRelation.Local(KinValues.CouplerPointAcc(crossed, u, v), o.Id);

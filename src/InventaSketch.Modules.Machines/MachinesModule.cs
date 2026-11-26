@@ -119,7 +119,7 @@ namespace InventaSketch.Modules.Machines
             Add("block.load", "machines.drive.load", "Driven load (block)", "Arbeitsmaschine (Block)", "block");
             Add("block.load.symbol", "machines.drive.load", "Flywheel load on a shaft (symbol)", "Schwungmasse auf Welle (Symbol)", "symbol", null, "flywheel", "schwungrad");
             Add("block.motor.runup", "machines.drive.motor", "E-motor with run-up time", "E-Motor mit Hochlaufzeit", "block",
-                P(("speed", "1450 rpm"), ("torque", "20 N·m"), ("runUpTorque", "60 N·m"), ("rotorInertia", "0.01 kg·m²"), ("loadInertia", "0.09 kg·m²")),
+                P(("speed", "1450 rpm"), ("torque", "20 N·m"), ("runUpTorque", "60 N·m"), ("rotorInertia", "0.01 kg·m²"), ("loadInertia", "0.09 kg·m²"), (ValueLabels.ShowParam, true), (ValueLabels.KeysParam, "ta")),
                 "run-up", "acceleration time", "hochlauf", "anlaufzeit");
             Add("wheel", "machines.drive.wheel", "Wheel (side view)", "Rad (Seitenansicht)", "side");
             Add("wheel.top", "machines.drive.wheel", "Wheel (top view)", "Rad (Draufsicht)", "top");

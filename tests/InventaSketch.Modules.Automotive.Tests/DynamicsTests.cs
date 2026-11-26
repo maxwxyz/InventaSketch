@@ -216,10 +216,34 @@ namespace InventaSketch.Modules.Automotive.Tests
             Assert.Contains(Checks(r, Fx.Doc(o.WithParam("trip", "400 km")).Doc), c => c.CheckId == "auto.ev.range");
             // The consumption follows from an entered range.
             var back = Item(r, "auto.battery.top").WithParam("energy", "77 kWh").WithParam("range", "500 km");
-            Assert.Equal(15.4, Val(Solved(r, back).T, back, "c") / 3.6e6, 6);
+            var tb = Solved(r, back).T;
+            // Energy per distance (round 8): SI J/m, shown in kWh/100 km (15.4 kWh/100 km = 554.4 J/m).
+            Assert.Equal(15.4 * 36, Val(tb, back, "c"), 6);
+            var c = tb.Get(back.Id, "c")!;
+            Assert.Same(Quantities.EnergyPerDistance, c.Def.Kind);
+            Assert.Equal("15.4 kWh/100 km", ValueFormat.Format(c.Value!.Value, tb.UnitOf(c), Lang.En));
+            Assert.Equal("15,4 kWh/100 km", ValueFormat.Format(c.Value!.Value, tb.UnitOf(c), Lang.De));
+            // Other consumption units: 160 Wh/km = 16 kWh/100 km.
+            Assert.Equal(375, Val(Solved(r, o.WithParam("consumption", "160 Wh/km")).T, o, "R") / 1000, 6);
             // The plain battery pack has no values.
             var plain = Item(r, "auto.battery.top");
             Assert.True(double.IsNaN(Val(Solved(r, plain).T, plain, "R")));
+        }
+
+        /// <summary>Documents from round 7 stored the consumption as an energy ("16 kWh", meaning per 100 km): they still load and solve.</summary>
+        [Fact]
+        public void AConsumptionStoredAsAnEnergyStillGivesTheRange()
+        {
+            var r = Fx.Reg();
+            var old = Item(r, "auto.battery.top").WithParam("energy", "60 kWh").WithParam("consumption", "16 kWh");
+            var json = DocumentJson.Serialize(Fx.Doc(old).Doc);
+            var doc = DocumentJson.Deserialize(json);
+            var t = Solve(r, doc);
+            var loaded = doc.Get(old.Id)!;
+            Assert.Equal(375, Val(t, loaded, "R") / 1000, 6);
+            Assert.Equal(576, Val(t, loaded, "c"), 6);
+            Assert.Equal(Provenance.Entered, t.Get(loaded.Id, "c")!.Provenance);
+            Assert.Empty(t.ConflictsOf(loaded.Id));
         }
 
         // ------------------------------------------------------------------ sensor range and friction

@@ -270,7 +270,7 @@ Momente und Leistungen bleiben Beträge; das Vorzeichen des Schlupfs schaltet di
   Code-Abhängigkeit trifft. Der Frequenzumrichter der Schaltanlage meldet noch keine Ausgangsfrequenz; „Umrichterfrequenz →
   Motordrehzahl“ braucht daher einen Werteport auf der Schaltanlagenseite (offen).
 - Bibliothek: „Arbeitsmaschine (Block)“, „Schwungmasse auf Welle (Symbol)“, „E-Motor mit Hochlaufzeit“ (1450 min⁻¹,
-  20 N·m Last, 60 N·m im Hochlauf, *J* = 0,01 + 0,09 kg·m² → *t*_a = 0,38 s).
+  20 N·m Last, 60 N·m im Hochlauf, *J* = 0,01 + 0,09 kg·m² → *t*_a = 0,38 s; die Wertebeschriftung zeigt *t*_a).
 
 Noch nicht: Nut-/Polzahlen, Konstanten der Gleichstrommaschine, Effizienzklassen (IE-Codes brauchen die Grenzwerttabelle
 der IEC 60034-30-1, die nicht wiedergegeben wird), Betriebsarten S1–S10, Werte für Batterie, Wechselrichter und

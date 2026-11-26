@@ -119,9 +119,10 @@ namespace InventaSketch.Modules.Automotive
             Add("steering.top", "auto.sub.steering", "Steering wheel (top view)", "Lenkrad (Draufsicht)", "top");
             Add("battery.top", "auto.sub.battery", "Battery pack (top view)", "Batteriepack (Draufsicht)", "top");
             Add("battery.side", "auto.sub.battery", "Battery pack (side view)", "Batteriepack (Seitenansicht)", "side");
+            // Twice the scene scale, so the one-line values label (E and R) sits below the pack within the audit's tolerance.
             Add("battery.range", "auto.sub.battery", "Battery pack with range", "Batteriepack mit Reichweite", "top",
-                P(("energy", "60 kWh"), ("consumption", "16 kWh")),
-                kw: new[] { "range", "ev range", "consumption", "kwh/100 km", "reichweite", "verbrauch", "elektroauto" });
+                P(("energy", "60 kWh"), ("consumption", "16 kWh/100 km"), (ValueLabels.ShowParam, true), (ValueLabels.KeysParam, "E,R")),
+                size: new Size2(60, 28), kw: new[] { "range", "ev range", "consumption", "kwh/100 km", "reichweite", "verbrauch", "elektroauto" });
             Add("edrive.top", "auto.sub.edrive", "E-drive unit (top view)", "E-Antriebseinheit (Draufsicht)", "top");
             Add("edrive.side", "auto.sub.edrive", "E-drive unit (side view)", "E-Antriebseinheit (Seitenansicht)", "side");
             Add("seat.side", "auto.sub.seat", "Seat (side view)", "Sitz (Seitenansicht)", "side");
@@ -231,7 +232,7 @@ namespace InventaSketch.Modules.Automotive
                 P(("mass", "1500 kg"), ("speed", "80 km/h"), ("gradient", "8 %"), (ValueLabels.ShowParam, true)), kw: new[] { "gradient", "slope", "hill", "steigung", "berg" });
             Add("turning", Dynamics.TurningId, "Turning circle", "Wendekreis", "top");
             Add("turning.car", Dynamics.TurningId, "Turning circle of a car (L = 2.7 m, δ = 30°)", "Wendekreis eines Pkw (L = 2,7 m, δ = 30°)", "top",
-                P(("wheelbase", "2.7 m"), ("steer", "30°")), kw: new[] { "turning radius", "wendekreisradius" });
+                P(("wheelbase", "2.7 m"), ("steer", "30°"), (ValueLabels.ShowParam, true), (ValueLabels.KeysParam, "R,D")), kw: new[] { "turning radius", "wendekreisradius" });
 
             // HMI
             Add("cluster", "auto.hmi.cluster", "Instrument cluster", "Kombiinstrument");
