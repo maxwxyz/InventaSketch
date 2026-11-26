@@ -518,8 +518,8 @@ namespace InventaSketch.Modules.Electrical.Tests
             Assert.Equal(new[]
             {
                 "elec.battery", "elec.breaker", "elec.capacitor", "elec.capacitor.polarized", "elec.diode", "elec.diode.led",
-                "elec.diode.schottky", "elec.diode.zener", "elec.fuse", "elec.house.light", "elec.house.socket", "elec.inductor", "elec.lamp",
-                "elec.opamp", "elec.potentiometer", "elec.rcd", "elec.regulator", "elec.resistor", "elec.resistor.ldr", "elec.resistor.thermistor",
+                "elec.diode.schottky", "elec.diode.zener", "elec.fuse", "elec.generator", "elec.house.cable", "elec.house.light", "elec.house.socket",
+                "elec.inductor", "elec.lamp", "elec.motor", "elec.opamp", "elec.potentiometer", "elec.rcd", "elec.regulator", "elec.resistor", "elec.resistor.ldr", "elec.resistor.thermistor",
                 "elec.sld.feeder", "elec.source", "elec.transformer", "elec.transistor.bjt",
             }, withValues);
             var c = new Circuit();
@@ -553,7 +553,7 @@ namespace InventaSketch.Modules.Electrical.Tests
         {
             var reg = Fx.Reg();
             var checks = reg.Types.OfType<IValueChecks>().SelectMany(t => t.ValueChecks).Distinct().ToList();
-            Assert.Equal(new[] { "elec.bjt.overdrive", "elec.coord.overload", "elec.led.current", "elec.net.reducible", "elec.opamp.saturation", "elec.r.power", "elec.rcd.additional" },
+            Assert.Equal(new[] { "elec.ac.resonance", "elec.bjt.overdrive", "elec.cable.drop", "elec.coord.overload", "elec.led.current", "elec.net.reducible", "elec.opamp.saturation", "elec.r.power", "elec.rcd.additional" },
                 checks.Select(c => c.Id).Distinct().OrderBy(x => x).ToArray());
             foreach (var c in checks)
             {

@@ -122,19 +122,22 @@ marked as checked, values that disagree give a conflict and nothing is changed.
 |---|---|---|
 | Resistor `elec.resistor`, thermistor `elec.resistor.thermistor`, photoresistor `elec.resistor.ldr` | *R* (`value`, "4k7"; for thermistor and photoresistor the resistance at the operating point), *U* (`voltage`), *I* (`current`), *P* (`power`); rating `prated` for the check | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
 | Lamp `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, hot); marking in `value` ("12 V 5 W") | as the resistor |
-| Capacitor `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, "100n"), *U*, *Q* (`charge`), *E* (`energy`); panel *R* (`rseries`, resistance in series), *τ* (`tau`), *f*_c (`cutoff`), *f* (`frequency`), *X*_C (`reactance`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*); *τ* = *R*·*C*; *f*_c = 1/(2π·*τ*); *X*_C = 1/(2π·*f*·*C*) |
-| Inductor `elec.inductor` | *L* (`value`, "10 mH"), *I*, *E* (`energy`); panel *R* (`rseries`), *τ*, *f*_c, *f*, *X*_L as for the capacitor | *E* = ½*L*·*I*²; *τ* = *L*/*R*; *f*_c = 1/(2π·*τ*); *X*_L = 2π·*f*·*L* |
+| Capacitor `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, "100n"), *U*, *Q* (`charge`), *E* (`energy`); panel *R* (`rseries`, resistance in series), *τ* (`tau`), *f*_c (`cutoff`), *f* (`frequency`), *X*_C (`reactance`); AC (panel): *I* (`current`), *φ*_U, *φ*_I (`phaseu`, `phasei`, read-only), *f*₀ (`resonance`), *Q* (`quality`), *B* (`bandwidth`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*); *τ* = *R*·*C*; *f*_c = 1/(2π·*τ*); *X*_C = 1/(2π·*f*·*C*); *U* = *X*_C·*I*; *B* = *f*₀/*Q* |
+| Inductor `elec.inductor` | *L* (`value`, "10 mH"), *I*, *E* (`energy`); panel *R* (`rseries`), *τ*, *f*_c, *f*, *X*_L as for the capacitor; AC (panel): *U* (`voltage`), *φ*_U, *φ*_I, *f*₀, *Q*, *B* as for the capacitor | *E* = ½*L*·*I*²; *τ* = *L*/*R*; *f*_c = 1/(2π·*τ*); *X*_L = 2π·*f*·*L*; *U* = *X*_L·*I*; *B* = *f*₀/*Q* |
 | Potentiometer `elec.potentiometer` | *R* (`value`, track), *U* (`voltage`, across pins 1–2), *k* (`wiper`, 0 at pin 1 … 100 % at pin 2), *U*₂ (`uwiper`, wiper to pin 2); panel *I*, *P*, *R*₁ (`r1`), *R*₂ (`r2`) | Ohm's law over the track; *R*₁ = *k*·*R*; *R*₂ = *R* − *R*₁; unloaded divider *U*₂ = *U*·*R*₂/*R* |
 | Bipolar transistor `elec.transistor.bjt` (as a switch) | *R*_B (`rb`), *I*_C (`ic`), *B* (`beta`, h_FE from the datasheet), *U*_in (`uin`); panel *I*_B (`ib`), *U*_BE (`ube`, default 0.7 V), *k* (`overdrive`, default 3) | *I*_B = *k*·*I*_C/*B*; *R*_B = (*U*_in − *U*_BE)/*I*_B |
 | Op-amp `elec.opamp` (ideal) | *A* (`gain`), *U*_in (`uin`), *U*_out (`uout`), *R*_f (`rf`); panel *R*_in (`rin`, *R*_g for the non-inverting amplifier), *U*_S (`usupply`, ±supply); choice `circuit` | *U*_out = *A*·*U*_in; inverting *A* = −*R*_f/*R*_in; non-inverting *A* = 1 + *R*_f/*R*_g; follower *A* = 1 |
 | Diode, LED, Schottky diode `elec.diode`, `elec.diode.led`, `elec.diode.schottky` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); marking "2.1 V 20 mA"; LED: `ifmax` for the check | *P* = *U*·*I* |
 | Zener diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
-| Source `elec.source`, battery `elec.battery` | *U*, *I*, *P*; marking "5 V", "10 mA" (current source), "12 V 2 A" | *P* = *U*·*I* |
+| Source `elec.source` | *U*, *I*, *P*; panel \|*Z*\| (`impedance`), *φ* (`phase`), cos *φ* (`pf`), *S* (`apparent`), *Q* (`reactive`) of the load it feeds; frequency `frequency` (a plain parameter, or "50 Hz" in the value text); marking "5 V", "10 mA" (current source), "12 V 2 A", "230 V 50 Hz" | DC and current source: *P* = *U*·*I* with *S* = *P*, cos *φ* = 1, *φ* = 0, *Q* = 0, \|*Z*\| = *U*/*I*; AC: *S* = *U*·*I*; *P* = *S*·cos *φ*; *Q* = *S*·sin *φ*; *S*² = *P*² + *Q*²; *U* = \|*Z*\|·*I* [S6, S7] |
+| Battery `elec.battery` | *U*, *I*, *P*; marking "12 V 2 A" | *P* = *U*·*I* |
+| Motor, generator `elec.motor`, `elec.generator` | *U* (`voltage`, line voltage for 3~), *I* (`current`, line current), *P* (`power`, electrical active power), cos *φ* (`pf`); panel *S* (`apparent`), *Q* (`reactive`), *η* (`efficiency`), *P*_mech (`pmech`; motor: output, generator: input); motor also *I*_A/*I*_N (`kstart`), *I*_A (`istart`), *I*_A,YΔ (`istartyd`) and the choice `starting` (direct on line / star-delta, three-phase motors) | by `supply`: DC *P* = *U*·*I* (cos *φ* = 1); AC or unspecified *S* = *U*·*I*; three-phase *S* = √3·*U*·*I*; *P* = *S*·cos *φ*; *S*² = *P*² + *Q*² (*Q* ≥ 0, inductive); motor *P*_mech = *η*·*P*, generator *P* = *η*·*P*_mech; *I*_A = (*I*_A/*I*_N)·*I*; star-delta *I*_A,YΔ = *I*_A/3 [S7, S15] |
 | Voltage regulator `elec.regulator` | *U*_out (`uout`), *U*_in (`uin`), *I*_out (`current`), *P* (`power`, loss); a voltage in `value` ("LM7805 5 V") is *U*_out | *P* = (*U*_in − *U*_out)·*I*_out (linear regulator, quiescent current neglected) |
 | Transformer `elec.transformer` | *U*₁ (`u1`), *U*₂ (`u2`), *I*₁ (`i1`), *I*₂ (`i2`), *n* (`ratio`, panel); marking "230/12 V" | ideal: *n* = *U*₁/*U*₂ = *I*₂/*I*₁ [S7, S15] |
 | Fuse, MCB, feeder `elec.fuse`, `elec.breaker`, `elec.sld.feeder` | *I*_B (`current`), *I*_n (`rated`); marking "B16", "C 10 A", "gG 35 A"; `iz` (*I*_z of the cable, user) for the check | – |
 | RCD `elec.rcd` | *I*_n (`rated`), *I*_Δn (`idn`); marking "40 A 30 mA", "40/0,03 A", "30 mA" | – |
 | Socket outlet, luminaire `elec.house.socket`, `elec.house.light` | *U*, *I*, *P* | *P* = *U*·*I* |
+| Cable route `elec.house.cable` | *l* (`length`, one way), *A* (`section`), *I* (`current`), Δ*u* (`droprel`); panel *U*_n (`voltage`), cos *φ* (`pf`, default 1), *ρ* (`rho`, default copper 0.017241 Ω·mm²/m at 20 °C), *R* (`resistance`, one conductor), Δ*U* (`drop`), *P*_loss (`loss`); choices `system` (default from the conductors: 4–5 three-phase, else single-phase; or single-phase, three-phase, DC) and `material` (copper, aluminium 0.028264 Ω·mm²/m); `dumax` for the check | *R* = *ρ*·*l*/*A* [S12]; single-phase Δ*U* = 2·*R*·*I*·cos *φ*, three-phase Δ*U* = √3·*R*·*I*·cos *φ*, DC Δ*U* = 2·*R*·*I* (line reactance *X*′ neglected) [S8]; Δ*u* = Δ*U*/*U*_n; *P*_loss = 2·*I*²·*R* (single-phase, DC) or 3·*I*²·*R* (three-phase) [S7] |
 
 **Markings.** Where the value text is a marking rather than the element's own quantity, the quantities in it are read
 (each with its unit) and shown as derived with the marking as formula ("*I*_n = B16 = 16 A"). An entered value that
@@ -163,8 +166,8 @@ series and parallel steps (no circuit simulation):
 Voltages and currents are magnitudes in consumer orientation; this holds for series-parallel networks driven by one
 source. A loop that these steps cannot reduce (a bridge, sources in several places) gets the hint `elec.net.reducible`
 ("not reducible here – use a circuit simulator"); the element relations still work. Elements without values in a
-circuit (motor, generator, relay coil, solenoid, photodiode, diac, wattmeter) keep it reducible, but no value passes
-through them; three-phase machines, transistors, triacs, optocouplers, bridge rectifiers, voltage regulators, ICs and
+circuit (relay coil, solenoid, photodiode, diac, wattmeter) keep it reducible, but no value passes through them; a
+single-phase or DC motor is a load and a single-phase or DC generator a source with *U* and *I* (round 6); three-phase machines, transistors, triacs, optocouplers, bridge rectifiers, voltage regulators, ICs and
 other multi-pin parts are terminals of unknown current, so the network around them is
 not reduced.
 
@@ -188,6 +191,45 @@ not reduced.
 - **Transistor as a switch.** A single resistor wired alone to the base is the base resistor: its resistance is *R*_B and
   its current *I*_B. With *I*_C and *B* the overdrive factor *k* = *I*_B·*B*/*I*_C follows (check `elec.bjt.overdrive`).
 
+**AC circuits (round 6, 2026-11-26).** Design: sections 2.1 and 2.2. All values are RMS magnitudes.
+
+- **AC mode.** A circuit that contains an AC source (`kind` ac), a generator on AC or three-phase, or a transformer is an
+  AC circuit. Its series voltages and parallel currents add as numbers only while the elements are in phase (all
+  resistive, all inductive or all capacitive); a mixed group gets no sum relation, and the phasor relations take its
+  place. DC circuits are unchanged.
+- **Impedance and phase.** An AC source across a load of resistors, inductors and capacitors (fuses and breakers count as
+  ideal conductors) gives the source the impedance |*Z*| and the phase angle *φ* = arg *Z* of the load, with the complex
+  impedances *R*, j*ωL* and 1/(j*ωC*) (series: they add; parallel: 1/Σ(1/*Z*ᵢ)). Every inductor and capacitor gets its
+  current *I*, its voltage *U* = *X*·*I* and the phases *φ*_U, *φ*_I of its voltage and current against the source voltage
+  (read-only); a resistor gets its current (its voltage follows from *U* = *R*·*I*, in phase with the current). The
+  frequency is the source's parameter `frequency` or a frequency in its value text ("230 V 50 Hz"); the reactive parts take
+  it over as their *f*. Example: 230 V, 50 Hz across *R* = 100 Ω and *L* = 0.318 H in series give |*Z*| ≈ 141 Ω,
+  *φ* ≈ 45°, *I* = 1.63 A and cos *φ* ≈ 0.71; 230 Ω in parallel with a capacitor of *X*_C = 230 Ω carry 1 A each, but the
+  source supplies √2 A. A purely resistive AC load needs no frequency.
+- **AC power.** On an AC source *S* = *U*·*I*, *P* = *S*·cos *φ*, *Q* = *S*·sin *φ* (positive inductive, negative
+  capacitive) and *S*² = *P*² + *Q*². cos *φ* follows from *φ*, not the other way round (the sign would be lost). On a DC
+  source these values are trivial (*S* = *P*, cos *φ* = 1, *φ* = 0, *Q* = 0, |*Z*| = *U*/*I*), so a DC source with *U* and
+  *I* stays fully determined.
+- **Resonance.** One inductor and one capacitor in a series or parallel group, alone or with resistors, form a resonant
+  circuit: both get *f*₀ = 1/(2π√(*LC*)) (an entered *f*₀ gives the missing *L* or *C*); with resistors also the quality
+  factor *Q* = √(*L*/*C*)/*R* (series, *R* in series) or *Q* = *R*·√(*C*/*L*) (parallel, *R* in parallel) and the
+  bandwidth *B* = *f*₀/*Q*. At resonance a series RLC circuit is purely resistive (|*Z*| = *R*), and the voltages across
+  *L* and *C* are *Q* times the source voltage (hint `elec.ac.resonance`). A coil resistance drawn in series with *L*
+  inside a parallel tank ((*R* + *L*) ∥ *C*) is not recognised.
+- **Motor and generator.** The symbols carry electrical values by their supply: three-phase *P* = √3·*U*·*I*·cos *φ* with
+  line voltage and line current (400 V, 10 A and cos *φ* = 0.85 give 5.89 kW), single-phase *P* = *U*·*I*·cos *φ*, DC
+  *P* = *U*·*I*; efficiency and mechanical power (motor: output, generator: input); a motor's starting current from
+  *I*_A/*I*_N and, with **Starting** star-delta (`starting`, action `elec.motor.starting=…`, three-phase motors), one third
+  of it [S15]. In a circuit a single-phase or DC motor is a load with *U* and *I* (an AC load with a power factor of its
+  own, so it is in phase with nothing else), a single-phase or DC generator a source; three-phase machines stay terminals
+  of unknown current. Speed and torque stay in the Machines module.
+- **Cable voltage drop.** The installation cable route has optional cable values (table above): from length,
+  cross-section and current the conductor resistance, the voltage drop with cos *φ* (single-phase 2·*R*·*I*·cos *φ*,
+  three-phase √3·*R*·*I*·cos *φ*, DC 2·*R*·*I*; line reactance neglected), the relative drop and the losses. Any three of
+  *l*, *A*, *I* and Δ*u* (with *U*_n) give the fourth, e.g. the cross-section for a permitted drop. The current is entered
+  (it is not taken from the circuit). The permitted drop Δ*u*_max (`dumax`) is the user's; the limits of IEC 60364-5-52
+  and of national rules are not copied [S8]. 20 m of 1.5 mm² copper at 16 A and 230 V give Δ*U* = 7.4 V, Δ*u* = 3.2 %.
+
 **Checks** (hints only, overlay, never change anything; catalogue in the design document, section 4):
 
 | Id | Element | Rule | Severity | Source |
@@ -199,6 +241,8 @@ not reduced.
 | `elec.net.reducible` | elements in an irreducible loop | not a series/parallel network | info | section 1.6 |
 | `elec.opamp.saturation` | op-amp | \|*U*_out\| ≤ *U*_S (the output cannot go beyond the supply) | warning | [S7] |
 | `elec.bjt.overdrive` | bipolar transistor | *k* = *I*_B·*B*/*I*_C ≥ 1 (otherwise it does not switch fully on) | warning | [S7] |
+| `elec.cable.drop` | cable route | Δ*u* ≤ Δ*u*_max (`dumax`, entered by the user) | hint | [S8] |
+| `elec.ac.resonance` | capacitor of a resonant circuit | the working frequency lies within the bandwidth around *f*₀ (\|*f* − *f*₀\| ≤ *B*/2): voltages (series) or currents (parallel) at *L* and *C* far above those of the source | info | [S7] |
 
 ## Overlaps with other modules (one element, one item)
 
@@ -229,13 +273,15 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 - A wire end docked on another wire or a bus (its rail) is attached to that rail (a branch): it follows when the
   other wire moves or changes, and the netlist joins both wires into one net.
 - Labels lie outside the object box, so host selection frames do not include them.
-- Values (Calc 3): reactance, time constants and cut-off frequencies exist per element (round 5), but no AC network
-  analysis (impedance of series RLC, resonance, phase); no equivalent inductance; no polarity (magnitudes only, the
-  op-amp gain keeps its sign); motor and generator values are left to the Machines module; three-phase power and
-  star-delta are open. The op-amp and the transistor read only resistors that are clearly in place (one feedback
+- Values (Calc 3, rounds 5–6): the AC analysis covers series-parallel networks of R, L and C fed by one AC voltage source;
+  an AC load that also contains other elements (diodes, motors, transformer primaries) gets no phasor values, and three
+  impedances in star or delta are not converted (Y–Δ; the module has no star/delta network element, and the conversion
+  would make bridges reducible). No equivalent inductance; no polarity (magnitudes only, the op-amp gain keeps its sign).
+  The op-amp and the transistor read only resistors that are clearly in place (one feedback
   resistor, one input resistor, one base resistor alone on the base net). Two markings that disagree (e.g. a 24 V lamp on a 12 V transformer
   secondary) are not reported as a conflict yet, because a value read from a marking does not count as entered in the
-  solver's consistency check (Core change proposed). Cable voltage drop (`elec.cable.drop`) waits for cable values.
+  solver's consistency check (Core change proposed). The cable route does not take its current from the circuit, and its
+  line reactance and conductor temperature are not modelled (enter *ρ* for a warm conductor).
 - Visual review: `dotnet test` writes an SVG gallery to
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (ports shown as red circles,
   plus an example circuit with attached wires).

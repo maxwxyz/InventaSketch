@@ -30,6 +30,11 @@ namespace InventaSketch.Modules.Electrical
         public string? Rt { get; init; }
         /// <summary>A source (voltage/current source, battery, generator, transformer secondary).</summary>
         public bool Source { get; init; }
+        /// <summary>
+        /// An AC load with a power factor of its own (a single-phase motor): in an AC circuit its voltage and current are not in
+        /// phase with any other element, so magnitudes do not add across it.
+        /// </summary>
+        public bool AcLoad { get; init; }
     }
 
     /// <summary>How an element takes part in a wired circuit (<see cref="ElecNetwork"/>).</summary>
@@ -71,7 +76,7 @@ namespace InventaSketch.Modules.Electrical
     /// element (the owner); every other element returns a membership relation without solvers that pulls the owner into the
     /// solver scope, so a single element's values see the whole circuit.
     /// </summary>
-    internal sealed class ElecNetwork
+    internal sealed partial class ElecNetwork
     {
         private static readonly ConditionalWeakTable<SketchDocument, ElecNetwork> Cache = new();
 
@@ -117,6 +122,8 @@ namespace InventaSketch.Modules.Electrical
             public bool Source;
             /// <summary>Merged into a larger group of the same kind (its kids moved there): only a part of that group.</summary>
             public bool Absorbed;
+            /// <summary>Part of a circuit fed by alternating current (an AC source, a generator or a transformer).</summary>
+            public bool Ac;
             public List<VarRef>? UMemo, IMemo, QMemo;
             public bool UDone, IDone, QDone;
         }
@@ -261,6 +268,7 @@ namespace InventaSketch.Modules.Electrical
             var seen = new HashSet<Tree>();
             foreach (var e in edges) if (e.T.Parent is null && seen.Add(e.T)) all.Add(e.T);
             all.AddRange(closed);
+            MarkAc(specs.Keys, all);
 
             // 5. Relations.
             var relations = new List<BoundRelation>();
@@ -436,7 +444,8 @@ namespace InventaSketch.Modules.Electrical
             return t.UMemo = t.Kind switch
             {
                 'L' => t.Def!.U is string u ? new List<VarRef> { new(t.Obj!, u) } : t.Def.ZeroU ? new List<VarRef>() : null,
-                'S' => Concat(t.Kids.Select(U)),
+                // In an AC circuit the voltages of elements in series add as magnitudes only when they are in phase.
+                'S' => t.Ac && MixedPhase(t) ? null : Concat(t.Kids.Select(U)),
                 _ => Shortest(t.Kids.Select(U)),
             };
         }
@@ -449,7 +458,8 @@ namespace InventaSketch.Modules.Electrical
             return t.IMemo = t.Kind switch
             {
                 'L' => t.Def!.I is string i ? new List<VarRef> { new(t.Obj!, i) } : null,
-                'P' => Concat(t.Kids.Select(I)),
+                // Likewise the currents of parallel branches.
+                'P' => t.Ac && MixedPhase(t) ? null : Concat(t.Kids.Select(I)),
                 _ => Shortest(t.Kids.Select(I)),
             };
         }
@@ -502,10 +512,12 @@ namespace InventaSketch.Modules.Electrical
         private static readonly I18nText ReqName = new("Equivalent resistance (series/parallel)", "Ersatzwiderstand (Reihe/parallel)");
         private static readonly I18nText CeqName = new("Equivalent capacitance (series/parallel)", "Ersatzkapazität (Reihe/parallel)");
 
-        private static void Emit(Tree t, List<BoundRelation> into)
+        private void Emit(Tree t, List<BoundRelation> into)
         {
             if (t.Kind == 'L') return;
             foreach (var k in t.Kids) Emit(k, into);
+            if (t.Kind is 'S' or 'P') Resonance(t, into);
+            if (t.Kind == 'C' && t.Ac) AcCircuit(t, into);
             switch (t.Kind)
             {
                 case 'P':

@@ -130,19 +130,22 @@ markiert, widersprüchliche ergeben einen Widerspruch, und nichts wird geändert
 |---|---|---|
 | Widerstand `elec.resistor`, Thermistor `elec.resistor.thermistor`, Fotowiderstand `elec.resistor.ldr` | *R* (`value`, „4k7"; bei Thermistor und Fotowiderstand der Widerstand im Arbeitspunkt), *U* (`voltage`), *I* (`current`), *P* (`power`); Nennleistung `prated` für die Prüfung | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
 | Lampe `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, warm); Kennzeichnung in `value` („12 V 5 W") | wie beim Widerstand |
-| Kondensator `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, „100n"), *U*, *Q* (`charge`), *E* (`energy`); Panel *R* (`rseries`, Widerstand in Reihe), *τ* (`tau`), *f*_g (`cutoff`), *f* (`frequency`), *X*_C (`reactance`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*); *τ* = *R*·*C*; *f*_g = 1/(2π·*τ*); *X*_C = 1/(2π·*f*·*C*) |
-| Spule `elec.inductor` | *L* (`value`, „10 mH"), *I*, *E* (`energy`); Panel *R* (`rseries`), *τ*, *f*_g, *f*, *X*_L wie beim Kondensator | *E* = ½*L*·*I*²; *τ* = *L*/*R*; *f*_g = 1/(2π·*τ*); *X*_L = 2π·*f*·*L* |
+| Kondensator `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, „100n"), *U*, *Q* (`charge`), *E* (`energy`); Panel *R* (`rseries`, Widerstand in Reihe), *τ* (`tau`), *f*_g (`cutoff`), *f* (`frequency`), *X*_C (`reactance`); Wechselstrom (Panel): *I* (`current`), *φ*_U, *φ*_I (`phaseu`, `phasei`, nur lesbar), *f*₀ (`resonance`), *Q* (`quality`), *B* (`bandwidth`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*); *τ* = *R*·*C*; *f*_g = 1/(2π·*τ*); *X*_C = 1/(2π·*f*·*C*); *U* = *X*_C·*I*; *B* = *f*₀/*Q* |
+| Spule `elec.inductor` | *L* (`value`, „10 mH"), *I*, *E* (`energy`); Panel *R* (`rseries`), *τ*, *f*_g, *f*, *X*_L wie beim Kondensator; Wechselstrom (Panel): *U* (`voltage`), *φ*_U, *φ*_I, *f*₀, *Q*, *B* wie beim Kondensator | *E* = ½*L*·*I*²; *τ* = *L*/*R*; *f*_g = 1/(2π·*τ*); *X*_L = 2π·*f*·*L*; *U* = *X*_L·*I*; *B* = *f*₀/*Q* |
 | Potentiometer `elec.potentiometer` | *R* (`value`, Bahn), *U* (`voltage`, zwischen Pin 1 und 2), *k* (`wiper`, 0 an Pin 1 … 100 % an Pin 2), *U*₂ (`uwiper`, Schleifer gegen Pin 2); Panel *I*, *P*, *R*₁ (`r1`), *R*₂ (`r2`) | Ohmsches Gesetz über die Bahn; *R*₁ = *k*·*R*; *R*₂ = *R* − *R*₁; unbelasteter Teiler *U*₂ = *U*·*R*₂/*R* |
 | Bipolartransistor `elec.transistor.bjt` (als Schalter) | *R*_B (`rb`), *I*_C (`ic`), *B* (`beta`, h_FE aus dem Datenblatt), *U*_in (`uin`); Panel *I*_B (`ib`), *U*_BE (`ube`, Vorgabe 0,7 V), *k* (`overdrive`, Vorgabe 3) | *I*_B = *k*·*I*_C/*B*; *R*_B = (*U*_in − *U*_BE)/*I*_B |
 | Operationsverstärker `elec.opamp` (ideal) | *V*_u (`gain`), *U*_e (`uin`), *U*_a (`uout`), *R*_f (`rf`); Panel *R*_e (`rin`, beim nichtinvertierenden Verstärker *R*_g), *U*_B (`usupply`, ±Versorgung); Auswahl `circuit` | *U*_a = *V*_u·*U*_e; invertierend *V*_u = −*R*_f/*R*_e; nichtinvertierend *V*_u = 1 + *R*_f/*R*_g; Spannungsfolger *V*_u = 1 |
 | Diode, LED, Schottky-Diode `elec.diode`, `elec.diode.led`, `elec.diode.schottky` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); Kennzeichnung „2,1 V 20 mA"; LED: `ifmax` für die Prüfung | *P* = *U*·*I* |
 | Z-Diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
-| Quelle `elec.source`, Batterie `elec.battery` | *U*, *I*, *P*; Kennzeichnung „5 V", „10 mA" (Stromquelle), „12 V 2 A" | *P* = *U*·*I* |
+| Quelle `elec.source` | *U*, *I*, *P*; Panel \|*Z*\| (`impedance`), *φ* (`phase`), cos *φ* (`pf`), *S* (`apparent`), *Q* (`reactive`) der gespeisten Last; Frequenz `frequency` (einfacher Parameter oder „50 Hz" im Werttext); Kennzeichnung „5 V", „10 mA" (Stromquelle), „12 V 2 A", „230 V 50 Hz" | Gleichspannung und Stromquelle: *P* = *U*·*I* mit *S* = *P*, cos *φ* = 1, *φ* = 0, *Q* = 0, \|*Z*\| = *U*/*I*; Wechselspannung: *S* = *U*·*I*; *P* = *S*·cos *φ*; *Q* = *S*·sin *φ*; *S*² = *P*² + *Q*²; *U* = \|*Z*\|·*I* [S6, S7] |
+| Batterie `elec.battery` | *U*, *I*, *P*; Kennzeichnung „12 V 2 A" | *P* = *U*·*I* |
+| Motor, Generator `elec.motor`, `elec.generator` | *U* (`voltage`, bei 3~ Leiterspannung), *I* (`current`, Leiterstrom), *P* (`power`, elektrische Wirkleistung), cos *φ* (`pf`); Panel *S* (`apparent`), *Q* (`reactive`), *η* (`efficiency`), *P*_mech (`pmech`; Motor: abgegeben, Generator: aufgenommen); beim Motor zusätzlich *I*_A/*I*_N (`kstart`), *I*_A (`istart`), *I*_A,YΔ (`istartyd`) und die Auswahl `starting` (Direktanlauf / Stern-Dreieck, Drehstrommotoren) | nach `supply`: Gleichstrom *P* = *U*·*I* (cos *φ* = 1); Wechselstrom oder ohne Angabe *S* = *U*·*I*; Drehstrom *S* = √3·*U*·*I*; *P* = *S*·cos *φ*; *S*² = *P*² + *Q*² (*Q* ≥ 0, induktiv); Motor *P*_mech = *η*·*P*, Generator *P* = *η*·*P*_mech; *I*_A = (*I*_A/*I*_N)·*I*; Stern-Dreieck *I*_A,YΔ = *I*_A/3 [S7, S15] |
 | Spannungsregler `elec.regulator` | *U*_out (`uout`), *U*_in (`uin`), *I*_out (`current`), *P* (`power`, Verlust); eine Spannung in `value` („LM7805 5 V") ist *U*_out | *P* = (*U*_in − *U*_out)·*I*_out (Linearregler, Eigenstromverbrauch vernachlässigt) |
 | Transformator `elec.transformer` | *U*₁ (`u1`), *U*₂ (`u2`), *I*₁ (`i1`), *I*₂ (`i2`), *ü* (`ratio`, Panel); Kennzeichnung „230/12 V" | ideal: *ü* = *U*₁/*U*₂ = *I*₂/*I*₁ [S7, S15] |
 | Sicherung, LS-Schalter, Abgang `elec.fuse`, `elec.breaker`, `elec.sld.feeder` | *I*_B (`current`), *I*_n (`rated`); Kennzeichnung „B16", „C 10 A", „gG 35 A"; `iz` (*I*_z der Leitung, Benutzer) für die Prüfung | – |
 | RCD `elec.rcd` | *I*_n (`rated`), *I*_Δn (`idn`); Kennzeichnung „40 A 30 mA", „40/0,03 A", „30 mA" | – |
 | Steckdose, Leuchte `elec.house.socket`, `elec.house.light` | *U*, *I*, *P* | *P* = *U*·*I* |
+| Leitungsführung `elec.house.cable` | *l* (`length`, einfache Länge), *A* (`section`), *I* (`current`), Δ*u* (`droprel`); Panel *U*_n (`voltage`), cos *φ* (`pf`, Vorgabe 1), *ρ* (`rho`, Vorgabe Kupfer 0,017241 Ω·mm²/m bei 20 °C), *R* (`resistance`, ein Leiter), Δ*U* (`drop`), *P*_V (`loss`); Auswahl `system` (Vorgabe aus den Adern: 4–5 Drehstrom, sonst Wechselstrom; oder Wechselstrom, Drehstrom, Gleichstrom) und `material` (Kupfer, Aluminium 0,028264 Ω·mm²/m); `dumax` für die Prüfung | *R* = *ρ*·*l*/*A* [S12]; Wechselstrom Δ*U* = 2·*R*·*I*·cos *φ*, Drehstrom Δ*U* = √3·*R*·*I*·cos *φ*, Gleichstrom Δ*U* = 2·*R*·*I* (Leitungsreaktanz *X*′ vernachlässigt) [S8]; Δ*u* = Δ*U*/*U*_n; *P*_V = 2·*I*²·*R* (Wechselstrom, Gleichstrom) oder 3·*I*²·*R* (Drehstrom) [S7] |
 
 **Kennzeichnungen.** Ist der Werttext eine Kennzeichnung und nicht die Größe des Elements selbst, werden die Größen darin
 gelesen (jeweils mit Einheit) und als abgeleitet gezeigt, mit der Kennzeichnung als Formel („*I*_n = B16 = 16 A"). Ein
@@ -172,8 +175,9 @@ reduziert (keine Schaltungssimulation):
 Spannungen und Ströme sind Beträge in Verbraucherrichtung; das gilt für Reihen-Parallel-Netze, die eine Quelle speist.
 Eine Masche, die diese Schritte nicht reduzieren (eine Brücke, Quellen an mehreren Stellen), bekommt den Hinweis
 `elec.net.reducible` („hier nicht reduzierbar – Schaltungssimulator verwenden"); die Elementbeziehungen wirken weiter.
-Elemente ohne Werte im Stromkreis (Motor, Generator, Relaisspule, Hubmagnet, Fotodiode, Diac, Leistungsmesser) halten ihn
-reduzierbar, aber kein Wert geht durch sie hindurch; Drehstrommaschinen, Transistoren, Triacs, Optokoppler,
+Elemente ohne Werte im Stromkreis (Relaisspule, Hubmagnet, Fotodiode, Diac, Leistungsmesser) halten ihn reduzierbar,
+aber kein Wert geht durch sie hindurch; ein Wechsel- oder Gleichstrommotor ist eine Last, ein Wechsel- oder
+Gleichstromgenerator eine Quelle mit *U* und *I* (Runde 6); Drehstrommaschinen, Transistoren, Triacs, Optokoppler,
 Brückengleichrichter, Spannungsregler, ICs und andere mehrpolige Teile sind Anschlüsse mit unbekanntem
 Strom, sodass das Netz um sie herum nicht reduziert wird.
 
@@ -201,6 +205,47 @@ Abschnitt 2.3):
   sein Widerstand ist *R*_B, sein Strom *I*_B. Mit *I*_C und *B* folgt der Übersteuerungsfaktor *k* = *I*_B·*B*/*I*_C
   (Prüfung `elec.bjt.overdrive`).
 
+**Wechselstromkreise (Runde 6, 2026-11-26).** Konzept: Abschnitte 2.1 und 2.2. Alle Werte sind Effektivwerte (Beträge).
+
+- **Wechselstrombetrieb.** Ein Stromkreis mit einer Wechselspannungsquelle (`kind` ac), einem Generator für Wechsel- oder
+  Drehstrom oder einem Transformator ist ein Wechselstromkreis. Spannungen in Reihe und Ströme parallel addieren sich darin
+  nur als Zahlen, solange die Elemente in Phase sind (alle ohmsch, alle induktiv oder alle kapazitiv); eine gemischte
+  Gruppe bekommt keine Summenbeziehung, an ihre Stelle treten die Zeigerbeziehungen. Gleichstromkreise bleiben unverändert.
+- **Impedanz und Phase.** Eine Wechselspannungsquelle an einer Last aus Widerständen, Spulen und Kondensatoren (Sicherungen
+  und LS-Schalter zählen als ideale Leiter) erhält die Impedanz |*Z*| und den Phasenwinkel *φ* = arg *Z* der Last, mit den
+  komplexen Widerständen *R*, j*ωL* und 1/(j*ωC*) (in Reihe addiert, parallel 1/Σ(1/*Z*ᵢ)). Jede Spule und jeder
+  Kondensator erhält seinen Strom *I*, seine Spannung *U* = *X*·*I* und die Phasen *φ*_U, *φ*_I von Spannung und Strom
+  gegen die Quellenspannung (nur lesbar); ein Widerstand erhält seinen Strom (seine Spannung folgt aus *U* = *R*·*I*, in
+  Phase mit dem Strom). Die Frequenz ist der Parameter `frequency` der Quelle oder eine Frequenz in ihrem Werttext
+  („230 V 50 Hz"); die Blindelemente übernehmen sie als ihr *f*. Beispiel: 230 V, 50 Hz an *R* = 100 Ω und *L* = 0,318 H
+  in Reihe ergeben |*Z*| ≈ 141 Ω, *φ* ≈ 45°, *I* = 1,63 A und cos *φ* ≈ 0,71; 230 Ω parallel zu einem Kondensator mit
+  *X*_C = 230 Ω führen je 1 A, die Quelle liefert aber √2 A. Eine rein ohmsche Wechselstromlast braucht keine Frequenz.
+- **Wechselstromleistung.** An einer Wechselspannungsquelle gilt *S* = *U*·*I*, *P* = *S*·cos *φ*, *Q* = *S*·sin *φ*
+  (positiv induktiv, negativ kapazitiv) und *S*² = *P*² + *Q*². cos *φ* folgt aus *φ*, nicht umgekehrt (das Vorzeichen
+  ginge verloren). An einer Gleichspannungsquelle sind diese Werte trivial (*S* = *P*, cos *φ* = 1, *φ* = 0, *Q* = 0,
+  |*Z*| = *U*/*I*), eine Gleichspannungsquelle mit *U* und *I* bleibt also vollständig bestimmt.
+- **Resonanz.** Eine Spule und ein Kondensator in einer Reihen- oder Parallelgruppe, allein oder mit Widerständen, bilden
+  einen Schwingkreis: beide erhalten *f*₀ = 1/(2π√(*LC*)) (ein eingegebenes *f*₀ ergibt das fehlende *L* oder *C*); mit
+  Widerständen auch die Güte *Q* = √(*L*/*C*)/*R* (Reihe, *R* in Reihe) oder *Q* = *R*·√(*C*/*L*) (parallel, *R*
+  parallel) und die Bandbreite *B* = *f*₀/*Q*. In Resonanz ist ein RLC-Reihenkreis rein ohmsch (|*Z*| = *R*), und die
+  Spannungen an *L* und *C* sind *Q*-mal so groß wie die Quellenspannung (Hinweis `elec.ac.resonance`). Ein in Reihe zu
+  *L* gezeichneter Spulenwiderstand in einem Parallelkreis ((*R* + *L*) ∥ *C*) wird nicht erkannt.
+- **Motor und Generator.** Die Symbole tragen elektrische Werte nach ihrer Stromart: Drehstrom *P* = √3·*U*·*I*·cos *φ*
+  mit Leiterspannung und Leiterstrom (400 V, 10 A und cos *φ* = 0,85 ergeben 5,89 kW), Wechselstrom
+  *P* = *U*·*I*·cos *φ*, Gleichstrom *P* = *U*·*I*; Wirkungsgrad und mechanische Leistung (Motor: abgegeben, Generator:
+  aufgenommen); beim Motor den Anlaufstrom aus *I*_A/*I*_N und mit **Anlauf** Stern-Dreieck (`starting`, Aktion
+  `elec.motor.starting=…`, Drehstrommotoren) ein Drittel davon [S15]. Im Stromkreis ist ein Wechsel- oder
+  Gleichstrommotor eine Last mit *U* und *I* (eine Wechselstromlast mit eigenem Leistungsfaktor, also mit nichts anderem
+  in Phase), ein Wechsel- oder Gleichstromgenerator eine Quelle; Drehstrommaschinen bleiben Anschlüsse mit unbekanntem
+  Strom. Drehzahl und Drehmoment bleiben im Modul Maschinen.
+- **Spannungsfall auf Leitungen.** Die Leitungsführung der Hausinstallation hat optionale Leitungswerte (Tabelle oben):
+  aus Länge, Querschnitt und Strom den Leiterwiderstand, den Spannungsfall mit cos *φ* (Wechselstrom 2·*R*·*I*·cos *φ*,
+  Drehstrom √3·*R*·*I*·cos *φ*, Gleichstrom 2·*R*·*I*; Leitungsreaktanz vernachlässigt), den relativen Spannungsfall und
+  die Verluste. Drei von *l*, *A*, *I* und Δ*u* (mit *U*_n) ergeben den vierten, z. B. den Querschnitt für einen
+  zulässigen Spannungsfall. Der Strom wird eingegeben (er wird nicht aus dem Stromkreis übernommen). Den zulässigen
+  Spannungsfall Δ*u*_max (`dumax`) gibt der Benutzer vor; die Grenzen der IEC 60364-5-52 und nationaler Regeln werden
+  nicht übernommen [S8]. 20 m Kupfer 1,5 mm² bei 16 A und 230 V ergeben Δ*U* = 7,4 V, Δ*u* = 3,2 %.
+
 **Prüfungen** (nur Hinweise, Overlay, ändern nie etwas; Katalog im Konzept, Abschnitt 4):
 
 | Id | Element | Regel | Schwere | Quelle |
@@ -212,6 +257,8 @@ Abschnitt 2.3):
 | `elec.net.reducible` | Elemente in einer nicht reduzierbaren Masche | kein Reihen-/Parallelnetz | Info | Abschnitt 1.6 |
 | `elec.opamp.saturation` | Operationsverstärker | \|*U*_a\| ≤ *U*_B (der Ausgang kann nicht über die Versorgung hinaus) | Warnung | [S7] |
 | `elec.bjt.overdrive` | Bipolartransistor | *k* = *I*_B·*B*/*I*_C ≥ 1 (sonst schaltet er nicht voll durch) | Warnung | [S7] |
+| `elec.cable.drop` | Leitungsführung | Δ*u* ≤ Δ*u*_max (`dumax`, vom Benutzer eingegeben) | Hinweis | [S8] |
+| `elec.ac.resonance` | Kondensator eines Schwingkreises | die Betriebsfrequenz liegt in der Bandbreite um *f*₀ (\|*f* − *f*₀\| ≤ *B*/2): Spannungen (Reihe) oder Ströme (parallel) an *L* und *C* weit über denen der Quelle | Info | [S7] |
 
 ## Überschneidungen mit anderen Modulen (ein Element, ein Eintrag)
 
@@ -246,15 +293,16 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
   (Abzweig): Es folgt, wenn die andere Leitung verschoben oder geändert wird, und die Netzliste fasst beide Leitungen
   zu einem Netz zusammen.
 - Beschriftungen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
-- Werte (Calc 3): Blindwiderstände, Zeitkonstanten und Grenzfrequenzen gibt es je Element (Runde 5), aber keine
-  Wechselstrom-Netzberechnung (Impedanz der RLC-Reihenschaltung, Resonanz, Phase); keine Ersatzinduktivität; keine
-  Polarität (nur Beträge, die Verstärkung des Operationsverstärkers behält ihr Vorzeichen); Werte von Motor und Generator
-  bleiben dem Modul Maschinen überlassen; Drehstromleistung und Stern-Dreieck sind offen. Operationsverstärker und
+- Werte (Calc 3, Runden 5–6): Die Wechselstromberechnung umfasst Reihen-Parallel-Netze aus R, L und C an einer
+  Wechselspannungsquelle; eine Wechselstromlast mit weiteren Elementen (Dioden, Motoren, Transformator-Primärseiten)
+  erhält keine Zeigerwerte, und drei Impedanzen in Stern oder Dreieck werden nicht umgerechnet (Y–Δ; das Modul hat kein
+  Stern-/Dreieck-Netzelement, und die Umrechnung würde Brücken reduzierbar machen). Keine Ersatzinduktivität; keine
+  Polarität (nur Beträge, die Verstärkung des Operationsverstärkers behält ihr Vorzeichen). Operationsverstärker und
   Transistor lesen nur eindeutig verdrahtete Widerstände (ein Rückkopplungs-, ein Eingangswiderstand, ein Basiswiderstand
   allein am Basisnetz). Zwei widersprüchliche Kennzeichnungen (z. B. eine 24-V-Lampe an einer 12-V-Sekundärwicklung) werden noch nicht als
   Widerspruch gemeldet, weil ein aus einer Kennzeichnung gelesener Wert bei der Stimmigkeitsprüfung des Lösers nicht als
-  eingegeben zählt (Core-Änderung vorgeschlagen). Der Spannungsfall der Leitung (`elec.cable.drop`) wartet auf
-  Leitungswerte.
+  eingegeben zählt (Core-Änderung vorgeschlagen). Die Leitungsführung übernimmt ihren Strom nicht aus dem
+  Stromkreis, Leitungsreaktanz und Leitertemperatur werden nicht abgebildet (für einen warmen Leiter *ρ* eingeben).
 - Sichtprüfung: `dotnet test` schreibt eine SVG-Galerie nach
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (Ports als rote Kreise, dazu ein
   Beispielschaltkreis mit angedockten Leitungen).
