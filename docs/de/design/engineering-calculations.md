@@ -343,7 +343,7 @@ Nutzer ein.
 | Familie | Beziehungen | Größen | Quelle |
 |---|---|---|---|
 | Freiheitsgrad (vorhanden) | *F* = 3(*n* − 1) − 2*j*₁ − *j*₂ (Grübler/Kutzbach) | Glieder, Gelenke | [S24] |
-| Grashof-Bedingung (Code vorhanden, ungenutzt) | *s* + *l* ≤ *p* + *q* → ein Glied läuft voll um | Gliedlängen | [S24] |
+| Grashof-Bedingung (Grashof-Abstand Δ_G, Klassen-Plakette, Prüfung `kin.grashof`) | *s* + *l* ≤ *p* + *q* → ein Glied läuft voll um | Gliedlängen | [S24] |
 | Schubkurbel | Hub = 2*r*; *v*_max ≈ *ω*·*r* (Pleuel viel länger als Kurbel) | *r, l, ω* | [S24] |
 | Schnellrücklauf | Zeitverhältnis = (180° + *α*)/(180° − *α*) aus den Totlagen | Längen | [S24] |
 | Übertragungswinkel | *μ* aus der Lagelösung; die übliche Grenze *μ* ≥ 40° ist nur ein Hinweis | Längen, Antriebswinkel | [S24] |
@@ -472,7 +472,7 @@ Zum Beispiel ist Energy `voltage` in kV gespeichert, und die Größe liest es al
 
 | Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
 |---|---|---|---|
-| Viergelenk, Schubkurbel, Kreuzschleife, Kniehebel, Schnellrücklauf, Kurve | Längen (mm), `angle`, `dof`-Plakette (Grübler; `Linkages.Grubler`, `Linkage.Dof`) | Grashof-Klasse (`IsGrashof` vorhanden, ungenutzt), Hub, Zeitverhältnis, Übertragungswinkel, Abtriebsgeschwindigkeit | `inputSpeed` (min⁻¹) |
+| Viergelenk, Schubkurbel, Kreuzschleife, Kniehebel, Schnellrücklauf, Kurve | Längen (mm), `angle`, `dof`-Plakette (Grübler; `Linkages.Grubler`, `Linkage.Dof`) | Grashof-Abstand und Klassen-Plakette, Hub, Zeitverhältnis, Übertragungswinkel (Prüfung `kin.transmission`), Abtriebsgeschwindigkeit; Kennliniensatz `transfer` (erledigt 26.11.2026, siehe Moduldoku Kinematik) | `inputSpeed` (min⁻¹) |
 | Plakette `kin.motion.dof` | `links`, `lower`, `higher`, `formula` | Grübler (vorhanden, mit Formel) | keine; sie ist das Vorbild für die Schritt-für-Schritt-Anzeige |
 
 ### 3.5 Fluidtechnik (`InventaSketch.Modules.Fluid`)

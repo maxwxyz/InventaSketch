@@ -327,7 +327,7 @@ adoptions DIN VDE 0100-520 and -430 [S8, S9]. The user enters *I*_z and the perm
 | Family | Relations | Variables | Source |
 |---|---|---|---|
 | Degree of freedom (exists) | *F* = 3(*n* − 1) − 2*j*₁ − *j*₂ (Grübler/Kutzbach) | links, joints | [S24] |
-| Grashof condition (code exists, unused) | *s* + *l* ≤ *p* + *q* → one link rotates fully | link lengths | [S24] |
+| Grashof condition (Grashof margin Δ_G, class badge, check `kin.grashof`) | *s* + *l* ≤ *p* + *q* → one link rotates fully | link lengths | [S24] |
 | Slider-crank | stroke = 2*r*; *v*_max ≈ *ω*·*r* (rod much longer than crank) | *r, l, ω* | [S24] |
 | Quick return | time ratio = (180° + *α*)/(180° − *α*) from the extreme positions | lengths | [S24] |
 | Transmission angle | *μ* from the position solution; usual design limit *μ* ≥ 40° is a hint only | lengths, input angle | [S24] |
@@ -456,7 +456,7 @@ is stored in kV and the variable reads it as kV.
 
 | Family | Today | Relations | New parameters (proposal) |
 |---|---|---|---|
-| Four-bar, slider-crank, Scotch yoke, toggle, quick return, cam | lengths (mm), `angle`, `dof` badge (Grübler; `Linkages.Grubler`, `Linkage.Dof`) | Grashof class (`IsGrashof` exists, unused), stroke, time ratio, transmission angle, output velocity | `inputSpeed` (min⁻¹) |
+| Four-bar, slider-crank, Scotch yoke, toggle, quick return, cam | lengths (mm), `angle`, `dof` badge (Grübler; `Linkages.Grubler`, `Linkage.Dof`) | Grashof margin and class badge, stroke, time ratio, transmission angle (check `kin.transmission`), output velocity; chart set `transfer` (done 2026-11-26, see the kinematics module doc) | `inputSpeed` (min⁻¹) |
 | `kin.motion.dof` badge | `links`, `lower`, `higher`, `formula` | Grübler (exists, with formula) | none; it is the model for the step-by-step display |
 
 ### 3.5 Fluid power (`InventaSketch.Modules.Fluid`)
