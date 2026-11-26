@@ -159,7 +159,8 @@ namespace InventaSketch.Modules.Fluid
             Add("heater", "fluid.heater", "Heater", "Heizer");
             Add("accumulator", "fluid.accumulator", "Accumulator (gas loaded)", "Hydrospeicher (gasbelastet)");
             Add("accumulator.spring", "fluid.accumulator", "Accumulator (spring loaded)", "Hydrospeicher (federbelastet)", P(("kind", "spring")));
-            Add("vacuum", "fluid.vacuum.generator", "Vacuum generator (ejector)", "Vakuumerzeuger (Ejektor)");
+            Add("powerunit", FluidValues.PowerUnitId, "Hydraulic power unit", "Hydraulikaggregat", null, null, "hpu", "power pack", "aggregat", "hydraulikaggregat");
+            Add("vacuum", "fluid.vacuum.generator","Vacuum generator (ejector)", "Vakuumerzeuger (Ejektor)");
 
             // Measuring & signalling
             Add("gauge", "fluid.gauge", "Pressure gauge", "Manometer");

@@ -80,7 +80,7 @@ namespace InventaSketch.Modules.Fluid.Tests
             "fluid.valve.shuttle", "fluid.valve.twopressure", "fluid.valve.quickexhaust", "fluid.valve.pilotcheck", "fluid.valve.counterbalance",
             "fluid.suctioncup",
             "fluid.tank", "fluid.source", "fluid.exhaust", "fluid.silencer", "fluid.filter", "fluid.separator", "fluid.lubricator",
-            "fluid.cooler", "fluid.heater", "fluid.frl", "fluid.accumulator", "fluid.vacuum.generator",
+            "fluid.cooler", "fluid.heater", "fluid.frl", "fluid.accumulator", "fluid.powerunit", "fluid.vacuum.generator",
             "fluid.gauge", "fluid.pressureswitch", "fluid.flowmeter", "fluid.thermometer",
             "fluid.line", "fluid.junction", "fluid.crossing", "fluid.plug", "fluid.coupling", "fluid.enclosure",
         };

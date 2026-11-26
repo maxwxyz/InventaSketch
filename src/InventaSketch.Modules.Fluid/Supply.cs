@@ -110,6 +110,16 @@ namespace InventaSketch.Modules.Fluid
                 Extra = o => ChoiceActions(o, "fluid.accumulator", null, AccuKind),
             };
 
+            yield return new FluidType(FluidValues.PowerUnitId, T("Hydraulic power unit", "Hydraulikaggregat"), Cat,
+                new[] { "hydraulic power unit", "power unit", "power pack", "hpu", "pump unit", "motor pump group", "hydraulikaggregat", "aggregat",
+                    "hydraulikeinheit", "pumpenaggregat", "motor-pumpen-einheit", "versorgungseinheit" },
+                Views.Symbol(30, 25, PowerUnit))
+            {
+                RefPrefix = "0Z1",
+                Ports = Fixed(new Port("P", -5, -12.5), new Port("T", 10, -12.5)),
+                CompanionIds = new[] { "fluid.line", "fluid.valve.directional", "fluid.gauge", "fluid.accumulator", "fluid.valve.check" },
+            };
+
             yield return new FluidType("fluid.vacuum.generator", T("Vacuum generator (ejector)", "Vakuumerzeuger (Ejektor)"), Cat,
                 new[] { "vacuum generator", "ejector", "venturi nozzle", "vacuum", "vacuum ejector", "vakuumerzeuger", "ejektor", "vakuumdüse", "venturidüse", "vakuum" },
                 Views.Symbol(15, 10, VacuumGenerator))
@@ -138,6 +148,39 @@ namespace InventaSketch.Modules.Fluid
             // Suction into the jet.
             p.Line(0, 3.5, 0, 1.6, S.Thin, "suction");
             p.Head(0, 0.8, 0, 3.0, 1.1, 0.45, "suction");
+        }
+
+        /// <summary>
+        /// Hydraulic power unit as an assembly in a dash-dot enclosure: electric motor (M) driving a fixed displacement pump
+        /// that draws from the tank, the pressure line to P with a relief valve back to the tank, and the return line from T
+        /// through a filter into the tank (drawn independently, simplified).
+        /// </summary>
+        private static void PowerUnit(Pen p, SketchObject o)
+        {
+            p.Rect(-15, -12.5, 15, 12.5, S.Enclosure, "enclosure");
+            // Tank across the bottom.
+            p.Poly(S.Sym, false, "tank", -12.5, 7.5, -12.5, 11, 12.5, 11, 12.5, 7.5);
+            // Electric motor driving the pump (shaft between them).
+            p.Circle(-11.5, 1, 2.5, null, "motor");
+            p.Text(-11.5, 1, "M", 2.6, TextAnchor.Middle, "motor");
+            p.Line(-9, 1, -8, 1, S.Bold, "shaft");
+            // Pump with the energy triangle pointing to the pressure port; suction line from the tank.
+            p.Circle(-5, 1, 3, null, "pump");
+            p.Triangle(-5, -2, -5, 1, false, 2.0, 1.2, "pump");
+            p.Line(-5, 4, -5, 9.5, null, "suction");
+            // Pressure line to P with the relief valve branching to the tank.
+            p.Line(-5, -2, -5, -12.5, null, "pressure");
+            p.Dot(-5, -5.5, 0.45);
+            p.Line(-5, -5.5, 0, -5.5, null, "pressure");
+            p.Rect(0, -8, 5, -3, null, "relief");
+            p.Arrow(1.6, -7.2, 1.6, -3.8, S.Sym, "relief", 1.2, 0.5);
+            p.SpringH(5, 7, -5.5, 0.9, 2, "relief");
+            p.Line(2.5, -3, 2.5, 9.5, null, "relief");
+            // Return line from T through the filter into the tank.
+            p.Line(10, -12.5, 10, -2, null, "return");
+            p.PolyD(Frag.Diamond(10, 1, 3, 3), null, true, "filter");
+            p.Line(10, -2, 10, 4, S.Pilot, "filter");
+            p.Line(10, 4, 10, 9.5, null, "return");
         }
 
         /// <summary>Inline conditioning element (diamond with ports left and right).</summary>

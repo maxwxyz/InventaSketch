@@ -134,6 +134,12 @@ namespace InventaSketch.Modules.Electrical
         /// <summary>Plausibility checks of this type (catalogue in engineering-calculations.md section 4).</summary>
         public IReadOnlyList<ValueCheck> Checks { get; init; } = Array.Empty<ValueCheck>();
 
+        /// <summary>
+        /// Further relations of one element: relations that depend on its choices (the op-amp circuit) and links to the parts
+        /// wired around it (the op-amp's feedback resistor, a transistor's base resistor). Null = none.
+        /// </summary>
+        public Func<SketchObject, RenderContext, IEnumerable<BoundRelation>>? Links { get; init; }
+
         IEnumerable<ValueCheck> IValueChecks.ValueChecks => Checks;
 
         /// <summary>Marking relations of the value text, and the circuit relations of the network the element is wired into.</summary>
@@ -143,6 +149,7 @@ namespace InventaSketch.Modules.Electrical
             var list = new List<BoundRelation>();
             if (Marking is not null) list.AddRange(ElecValues.MarkingRelations(o, Marking(o)));
             if (Net is not null) list.AddRange(ElecNetwork.Of(ctx.Doc).LinksOf(o.Id));
+            if (Links is not null) list.AddRange(Links(o, ctx));
             return list;
         }
 

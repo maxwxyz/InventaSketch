@@ -39,6 +39,8 @@ namespace InventaSketch.Modules.Fluid
             public Func<SketchObject, string, IEnumerable<PortVar>> Ports { get; init; } = (_, _) => Array.Empty<PortVar>();
             /// <summary>Relations that depend on the element's choices (through rod, pull type).</summary>
             public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
+            /// <summary>Links to the lines docked on the element (the throttle reads flow and pressures of its inlet and outlet lines).</summary>
+            public Func<SketchObject, RenderContext, IEnumerable<BoundRelation>>? Docked { get; init; }
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -223,6 +225,95 @@ namespace InventaSketch.Modules.Fluid
                 .Solve("V1", "{dV} + {V2}", v => v("dV") + v("V2"))
                 .Solve("V2", "{V1} − {dV}", v => v("V1") - v("dV"));
 
+        // ------------------------------------------------------------------ losses, orifices, power unit, air consumption (round 5)
+
+        /// <summary>Hydraulic oil defaults: ρ ≈ 870 kg/m³, ν = 46 mm²/s (viscosity grade VG 46 at 40 °C), drawn tube k = 0.0015 mm [S26, S27].</summary>
+        private const double OilRho = 870, OilNu = 46e-6, TubeK = 0.0015e-3;
+
+        /// <summary>Ambient (atmospheric) pressure for free air volumes, 1.013 bar [S26].</summary>
+        internal const double Ambient = 101325;
+
+        /// <summary>
+        /// Darcy friction factor: laminar λ = 64/Re below Re = 2320, turbulent the explicit Haaland approximation of the
+        /// Colebrook–White equation 1/√λ = −1.8·lg((k/d/3.7)^1.11 + 6.9/Re) [S27].
+        /// </summary>
+        internal static double Friction(double re, double k, double d)
+        {
+            if (!(re > 0) || !(d > 0)) return double.NaN;
+            if (re < 2320) return 64 / re;
+            var x = -1.8 * Math.Log10(Math.Pow(Math.Max(k, 0) / d / 3.7, 1.11) + 6.9 / re);
+            return 1 / (x * x);
+        }
+
+        private static readonly Relation Reynolds =
+            new Relation("fluid.line.reynolds", T("Reynolds number", "Reynolds-Zahl"), "{Re} = {v}·{di}/{nu}", "Re", "v", "di", "nu") { Source = "S27" }
+                .Solve("Re", "{v}·{di}/{nu}", v => v("v") * v("di") / v("nu"))
+                .Solve("v", "{Re}·{nu}/{di}", v => v("Re") * v("nu") / v("di"))
+                .Solve("nu", "{v}·{di}/{Re}", v => v("v") * v("di") / v("Re"));
+
+        private static readonly Relation FrictionRel =
+            new Relation("fluid.line.friction", T("Friction factor (laminar 64/Re, turbulent Haaland)", "Rohrreibungszahl (laminar 64/Re, turbulent Haaland)"),
+                "{lambda} = 64/{Re} (Re < 2320) or 1/(−1.8·lg(({k}/{di}/3.7)^1.11 + 6.9/{Re}))²", "lambda", "Re", "k", "di") { Source = "S27" }
+                .Solve("lambda", "64/{Re} or Haaland({Re}, {k}/{di})", v => Friction(v("Re"), v("k"), v("di")));
+
+        /// <summary>Darcy–Weisbach Δp = λ·(L/d_i)·ρ·v²/2 [S27].</summary>
+        private static readonly Relation DarcyRel =
+            new Relation("fluid.line.loss", T("Pressure drop in the line (Darcy–Weisbach)", "Druckverlust in der Leitung (Darcy–Weisbach)"),
+                "{dp} = {lambda}·{L}/{di}·{rho}·{v}²/2", "dp", "lambda", "L", "di", "rho", "v") { Source = "S27", Validity = T("straight line, fittings not counted", "gerade Leitung, Formteile nicht gerechnet") }
+                .Solve("dp", "{lambda}·{L}/{di}·{rho}·{v}²/2", v => v("lambda") * v("L") / v("di") * v("rho") * v("v") * v("v") / 2)
+                .Solve("L", "2·{dp}·{di}/({lambda}·{rho}·{v}²)", v => 2 * v("dp") * v("di") / (v("lambda") * v("rho") * v("v") * v("v")));
+
+        /// <summary>Orifice A₀ = π·d₀²/4 and Q = α·A₀·√(2Δp/ρ) [S26].</summary>
+        private static readonly Relation OrificeArea = CircleArea("fluid.orifice.area", "A0", "d0", T("Orifice cross-section", "Drosselquerschnitt"));
+
+        private static readonly Relation Orifice =
+            new Relation("fluid.orifice.flow", T("Flow through an orifice", "Durchfluss durch eine Blende"), "{Q} = {alpha}·{A0}·√(2·{dp}/{rho})", "Q", "alpha", "A0", "dp", "rho")
+            { Source = "S26", Validity = T("sharp-edged orifice, incompressible fluid (hydraulics)", "scharfkantige Blende, inkompressibles Fluid (Hydraulik)") }
+                .Solve("Q", "{alpha}·{A0}·√(2·{dp}/{rho})", v => v("alpha") * v("A0") * Math.Sqrt(2 * v("dp") / v("rho")))
+                .Solve("dp", "{rho}/2·({Q}/({alpha}·{A0}))²", v => v("rho") / 2 * Math.Pow(v("Q") / (v("alpha") * v("A0")), 2))
+                .Solve("A0", "{Q}/({alpha}·√(2·{dp}/{rho}))", v => v("Q") / (v("alpha") * Math.Sqrt(2 * v("dp") / v("rho"))))
+                .Solve("alpha", "{Q}/({A0}·√(2·{dp}/{rho}))", v => v("Q") / (v("A0") * Math.Sqrt(2 * v("dp") / v("rho"))));
+
+        private static readonly Relation PressureDifference =
+            new Relation("fluid.dp", T("Pressure difference", "Druckdifferenz"), "{dp} = {p1} − {p2}", "dp", "p1", "p2") { Source = "S1" }
+                .Solve("dp", "{p1} − {p2}", v => v("p1") - v("p2"))
+                .Solve("p1", "{p2} + {dp}", v => v("p2") + v("dp"))
+                .Solve("p2", "{p1} − {dp}", v => v("p1") - v("dp"));
+
+        /// <summary>Power unit: P = P_hyd/η_t [S26].</summary>
+        private static readonly Relation UnitPower =
+            new Relation("fluid.unit.power", T("Drive power of the power unit", "Antriebsleistung des Aggregats"), "{P} = {Phyd}/{eta}", "P", "Phyd", "eta") { Source = "S26" }
+                .Solve("P", "{Phyd}/{eta}", v => v("Phyd") / v("eta"))
+                .Solve("Phyd", "{P}·{eta}", v => v("P") * v("eta"))
+                .Solve("eta", "{Phyd}/{P}", v => v("Phyd") / v("P"));
+
+        /// <summary>Free air: compressed volume or flow × (p_e + p_amb)/p_amb (isothermal) [S26].</summary>
+        private static Relation FreeAir(string id, I18nText name, string free, string compressed, string expr) =>
+            new Relation(id, name, "{" + free + "} = " + expr + "·({p} + p_amb)/p_amb", free, compressed, "p")
+            { Source = "S26", Validity = T("pneumatics, p as gauge pressure, p_amb = 1.013 bar", "Pneumatik, p als Überdruck, p_amb = 1,013 bar") }
+                .Solve(free, expr + "·({p} + p_amb)/p_amb", v => v(compressed) * (v("p") + Ambient) / Ambient)
+                .Solve(compressed, "{" + free + "}·p_amb/({p} + p_amb)", v => v(free) * Ambient / (v("p") + Ambient))
+                .Solve("p", "p_amb·({" + free + "}/{" + compressed + "} − 1)", v => Ambient * (v(free) / v(compressed) - 1));
+
+        /// <summary>Swept volume of one double stroke V_s = (A₁ + A₂)·s, or A·s for a single-acting cylinder [S26].</summary>
+        private static Relation Swept(string id, string area, string? area2) =>
+            new Relation(id, T("Swept volume per cycle", "Hubvolumen je Arbeitsspiel"), area2 is null ? "{Vs} = {" + area + "}·{s}" : "{Vs} = ({" + area + "} + {" + area2 + "})·{s}",
+                area2 is null ? new[] { "Vs", area, "s" } : new[] { "Vs", area, area2, "s" }) { Source = "S26" }
+                .Solve("Vs", area2 is null ? "{" + area + "}·{s}" : "({" + area + "} + {" + area2 + "})·{s}",
+                    v => (v(area) + (area2 is null ? 0 : v(area2))) * v("s"))
+                .Solve("s", area2 is null ? "{Vs}/{" + area + "}" : "{Vs}/({" + area + "} + {" + area2 + "})",
+                    v => v("Vs") / (v(area) + (area2 is null ? 0 : v(area2))));
+
+        private static readonly Relation AirPerCycle = FreeAir("fluid.air.cycle", T("Free air per cycle", "Freie Luft je Arbeitsspiel"), "Vair", "Vs", "{Vs}");
+        private static readonly Relation AirFlow = FreeAir("fluid.air.flow", T("Free air flow during a stroke", "Freier Luftverbrauch während eines Hubs"), "Qn", "Q", "{Q}");
+
+        private static IEnumerable<VarDef> AirVars() => new[]
+        {
+            V("Vs", T("Swept volume per cycle", "Hubvolumen je Arbeitsspiel"), T("V_s", "V_H"), Quantities.Volume, "l", "sweptVolume", VarRelevance.Engineer) with { Min = 0, Max = 100 },
+            V("Vair", T("Free air per cycle (pneumatic)", "Freie Luft je Arbeitsspiel (Pneumatik)"), T("V_air", "V_L"), Quantities.Volume, "l", "airPerCycle", VarRelevance.Engineer) with { Min = 0, Max = 1e4 },
+            V("Qn", T("Free air flow during a stroke (pneumatic)", "Luftverbrauch während eines Hubs (Pneumatik)"), T("Q_n", "Q_n"), Quantities.VolumeFlow, "l/min", "airFlow", VarRelevance.Engineer) with { Min = 0, Max = 100 },
+        };
+
         // ------------------------------------------------------------------ specs per type
 
         private static readonly Dictionary<string, Spec> Specs = new(StringComparer.Ordinal);
@@ -251,6 +342,8 @@ namespace InventaSketch.Modules.Fluid
             "fluid.source" => Source(),
             "fluid.flowmeter" => FlowMeter(),
             "fluid.accumulator" => Accumulator(),
+            "fluid.valve.throttle" => Throttle(),
+            PowerUnitId => PowerUnit(),
             FluidLineType.TypeId => Line(),
             _ => Spec.Empty,
         };
@@ -309,8 +402,8 @@ namespace InventaSketch.Modules.Fluid
                 EtaHm(),
                 Force("Freq", T("Required force", "Erforderliche Kraft"), "F_req", "forceReq", VarRelevance.Engineer) with { Symbol = T("F_req", "F_erf") },
                 Pmax(),
-            };
-            var rels = new[] { Annulus, AreaRatio, ForceExt, ForceRet, SpeedExt, SpeedRet, TimeExt, TimeRet };
+            }.Concat(AirVars()).ToArray();
+            var rels = new[] { Annulus, AreaRatio, ForceExt, ForceRet, SpeedExt, SpeedRet, TimeExt, TimeRet, Swept("fluid.cyl.swept", "A1", "A2"), AirPerCycle, AirFlow };
             return new Spec(vars, rels, Params(vars), new[] { CylinderForce("A1") })
             {
                 Ports = (_, port) => CylinderPort(port),
@@ -333,8 +426,8 @@ namespace InventaSketch.Modules.Fluid
                 EtaHm(),
                 Force("Freq", T("Required force", "Erforderliche Kraft"), "F_req", "forceReq", VarRelevance.Engineer) with { Symbol = T("F_req", "F_erf") },
                 Pmax(),
-            };
-            return new Spec(vars, new[] { SingleForce, SingleSpeed, SingleTime }, Params(vars), new[] { CylinderForce("A") })
+            }.Concat(AirVars()).ToArray();
+            return new Spec(vars, new[] { SingleForce, SingleSpeed, SingleTime, Swept("fluid.cyl.swept.single", "A", null), AirPerCycle, AirFlow }, Params(vars), new[] { CylinderForce("A") })
             {
                 Ports = (_, port) => CylinderPort(port),
                 // Pull type (spring extends): the pressure acts on the annulus.
@@ -407,9 +500,93 @@ namespace InventaSketch.Modules.Fluid
                 Flow(), Length("di", T("Inner diameter", "Innendurchmesser"), "d_i", "innerDiameter", VarRelevance.Card),
                 Velocity("v", T("Flow velocity", "Strömungsgeschwindigkeit"), "v", "velocity", VarRelevance.Card),
                 Pressure(VarRelevance.Panel),
+                // Pressure drop (round 5): length and Δp in the panel; fluid and wall data for engineers (oil defaults).
+                V("L", T("Line length", "Leitungslänge"), T("L", "L"), Quantities.Length, "m", "length", VarRelevance.Panel) with { Min = 0, Max = 1e4 },
+                V("dp", T("Pressure drop", "Druckverlust"), T("Δp", "Δp"), Quantities.Pressure, "bar", "pressureDrop", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                V("Re", T("Reynolds number", "Reynolds-Zahl"), T("Re", "Re"), Quantities.Ratio, null, "reynolds", VarRelevance.Engineer) with { Min = 0, Max = 1e9 },
+                V("lambda", T("Friction factor", "Rohrreibungszahl"), T("λ", "λ"), Quantities.Ratio, null, "friction", VarRelevance.Engineer) with { Min = 1e-4, Max = 100 },
+                V("nu", T("Kinematic viscosity", "Kinematische Viskosität"), T("ν", "ν"), Quantities.Viscosity, "mm²/s", "viscosity", VarRelevance.Engineer) with { Default = OilNu, Min = 1e-8, Max = 1 },
+                V("rho", T("Density", "Dichte"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = OilRho, Min = 0.01, Max = 3e4 },
+                V("k", T("Wall roughness", "Wandrauigkeit"), T("k", "k"), Quantities.Length, "mm", "roughness", VarRelevance.Engineer) with { Default = TubeK, Min = 0, Max = 0.1 },
             };
-            return new Spec(vars, new[] { LineVelocity }, Params(vars), new[] { LineSpeed() });
+            return new Spec(vars, new[] { LineVelocity, Reynolds, FrictionRel, DarcyRel }, Params(vars), new[] { LineSpeed() });
         }
+
+        /// <summary>
+        /// Throttle: orifice flow Q = α·A₀·√(2Δp/ρ) with Δp = p₁ − p₂; the flow is that of the line docked at P (or A), p₁ and
+        /// p₂ the pressures of the lines docked at P and A (the throttle passes the flow, not the pressure) [S26].
+        /// </summary>
+        private static Spec Throttle()
+        {
+            var vars = new[]
+            {
+                Flow(), V("dp", T("Pressure drop", "Druckabfall"), T("Δp", "Δp"), Quantities.Pressure, "bar", "pressureDrop") with { Min = 0, Max = 1e9 },
+                Length("d0", T("Orifice diameter", "Drosseldurchmesser"), "d₀", "orificeDiameter", VarRelevance.Card),
+                V("p1", T("Inlet pressure (P)", "Eingangsdruck (P)"), T("p₁", "p₁"), Quantities.Pressure, "bar", "pressureIn", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                V("p2", T("Outlet pressure (A)", "Ausgangsdruck (A)"), T("p₂", "p₂"), Quantities.Pressure, "bar", "pressureOut", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                Area("A0", T("Orifice cross-section", "Drosselquerschnitt"), "A₀", "orificeArea") with { Unit = "mm²" },
+                V("alpha", T("Flow coefficient", "Durchflusszahl"), T("α", "α"), Quantities.Ratio, null, "flowCoefficient", VarRelevance.Engineer) with { Default = 0.6, Min = 0.01, Max = 1 },
+                V("rho", T("Density", "Dichte"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = OilRho, Min = 0.01, Max = 3e4 },
+            };
+            return new Spec(vars, new[] { OrificeArea, Orifice, PressureDifference }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                Docked = (o, ctx) => DockedLines(o, ctx, ("P", "Q", "Q"), ("A", "Q", "Q"), ("P", "p", "p1"), ("A", "p", "p2")),
+            };
+        }
+
+        private static readonly Relation FromLine = Relation.Equality("fluid.line.docked", T("Taken from the docked line", "Von der angeschlossenen Leitung übernommen"));
+
+        /// <summary>
+        /// Links from an element's variables to the lines docked on its ports: (port, line variable, element variable); a
+        /// variable is linked once, to the first docked line (by id) of its first port.
+        /// </summary>
+        private static IEnumerable<BoundRelation> DockedLines(SketchObject o, RenderContext ctx, params (string Port, string LineKey, string Key)[] map)
+        {
+            var lines = ctx.Doc.Objects.Values.Where(x => x.Type == FluidLineType.TypeId && x.Attach is { } a && a.Any(t => t?.ObjectId == o.Id))
+                .OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
+            var done = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (port, lineKey, key) in map)
+            {
+                if (done.Contains(key)) continue;
+                var line = lines.FirstOrDefault(l => l.Attach!.Any(t => t?.ObjectId == o.Id && t.AnchorId == port));
+                if (line is null) continue;
+                done.Add(key);
+                yield return new BoundRelation(FromLine, new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["a"] = new VarRef(o.Id, key), ["b"] = new VarRef(line.Id, lineKey) });
+            }
+        }
+
+        /// <summary>Type id of the hydraulic power unit (tank, motor-pump group, relief valve, return filter).</summary>
+        public const string PowerUnitId = "fluid.powerunit";
+
+        /// <summary>
+        /// Hydraulic power unit: flow and pressure at P, hydraulic and drive power, the integrated relief valve (p_max at P) and
+        /// the tank volume with the textbook rule V_T ≈ 3 … 5 × Q per minute [S26].
+        /// </summary>
+        private static Spec PowerUnit()
+        {
+            var vars = new[]
+            {
+                Flow(), Pressure(),
+                ShaftPower(T("Drive power", "Antriebsleistung")) with { Relevance = VarRelevance.Card },
+                V("VT", T("Tank volume", "Tankvolumen"), T("V_T", "V_T"), Quantities.Volume, "l", "tankVolume") with { Min = 1e-4, Max = 1e3 },
+                HydPower(),
+                V("eta", T("Total efficiency", "Gesamtwirkungsgrad"), T("η_t", "η_t"), Quantities.Efficiency, "%", "efficiency", VarRelevance.Panel) with { Default = 1, Min = 0.01, Max = 1 },
+                V("pset", NSetPressure, T("p_set", "p_E"), Quantities.Pressure, "bar", "setPressure", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+            };
+            return new Spec(vars, new[] { HydPowerRel, UnitPower }, Params(vars), new[] { TankSize() })
+            {
+                Ports = (_, port) => port == "P" ? new[] { new PortVar("Q", "Q"), new PortVar("p", "p"), new PortVar("pmax", "pset") } : Array.Empty<PortVar>(),
+            };
+        }
+
+        /// <summary>fluid.tank.volume: the tank holds less than three minutes of the pump flow (textbook rule 3 … 5 × Q per minute) [S26].</summary>
+        private static ValueCheck TankSize() => new(
+            "fluid.tank.volume", CheckSeverity.Hint,
+            T("The tank holds less than about three minutes of the pump flow (rule of thumb for stationary units: 3–5 × Q per minute). Check the tank size.",
+              "Der Tank fasst weniger als etwa drei Minuten Förderstrom (Faustregel für stationäre Aggregate: 3–5 × Q je Minute). Tankgröße prüfen."),
+            "V_T < 3·Q·1 min",
+            c => c["VT"] is double vt && c["Q"] is double q && q > 0 && vt < 3 * q * 60 * (1 - Rel))
+        { Source = "S26" };
 
         // ------------------------------------------------------------------ net description
 
@@ -469,6 +646,8 @@ namespace InventaSketch.Modules.Fluid
             var spec = For(o.Type);
             if (spec.Local is not null)
                 foreach (var r in spec.Local(o)) yield return BoundRelation.Local(r, o.Id);
+            if (spec.Docked is not null)
+                foreach (var b in spec.Docked(o, ctx)) yield return b;
             foreach (var b in ValueNets.Of(ctx.Doc, Nets).For(o.Id)) yield return b;
         }
 

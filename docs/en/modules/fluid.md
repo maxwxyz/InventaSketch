@@ -8,8 +8,8 @@ ISO 1219-1 (graphical symbols for fluid power systems) and the component designa
 circuit diagrams (for example `1V1`, `0P1`). All symbols are **drawn independently**; no standard texts, tables or
 symbol artwork are copied, and **no claim of standards compliance** is made.
 
-It is a **sketching** module for slides, technical figures and concept circuits. It does not simulate, size or check
-circuits.
+It is a **sketching** module for slides, technical figures and concept circuits. It does not simulate circuits; the
+optional engineering values (below) give first estimates and hints, no sizing to a standard.
 
 ## Conventions
 
@@ -110,7 +110,7 @@ mechanical and machines modules ([mechanical-drives.md](mechanical-drives.md)):
 | Pumps, motors & cylinders | `pump` (pump/compressor; `variable`, `flow`; shaft hub), `motor` (`variable`, `flow`; output shaft axis), `cylinder.double` (`rod` single/through, `cushion` none/fixed/adjustable), `cylinder.single` (`spring` return/extend/none), `rotary`, `suctioncup` (suction cup / Sauggreifer; `bellows`; port `V`) |
 | Directional control valves | `valve.directional` (`ways` 2/2, 3/2, 4/2, 4/3, 5/2, 5/3; `normal`; `centre`; `actLeft`/`actRight`: none, manual, push button, lever, pedal, roller, spring, solenoid, pressure pilot; `centring`; `detent`), `actuation` (separate actuation symbol incl. detent) |
 | Non-return, flow & pressure valves | `valve.check` (`spring`, `piloted`), `valve.throttle` (`adjustable`, `check` = one-way flow control), `valve.relief`, `valve.reducing`, `valve.sequence` (drain port `L`), `valve.shuttle` (OR), `valve.twopressure` (AND), `valve.quickexhaust`, `valve.pilotcheck` (pilot-operated check valve / entsperrbares Rückschlagventil with pilot piston; `spring` (on), `twin` = double, cross-piloted: ports `P`, `A`, `X`; double `A1`, `A2`, `B1`, `B2`), `valve.counterbalance` (counterbalance valve / Senkbremsventil: normally closed pressure valve from the load port `C` to the valve port `V`, internal pilot from `C`, external pilot `X`, bypass check valve for free flow `V` → `C`; `adjustable`) |
-| Supply, conditioning & accumulators | `tank` (open/closed), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (detailed/simplified), `accumulator` (gas/spring/weight), `vacuum.generator` (vacuum generator / ejector – Vakuumerzeuger: driving nozzle and diffuser, ports `P` supply, `R` exhaust, `V` vacuum) |
+| Supply, conditioning & accumulators | `tank` (open/closed), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (detailed/simplified), `accumulator` (gas/spring/weight), `powerunit` (hydraulic power unit / Hydraulikaggregat: electric motor and pump drawing from the tank, relief valve and return filter in a dash-dot enclosure; ports `P` pressure, `T` return), `vacuum.generator` (vacuum generator / ejector – Vakuumerzeuger: driving nozzle and diffuser, ports `P` supply, `R` exhaust, `V` vacuum) |
 | Measuring & signalling | `gauge`, `pressureswitch`, `flowmeter`, `thermometer` |
 | Lines & connections | `line` (point object), `junction`, `crossing` (plain or with bridge), `plug`, `coupling` (coupled/uncoupled, with non-return valves), `enclosure` (dash-dot assembly boundary) |
 
@@ -119,7 +119,7 @@ throttles and check valves; a directional valve offers actuations, lines, cylind
 offers the suction cup and vice versa.
 
 Library items of the new elements: `fluid.pilotcheck`, `fluid.pilotcheck.double`, `fluid.counterbalance`,
-`fluid.vacuum`, `fluid.suctioncup`, `fluid.suctioncup.bellows` (the older `fluid.check.piloted`, a check valve with the
+`fluid.vacuum`, `fluid.suctioncup`, `fluid.suctioncup.bellows`, `fluid.powerunit` (round 5; the older `fluid.check.piloted`, a check valve with the
 `piloted` option, stays).
 
 ## Connection list export
@@ -151,12 +151,15 @@ section of the inspector). Speeds are magnitudes, *P* = 2π·*n*·*T* (German *M
 | Motor (`fluid.motor`) | as the pump; *T* and *P* are output values | *n* = *Q*·η_v/*V*_g; *T* = *V*_g·*p*·η_hm/(2π); *P* = 2π·*n*·*T*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd·η_v·η_hm [S26] |
 | Double-acting cylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_ext (`forceExt`), *v*_ext (`speedExt`); panel *p*, *Q*, *F*_ret (`forceRet`), *v*_ret (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_ext (`timeExt`), *t*_ret (`timeRet`); engineer η_hm, *F*_req (`forceReq`), *p*_max (`pmax`, linked) | *A*₁ = π·*D*²/4 (through rod: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm and *v* = *Q*/*A* both ways; *t* = *s*/*v* [S26] |
 | Single-acting cylinder | *D*, *F* (`force`, spring force not included), *v* (`speed`), *p*; panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`); engineer η_hm, *F*_req, *p*_max | *A* = π·*D*²/4 (spring extend: annulus); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
+| Both cylinders: pneumatic air consumption (engineer) | *V*_s (`sweptVolume`), *V*_air (`airPerCycle`, free air per cycle), *Q*_n (`airFlow`, free air flow during a stroke) | *V*_s = (*A*₁ + *A*₂)·*s* (single-acting: *A*·*s*); *V*_air = *V*_s·(*p* + *p*_amb)/*p*_amb; *Q*_n = *Q*·(*p* + *p*_amb)/*p*_amb (*p* gauge, *p*_amb = 1.013 bar, isothermal) [S26] |
 | Rotary actuator | *V*_g, *p*, *T*; engineer η_hm | *T* = *V*_g·*p*·η_hm/(2π) [S26] |
 | Relief, reducing, sequence valve | *p*_set (`setPressure`) | – |
+| Throttle (`fluid.valve.throttle`) | *Q* (`flowRate`), Δ*p* (`pressureDrop`), *d*₀ (`orificeDiameter`); panel *p*₁ (`pressureIn`, at P), *p*₂ (`pressureOut`, at A), *A*₀ (`orificeArea`); engineer α (`flowCoefficient`, default 0.6), ρ (`density`, default 870 kg/m³) | *A*₀ = π·*d*₀²/4; *Q* = α·*A*₀·√(2Δ*p*/ρ) (sharp-edged orifice, incompressible); Δ*p* = *p*₁ − *p*₂ [S26] |
+| Hydraulic power unit (`fluid.powerunit`) | *Q* (`flowRate`), *p* (`pressure`), *P* (`power`, drive), *V*_T (`tankVolume`); panel *P*_hyd (`powerHyd`), η_t (`efficiency`, default 100 %), *p*_set (`setPressure`, the built-in relief valve) | *P*_hyd = *p*·*Q*; *P* = *P*_hyd/η_t [S26] |
 | Gauge, pressure switch, pressure source | *p* (shown from the net) | – |
 | Flow meter | *Q* (shown from the net) | – |
 | Accumulator | *V*₀ (`volume`), *p*₀ (`p0`), Δ*V* (`volumeUsable`); panel *p*₁, *p*₂, *V*₁, *V*₂ (absolute pressures) | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isothermal); Δ*V* = *V*₁ − *V*₂ [S26] |
-| Line (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); panel *p* | *v* = 4·*Q*/(π·*d*_i²) [S27] |
+| Line (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); panel *p*, *L* (`length`), Δ*p* (`pressureDrop`); engineer *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, default 46 mm²/s: oil of viscosity grade VG 46 at 40 °C), ρ (`density`, default 870 kg/m³), *k* (`roughness`, default 0.0015 mm, drawn tube) | *v* = 4·*Q*/(π·*d*_i²); *Re* = *v*·*d*_i/ν; λ = 64/*Re* below *Re* = 2320, above it the explicit Haaland approximation of Colebrook–White; Δ*p* = λ·(*L*/*d*_i)·ρ·*v*²/2 (straight line, fittings not counted) [S27] |
 
 **Port flows.** Lines join ports into nets (line ends docked on ports and on other lines). Per net:
 
@@ -169,7 +172,12 @@ section of the inspector). Speeds are magnitudes, *P* = 2π·*n*·*T* (German *M
   *Q* and *p*_max but not *p*; reducing valves pass *Q* and set *p* at A to *p*_set. The pilot-operated check valve
   passes all three (P–A; double: A1–A2 and B1–B2), the counterbalance valve only *Q* (C–V: the load pressure is held).
 - Pump and motor share *n* (and *T* as described under "Drive shafts") with the drive or shaft they are coupled to.
-- Line and valve losses are not modelled.
+- The throttle reads the flow of the line docked at P (or A) and the pressures of the lines docked at P and A (relation
+  `fluid.line.docked`): a 100 bar supply, a 2 mm throttle and a single-acting cylinder at 60 bar give Δ*p* = 40 bar, the
+  flow and the cylinder speed. The power unit gives *Q* and *p* at P like a pump and its set pressure as *p*_max, so the
+  cylinders it feeds get their force limit.
+- Pressure drops are values of the line and of the throttle; they are not subtracted from the net pressures, which stay
+  one value per net. Losses of directional valves are not modelled.
 
 Example (accept criterion): a pump with *V*_g = 10 cm³ at 1450 min⁻¹ gives *Q* = 14.5 l/min; through a 4/3 valve to a
 50/28 mm cylinder at 100 bar: *F*_ext = 19.6 kN, *F*_ret = 13.5 kN, *v*_ext = 0.123 m/s, *v*_ret = 0.179 m/s, whether
@@ -182,6 +190,7 @@ the 100 bar is entered at the pump or at the cylinder.
 | `fluid.cyl.force` | *F*_req > *p*_max·*A*·η_hm (*p*_max from the relief valve, else the supply pressure *p*) | warning | [S26] |
 | `fluid.velocity` | line velocity outside the textbook range of its function: suction 0.5–1.5 m/s (docked on a pump's S), return 2–4 m/s (drain line, tank, T/R port), pressure 3–6 m/s | hint | [S26] |
 | `fluid.pressure.relief` | a pump with values whose pressure net (through valves) contains no relief valve | hint | [S25] (ISO 4413) |
+| `fluid.tank.volume` | power unit: *V*_T < 3·*Q*·1 min (textbook rule of thumb for stationary units: 3–5 × the flow per minute) | hint | [S26] |
 
 ## Host notes
 
@@ -191,6 +200,9 @@ picture fallback is needed. Rounded rectangles (closed reservoir, accumulator) u
 ## Limits and next steps
 
 - No numeric port identification (`1`, `2`, `3`, `12`, `14` …), no servo/proportional valves, no logic-element blocks.
+- The power unit is one symbol: its motor, pump, relief valve and filter are drawn, not separate elements (no shaft, no
+  own ports for them); the pump flow is entered on the unit. Pressure drops of fittings, valve datasheet curves
+  (Δ*p* over *Q*) and the compressibility of air in the orifice relation are not modelled.
 - A line end docked on another line (its rail) is attached to it (a branch): it follows the line and the connection
   list joins both lines; a junction dot is optional.
 - Labels and port names lie outside the object box, so host selection frames do not include them.

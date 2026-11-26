@@ -81,7 +81,9 @@ namespace InventaSketch.Modules.Electrical
                 new[] { "transistor", "bjt", "npn", "pnp", "bipolar", "bipolartransistor" },
                 Views.Symbol(20, 20, Bjt))
             {
-                Pins = Fixed(TransistorPins), Params = new[] { BjtPolarity, Envelope }, RefPrefix = "Q",
+                Pins = Fixed(TransistorPins), Params = new[] { BjtPolarity, Envelope }.Concat(ElecValues.BjtParams).ToList(), RefPrefix = "Q",
+                // Transistor as a switch (section 2.3): the base resistor from U_in, I_C and B; a resistor wired alone to the base is R_B.
+                Variables = ElecValues.BjtVariables, Relations = ElecValues.Bjt, Links = CircuitLinks.Bjt, Checks = new[] { CircuitLinks.BjtOverdrive },
                 Extra = o => new[] { Swap(o, "polarity", "npn", "pnp", T("Swap NPN/PNP", "NPN/PNP wechseln")), Toggle(o, "elec.envelope", T("Envelope circle", "Gehäusekreis"), "envelope", false) },
             };
 

@@ -57,7 +57,7 @@ namespace InventaSketch.Modules.BuildingServices.Tests
             "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.radiator", "bs.heat.floorloop", "bs.heat.manifold", "bs.heat.pump",
             "bs.heat.mixer", "bs.heat.expansion", "bs.heat.trv",
             "bs.valve.ball", "bs.valve.check", "bs.valve.safety", "bs.strainer", "bs.meter.heat", "bs.meter.water",
-            "bs.heat.buffer", "bs.heat.solarthermal",
+            "bs.heat.buffer", "bs.heat.separator", "bs.heat.solarthermal",
             "bs.san.wc", "bs.san.basin", "bs.san.shower", "bs.san.bathtub", "bs.san.heater", "bs.san.drain", "bs.san.riser",
             "bs.vent.terminal", "bs.vent.unit", "bs.vent.damper", "bs.vent.firedamper", "bs.vent.silencer",
             "bs.cool.split",

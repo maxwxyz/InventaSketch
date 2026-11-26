@@ -8,8 +8,8 @@ Das Modul liefert Schaltzeichen für Hydraulik- und Pneumatikschaltpläne im Sin
 `0P1`). Alle Symbole sind **eigenständig gezeichnet**; es werden keine Normtexte, Tabellen oder Symbolgrafiken
 übernommen, und es wird **keine Normkonformität behauptet**.
 
-Es ist ein **Skizzier**-Modul für Folien, technische Abbildungen und Konzeptschaltungen. Es simuliert, dimensioniert und
-prüft keine Schaltungen.
+Es ist ein **Skizzier**-Modul für Folien, technische Abbildungen und Konzeptschaltungen. Es simuliert keine Schaltungen;
+die optionalen technischen Werte (unten) liefern erste Abschätzungen und Hinweise, keine Auslegung nach einer Norm.
 
 ## Konventionen
 
@@ -116,7 +116,7 @@ Mechanik- und des Maschinenmoduls ([mechanical-drives.md](mechanical-drives.md))
 | Pumpen, Motoren & Zylinder | `pump` (Pumpe/Verdichter; `variable`, `flow`; Wellennabe), `motor` (`variable`, `flow`; Abtriebswelle als Achse), `cylinder.double` (`rod` einseitig/durchgehend, `cushion` keine/fest/einstellbar), `cylinder.single` (`spring` Rückstellung/Vorhub/keine), `rotary`, `suctioncup` (Sauggreifer; `bellows` Faltenbalg; Anschluss `V`) |
 | Wegeventile | `valve.directional` (`ways` 2/2, 3/2, 4/2, 4/3, 5/2, 5/3; `normal`; `centre`; `actLeft`/`actRight`: keine, Muskelkraft, Druckknopf, Hebel, Pedal, Rolle, Feder, Elektromagnet, Druckansteuerung; `centring`; `detent`), `actuation` (separates Betätigungssymbol inkl. Rastung) |
 | Sperr-, Strom- & Druckventile | `valve.check` (`spring`, `piloted`), `valve.throttle` (`adjustable`, `check` = Drosselrückschlagventil), `valve.relief`, `valve.reducing`, `valve.sequence` (Leckanschluss `L`), `valve.shuttle` (ODER), `valve.twopressure` (UND), `valve.quickexhaust`, `valve.pilotcheck` (entsperrbares Rückschlagventil mit Steuerkolben; `spring` (ein), `twin` = doppelt, gegenseitig entsperrt: Anschlüsse `P`, `A`, `X`; doppelt `A1`, `A2`, `B1`, `B2`), `valve.counterbalance` (Senkbremsventil: in Ruhe geschlossenes Druckventil vom Lastanschluss `C` zum Ventilanschluss `V`, interne Vorsteuerung von `C`, externe Vorsteuerung `X`, Bypass-Rückschlagventil für freien Durchfluss `V` → `C`; `adjustable`) |
-| Versorgung, Aufbereitung & Speicher | `tank` (offen/geschlossen), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (ausführlich/vereinfacht), `accumulator` (Gas/Feder/Gewicht), `vacuum.generator` (Vakuumerzeuger / Ejektor: Treibdüse und Diffusor, Anschlüsse `P` Versorgung, `R` Abluft, `V` Vakuum) |
+| Versorgung, Aufbereitung & Speicher | `tank` (offen/geschlossen), `source`, `exhaust`, `silencer`, `filter`, `separator`, `lubricator`, `cooler`, `heater`, `frl` (ausführlich/vereinfacht), `accumulator` (Gas/Feder/Gewicht), `powerunit` (Hydraulikaggregat: Elektromotor und Pumpe, die aus dem Tank saugt, Druckbegrenzungsventil und Rücklauffilter in einer strichpunktierten Umrahmung; Anschlüsse `P` Druck, `T` Rücklauf), `vacuum.generator` (Vakuumerzeuger / Ejektor: Treibdüse und Diffusor, Anschlüsse `P` Versorgung, `R` Abluft, `V` Vakuum) |
 | Messen & Melden | `gauge`, `pressureswitch`, `flowmeter`, `thermometer` |
 | Leitungen & Verbindungen | `line` (Punktobjekt), `junction`, `crossing` (einfach oder mit Brücke), `plug`, `coupling` (gekuppelt/entkuppelt, mit Rückschlagventilen), `enclosure` (strichpunktierte Baugruppenumrahmung) |
 
@@ -125,7 +125,7 @@ Wegeventile, Drosseln und Rückschlagventile; ein Wegeventil Betätigungen, Leit
 Vakuumerzeuger den Sauggreifer und umgekehrt.
 
 Bibliothekselemente der neuen Bauteile: `fluid.pilotcheck`, `fluid.pilotcheck.double`, `fluid.counterbalance`,
-`fluid.vacuum`, `fluid.suctioncup`, `fluid.suctioncup.bellows` (das ältere `fluid.check.piloted`, ein Rückschlagventil
+`fluid.vacuum`, `fluid.suctioncup`, `fluid.suctioncup.bellows`, `fluid.powerunit` (Runde 5; das ältere `fluid.check.piloted`, ein Rückschlagventil
 mit der Option `piloted`, bleibt).
 
 ## Export Verbindungsliste
@@ -158,12 +158,15 @@ stehen vorn. Entwurfsnotizen:
 | Motor (`fluid.motor`) | wie die Pumpe; *M* und *P* sind Abtriebswerte | *n* = *Q*·η_v/*V*_g; *M* = *V*_g·*p*·η_hm/(2π); *P* = 2π·*n*·*M*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd·η_v·η_hm [S26] |
 | Doppeltwirkender Zylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_aus (`forceExt`), *v*_aus (`speedExt`); Panel *p*, *Q*, *F*_ein (`forceRet`), *v*_ein (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_aus (`timeExt`), *t*_ein (`timeRet`); Ingenieur η_hm, *F*_erf (`forceReq`), *p*_max (`pmax`, verknüpft) | *A*₁ = π·*D*²/4 (durchgehende Stange: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm und *v* = *Q*/*A* in beide Richtungen; *t* = *s*/*v* [S26] |
 | Einfachwirkender Zylinder | *D*, *F* (`force`, ohne Federkraft), *v* (`speed`), *p*; Panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`); Ingenieur η_hm, *F*_erf, *p*_max | *A* = π·*D*²/4 (Federvorhub: Ringfläche); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
+| Beide Zylinder: Luftverbrauch Pneumatik (Ingenieur) | *V*_H (`sweptVolume`), *V*_L (`airPerCycle`, freie Luft je Arbeitsspiel), *Q*_n (`airFlow`, Luftverbrauch während eines Hubs) | *V*_H = (*A*₁ + *A*₂)·*s* (einfachwirkend: *A*·*s*); *V*_L = *V*_H·(*p* + *p*_amb)/*p*_amb; *Q*_n = *Q*·(*p* + *p*_amb)/*p*_amb (*p* Überdruck, *p*_amb = 1,013 bar, isotherm) [S26] |
 | Schwenkantrieb | *V*_g, *p*, *M*; Ingenieur η_hm | *M* = *V*_g·*p*·η_hm/(2π) [S26] |
 | Druckbegrenzungs-, Druckminder-, Zuschaltventil | *p*_E (`setPressure`) | – |
+| Drossel (`fluid.valve.throttle`) | *Q* (`flowRate`), Δ*p* (`pressureDrop`), *d*₀ (`orificeDiameter`); Panel *p*₁ (`pressureIn`, an P), *p*₂ (`pressureOut`, an A), *A*₀ (`orificeArea`); Ingenieur α (`flowCoefficient`, Vorgabe 0,6), ρ (`density`, Vorgabe 870 kg/m³) | *A*₀ = π·*d*₀²/4; *Q* = α·*A*₀·√(2Δ*p*/ρ) (scharfkantige Blende, inkompressibel); Δ*p* = *p*₁ − *p*₂ [S26] |
+| Hydraulikaggregat (`fluid.powerunit`) | *Q* (`flowRate`), *p* (`pressure`), *P* (`power`, Antrieb), *V*_T (`tankVolume`); Panel *P*_hyd (`powerHyd`), η_t (`efficiency`, Vorgabe 100 %), *p*_E (`setPressure`, das eingebaute Druckbegrenzungsventil) | *P*_hyd = *p*·*Q*; *P* = *P*_hyd/η_t [S26] |
 | Manometer, Druckschalter, Druckquelle | *p* (aus dem Netz angezeigt) | – |
 | Durchflussmesser | *Q* (aus dem Netz angezeigt) | – |
 | Hydrospeicher | *V*₀ (`volume`), *p*₀ (`p0`), Δ*V* (`volumeUsable`); Panel *p*₁, *p*₂, *V*₁, *V*₂ (absolute Drücke) | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isotherm); Δ*V* = *V*₁ − *V*₂ [S26] |
-| Leitung (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); Panel *p* | *v* = 4·*Q*/(π·*d*_i²) [S27] |
+| Leitung (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); Panel *p*, *L* (`length`), Δ*p* (`pressureDrop`); Ingenieur *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, Vorgabe 46 mm²/s: Öl der Viskositätsklasse VG 46 bei 40 °C), ρ (`density`, Vorgabe 870 kg/m³), *k* (`roughness`, Vorgabe 0,0015 mm, gezogenes Rohr) | *v* = 4·*Q*/(π·*d*_i²); *Re* = *v*·*d*_i/ν; λ = 64/*Re* unter *Re* = 2320, darüber die explizite Näherung nach Haaland für Colebrook–White; Δ*p* = λ·(*L*/*d*_i)·ρ·*v*²/2 (gerade Leitung, Formteile nicht gerechnet) [S27] |
 
 **Werte über Anschlüsse.** Leitungen verbinden Anschlüsse zu Netzen (Leitungsenden an Anschlüssen und an anderen
 Leitungen). Je Netz gilt:
@@ -179,7 +182,13 @@ Leitungen). Je Netz gilt:
   geben *Q* weiter und setzen *p* an A auf *p*_E. Das entsperrbare Rückschlagventil gibt alle drei weiter (P–A; doppelt
   A1–A2 und B1–B2), das Senkbremsventil nur *Q* (C–V: der Lastdruck wird gehalten).
 - Pumpe und Motor teilen *n* (und *M* wie unter „Antriebswellen“ beschrieben) mit dem gekoppelten Antrieb oder der Welle.
-- Verluste in Leitungen und Ventilen werden nicht abgebildet.
+- Die Drossel liest den Volumenstrom der an P (oder A) angedockten Leitung und die Drücke der an P und A angedockten
+  Leitungen (Beziehung `fluid.line.docked`): eine 100-bar-Versorgung, eine 2-mm-Drossel und ein einfachwirkender
+  Zylinder bei 60 bar ergeben Δ*p* = 40 bar, den Volumenstrom und die Zylindergeschwindigkeit. Das Hydraulikaggregat gibt
+  *Q* und *p* an P wie eine Pumpe und seinen Einstelldruck als *p*_max weiter, die versorgten Zylinder erhalten so ihre
+  Kraftgrenze.
+- Druckverluste sind Werte der Leitung und der Drossel; sie werden nicht von den Netzdrücken abgezogen, die je Netz ein
+  Wert bleiben. Verluste in Wegeventilen werden nicht abgebildet.
 
 Beispiel (Abnahmekriterium): eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ liefert *Q* = 14,5 l/min; über ein
 4/3-Wegeventil an einen Zylinder 50/28 mm bei 100 bar: *F*_aus = 19,6 kN, *F*_ein = 13,5 kN, *v*_aus = 0,123 m/s,
@@ -192,6 +201,7 @@ Beispiel (Abnahmekriterium): eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ li
 | `fluid.cyl.force` | *F*_erf > *p*_max·*A*·η_hm (*p*_max vom Druckbegrenzungsventil, sonst der Versorgungsdruck *p*) | Warnung | [S26] |
 | `fluid.velocity` | Leitungsgeschwindigkeit außerhalb des Lehrbuchbereichs ihrer Funktion: Saugleitung 0,5–1,5 m/s (an S einer Pumpe), Rücklauf 2–4 m/s (Leckölleitung, Tank, Anschluss T/R), Druckleitung 3–6 m/s | Hinweis | [S26] |
 | `fluid.pressure.relief` | eine Pumpe mit Werten, in deren Drucknetz (über Ventile) kein Druckbegrenzungsventil liegt | Hinweis | [S25] (ISO 4413) |
+| `fluid.tank.volume` | Hydraulikaggregat: *V*_T < 3·*Q*·1 min (Faustregel aus dem Lehrbuch für stationäre Aggregate: 3–5-facher Förderstrom je Minute) | Hinweis | [S26] |
 
 ## Hinweise für Hosts
 
@@ -203,6 +213,10 @@ Speicher) nutzen den Eckenradius des Rechtecks.
 
 - Keine numerische Anschlusskennzeichnung (`1`, `2`, `3`, `12`, `14` …), keine Servo-/Proportionalventile, keine
   Logikbausteine.
+- Das Hydraulikaggregat ist ein Symbol: Motor, Pumpe, Druckbegrenzungsventil und Filter sind gezeichnet, keine eigenen
+  Elemente (keine Welle, keine eigenen Anschlüsse); der Förderstrom wird am Aggregat eingetragen. Druckverluste von
+  Formteilen, Kennlinien von Ventilen aus dem Datenblatt (Δ*p* über *Q*) und die Kompressibilität der Luft in der
+  Blendenbeziehung werden nicht abgebildet.
 - Ein auf einer anderen Leitung (deren Schiene) angedocktes Leitungsende hängt an ihr (Abzweig): Es folgt der Leitung,
   und die Verbindungsliste fasst beide Leitungen zusammen; ein Verbindungspunkt ist optional.
 - Kennzeichen und Anschlussnamen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
