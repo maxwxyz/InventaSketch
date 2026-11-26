@@ -75,6 +75,43 @@ namespace InventaSketch.Modules.Optics
         public const string Opening = "opening";
         /// <summary>Start direction of a free ray (around its first point).</summary>
         public const string Direction = "dir";
+        /// <summary>End of the axis line of a polariser or wave plate (parameter <c>angle</c>).</summary>
+        public const string AxisAngle = "axis";
+        /// <summary>Upper end of a scanner mirror (mirror angle, parameter <c>angle</c>).</summary>
+        public const string MirrorAngle = "angle";
+
+        /// <summary>
+        /// Unit direction (local) of a line drawn at <paramref name="deg"/> degrees from the element's height direction:
+        /// 0° points up (−y), positive angles turn clockwise on screen.
+        /// </summary>
+        public static Vec2 LineDirection(double deg)
+        {
+            var a = Geo.DegToRad(deg);
+            return new Vec2(Math.Sin(a), -Math.Cos(a));
+        }
+
+        /// <summary>
+        /// The angle (whole degrees, −90° … 90°) of a line through the element's centre and the local point
+        /// <paramref name="local"/> (the inverse of <see cref="LineDirection"/>; a line has no direction, so it is folded into
+        /// −90° … 90°); null if the point lies on the centre.
+        /// </summary>
+        public static double? LineDegrees(Vec2 local)
+        {
+            if (local.Length < 1e-9) return null;
+            var deg = Geo.RadToDeg(Math.Atan2(local.X, -local.Y));
+            if (deg > 90) deg -= 180;
+            else if (deg < -90) deg += 180;
+            return Geo.Clamp(Dragging.Snap(deg, 1), -90, 90);
+        }
+
+        /// <summary>Half length of a line through the centre in direction <paramref name="dir"/> that stays within ±hw × ±hh.</summary>
+        public static double HalfLength(Vec2 dir, double hw, double hh)
+        {
+            var l = double.PositiveInfinity;
+            if (Math.Abs(dir.X) > 1e-9) l = Math.Min(l, Math.Max(0, hw) / Math.Abs(dir.X));
+            if (Math.Abs(dir.Y) > 1e-9) l = Math.Min(l, Math.Max(0, hh) / Math.Abs(dir.Y));
+            return double.IsInfinity(l) ? 0 : l;
+        }
 
         /// <summary>A number for a label: up to two decimals, decimal comma in German.</summary>
         public static string Num(double v, Lang lang)

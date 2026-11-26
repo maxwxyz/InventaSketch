@@ -6,22 +6,24 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Optics
 {
     /// <summary>
-    /// Optics module for technical figures and teaching slides: lenses (section or symbol), mirrors, prisms, beam
-    /// splitters, stops, gratings, filters, optical fibre, light sources, detectors, screen, object arrow and optical axis,
-    /// and light rays that are traced live through the elements (thin lenses and curved mirrors paraxial, plane mirrors,
-    /// splitters and prism faces exact). Every element is insertable without parameters and scales freely; focal lengths
+    /// Optics module for technical figures and teaching slides: lenses (section, symbol or thick), mirrors (also a galvo
+    /// scanner), prisms, beam splitters, stops, gratings, filters, polarisers, wave plates, light guide, optical fibre, light
+    /// sources, detectors (also a spectrometer), screen, object arrow and optical axis, and light rays that are traced live
+    /// through the elements (thin lenses and curved mirrors paraxial; plane mirrors, splitters, prism faces, thick-lens faces
+    /// and light guides exact; linear polarisation by Jones vectors). Every element is insertable without parameters and scales freely; focal lengths
     /// are given in the drawing scale (see docs/en/modules/optics.md).
     /// </summary>
     public sealed class OpticsModule : IModule
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() => new ObjectType[]
         {
-            new LensType(converging: true), new LensType(converging: false),
-            new MirrorType("plane"), new MirrorType("concave"), new MirrorType("convex"),
+            new LensType(converging: true), new LensType(converging: false), new ThickLensType(),
+            new MirrorType("plane"), new MirrorType("concave"), new MirrorType("convex"), new ScannerMirrorType(),
             new PrismType(), new SplitterType(cube: true), new SplitterType(cube: false),
             new StopType(), new GratingType(), new FilterType(), new FibreType(),
+            new PolarizerType(), new WaveplateType(), new LightGuideType(),
             new LampType(), new LedType(), new LaserType(),
-            new PhotodiodeType(), new CameraType(), new EyeType(), new ScreenType(),
+            new PhotodiodeType(), new CameraType(), new EyeType(), new ScreenType(), new SpectrometerType(),
             new ObjectArrowType(), RayType.Instance, new OpticalAxisType(),
         });
 
@@ -41,7 +43,7 @@ namespace InventaSketch.Modules.Optics
         {
             new LibraryCategory(OpticsCategories.Lenses, new I18nText("Lenses", "Linsen"), Id, 10),
             new LibraryCategory(OpticsCategories.Mirrors, new I18nText("Mirrors, prisms & beam splitters", "Spiegel, Prismen & Strahlteiler"), Id, 20),
-            new LibraryCategory(OpticsCategories.Components, new I18nText("Stops, gratings, filters & fibres", "Blenden, Gitter, Filter & Fasern"), Id, 30),
+            new LibraryCategory(OpticsCategories.Components, new I18nText("Stops, gratings, filters, polarizers & guides", "Blenden, Gitter, Filter, Polarisatoren & Lichtleiter"), Id, 30),
             new LibraryCategory(OpticsCategories.Sources, new I18nText("Light sources", "Lichtquellen"), Id, 40),
             new LibraryCategory(OpticsCategories.Detectors, new I18nText("Detectors & screens", "Detektoren & Schirme"), Id, 50),
             new LibraryCategory(OpticsCategories.Beams, new I18nText("Beam paths", "Strahlengänge"), Id, 60),
@@ -81,11 +83,18 @@ namespace InventaSketch.Modules.Optics
             Add("optics.lens.meniscus.negative", div, "Negative meniscus lens", "Negative Meniskuslinse", P(("shape", "meniscus")), kw: new[] { "meniscus", "meniskus" });
             Add("optics.lens.diverging.symbol", div, "Diverging lens (symbol)", "Zerstreuungslinse (Symbol)", view: "symbol", size: new Size2(4, 34),
                 kw: new[] { "symbol", "schematic", "schematisch" });
+            Add("optics.lens.thick", ThickLensType.TypeId, "Thick lens (biconvex, traced at both faces)", "Dicke Linse (bikonvex, an beiden Flächen verfolgt)",
+                kw: new[] { "thick", "dick", "two surfaces", "zwei flächen" });
+            Add("optics.lens.thick.planoconvex", ThickLensType.TypeId, "Thick plano-convex lens", "Dicke plankonvexe Linse", P(("shape", "planoconvex")),
+                kw: new[] { "plano-convex", "plankonvex", "thick", "dick" });
 
             // Mirrors, prisms & beam splitters.
             Add("optics.mirror.plane", MirrorType.PlaneId, "Plane mirror", "Planspiegel");
             Add("optics.mirror.concave", MirrorType.ConcaveId, "Concave mirror", "Hohlspiegel");
             Add("optics.mirror.convex", MirrorType.ConvexId, "Convex mirror", "Wölbspiegel");
+            Add("optics.mirror.scanner", ScannerMirrorType.TypeId, "Scanner mirror (galvo)", "Scannerspiegel (Galvo)");
+            Add("optics.mirror.scanner.fan", ScannerMirrorType.TypeId, "Scanner mirror with scan range", "Scannerspiegel mit Scanbereich", P(("fan", true)),
+                kw: new[] { "scan range", "scanbereich", "fan", "fächer", "laser scanning", "laserscanner" });
             Add("optics.prism", PrismType.TypeId, "Prism (deviating)", "Prisma (ablenkend)", kw: new[] { "equilateral", "gleichseitig", "deviation", "ablenkung" });
             Add("optics.prism.dispersing", PrismType.TypeId, "Dispersing prism", "Dispersionsprisma", P(("dispersion", true), ("n", 1.62), ("dn", 0.05)),
                 kw: new[] { "rainbow", "regenbogen", "colours", "farben", "white light", "weißes licht" });
@@ -101,6 +110,10 @@ namespace InventaSketch.Modules.Optics
             Add("optics.filter", FilterType.TypeId, "Optical filter (neutral)", "Optischer Filter (neutral)", kw: new[] { "neutral density", "graufilter", "nd" });
             Add("optics.filter.red", FilterType.TypeId, "Colour filter (red)", "Farbfilter (rot)", P(("tint", "red")), kw: new[] { "red", "rot", "colour", "farbe" });
             Add("optics.fibre", FibreType.TypeId, "Optical fibre with connectors", "Lichtwellenleiter mit Steckern");
+            Add("optics.lightguide", LightGuideType.TypeId, "Light guide (rod, total internal reflection)", "Lichtleitstab (Totalreflexion)");
+            Add("optics.polarizer", PolarizerType.TypeId, "Linear polarizer", "Linearpolarisator");
+            Add("optics.waveplate", WaveplateType.TypeId, "Quarter-wave plate (λ/4)", "Viertelwellenplatte (λ/4)", kw: new[] { "quarter", "viertel", "circular", "zirkular" });
+            Add("optics.waveplate.half", WaveplateType.TypeId, "Half-wave plate (λ/2)", "Halbwellenplatte (λ/2)", P(("retardance", "half")), kw: new[] { "half", "halb", "rotate polarization", "polarisation drehen" });
 
             // Light sources.
             Add("optics.source.lamp", Sources.LampId, "Lamp (light source)", "Lampe (Lichtquelle)");
@@ -115,6 +128,7 @@ namespace InventaSketch.Modules.Optics
             Add("optics.detector.camera", Detectors.CameraId, "Camera (image sensor)", "Kamera (Bildsensor)");
             Add("optics.detector.eye", Detectors.EyeId, "Eye (section)", "Auge (Schnitt)");
             Add("optics.screen", Detectors.ScreenId, "Screen (optics)", "Schirm (Optik)");
+            Add("optics.detector.spectrometer", Detectors.SpectrometerId, "Spectrometer", "Spektrometer");
 
             // Beam paths.
             Add("optics.ray", RayType.TypeId, "Light ray (traced)", "Lichtstrahl (verfolgt)",

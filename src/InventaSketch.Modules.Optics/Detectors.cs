@@ -11,6 +11,7 @@ namespace InventaSketch.Modules.Optics
         public const string CameraId = "optics.detector.camera";
         public const string EyeId = "optics.detector.eye";
         public const string ScreenId = "optics.screen.plain";
+        public const string SpectrometerId = "optics.detector.spectrometer";
 
         /// <summary>Closed rectangle outline as absorbing segments.</summary>
         public static IEnumerable<Surface> Box(double x0, double y0, double x1, double y1)
@@ -210,6 +211,92 @@ namespace InventaSketch.Modules.Optics
         {
             var (r, cx) = Ball(o);
             yield return Anchor.Point(AnchorRole.Port, new Vec2(cx - 1.17 * r, 0), "o");
+        }
+    }
+
+    /// <summary>
+    /// Spectrometer: housing with the entry slit in its front wall (local −x side), and inside a reflection grating and a
+    /// detector line with the dispersed light drawn between them (schematic, in spectral colours). For the ray tracer it is a
+    /// detector: rays end on the housing.
+    /// </summary>
+    internal sealed class SpectrometerType : OpticsType
+    {
+        public SpectrometerType() : base(Detectors.SpectrometerId, new I18nText("Spectrometer", "Spektrometer"), OpticsCategories.Detectors,
+            "spectrometer", "spectrograph", "spectrum", "grating", "entrance slit", "spektrometer", "spektrograph", "spektrum", "eintrittsspalt")
+        { }
+
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public override Size2 DefaultSize => new(40, 26);
+        public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, FibreType.TypeId, Sources.LampId, GratingType.TypeId };
+
+        private sealed record Inner(double Hw, double Hh, double Wall, double SlitHalf, Vec2 Grating, double GratingHalf, double GratingTilt, double DetY, double DetX0, double DetX1);
+
+        private static Inner G(SketchObject o)
+        {
+            double hw = o.Size.W / 2, hh = o.Size.H / 2;
+            var min = Math.Min(o.Size.W, o.Size.H);
+            var wall = Geo.Clamp(0.05 * min, 0.3, 1.5);
+            return new Inner(hw, hh, wall, Math.Max(0.15, 0.04 * o.Size.H), new Vec2(0.62 * hw, -0.3 * hh), 0.28 * hh, 20,
+                0.62 * hh, -0.55 * hw, 0.35 * hw);
+        }
+
+        public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
+        {
+            var g = G(o);
+            var list = new List<Primitive>
+            {
+                Prim.Rect(-g.Hw, -g.Hh, 2 * g.Hw, 2 * g.Hh, Ox.Filled(Ox.Housing)) with { Tag = OpticsTags.Body },
+            };
+            // Entry slit: two dark jaws in the front wall, leaving a narrow gap on the axis.
+            var jaw = Ox.ThinFilled(Ox.Dark);
+            var jawH = 0.3 * g.Hh;
+            list.Add(Prim.Rect(-g.Hw, -g.SlitHalf - jawH, g.Wall, jawH, jaw) with { Tag = OpticsTags.Detail });
+            list.Add(Prim.Rect(-g.Hw, g.SlitHalf, g.Wall, jawH, jaw) with { Tag = OpticsTags.Detail });
+            // Reflection grating: a tilted plate with grooves on its front.
+            var along = RayTracer.Rotate(new Vec2(0, 1), g.GratingTilt);
+            var front = RayTracer.Rotate(new Vec2(-1, 0), g.GratingTilt);
+            var t = Math.Max(0.3, 0.12 * g.GratingHalf);
+            var a = g.Grating - along * g.GratingHalf;
+            var b = g.Grating + along * g.GratingHalf;
+            list.Add(Prim.Polygon(new[] { a, b, b - front * t, a - front * t }, Ox.ThinFilled(Ox.Glass)) with { Tag = OpticsTags.Detail });
+            var groove = Style.ThinLine with { StrokeWidth = 0.15 };
+            for (var i = 1; i < 8; i++)
+            {
+                var p = Vec2.Lerp(a, b, i / 8.0);
+                list.Add(new LinePrim(p, p + front * (0.6 * t), groove) { Tag = OpticsTags.Detail });
+            }
+            // Detector line (dark strip) near the bottom.
+            var dh = Math.Max(0.3, 0.06 * g.Hh);
+            list.Add(Prim.Rect(g.DetX0, g.DetY - dh / 2, g.DetX1 - g.DetX0, dh, Ox.ThinFilled(Ox.Dark)) with { Tag = OpticsTags.Detail });
+            // Light inside: from the slit to the grating, and dispersed onto the detector line (red … violet).
+            var inner = new Style { Role = LineRole.Thin, StrokeWidth = 0.2, Stroke = Ox.RayWhite };
+            list.Add(new LinePrim(new Vec2(-g.Hw + g.Wall, 0), g.Grating, inner) { Tag = OpticsTags.Detail });
+            var lines = Spectrum.Lines;
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var x = g.DetX0 + (g.DetX1 - g.DetX0) * (0.1 + 0.8 * i / (lines.Length - 1));
+                list.Add(new LinePrim(g.Grating, new Vec2(x, g.DetY - dh / 2), inner with { Stroke = Spectrum.Color(lines[i]) }) { Tag = OpticsTags.Detail });
+            }
+            list.AddRange(Ox.Label(o));
+            return list;
+        }
+
+        internal override IReadOnlyList<Surface> Surfaces(SketchObject o)
+        {
+            double hw = o.Size.W / 2, hh = o.Size.H / 2;
+            return Detectors.Box(-hw, -hh, hw, hh).ToList();
+        }
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            yield return Anchor.Point(AnchorRole.Port, new Vec2(-o.Size.W / 2, 0), "o");
+        }
+
+        public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
+        {
+            yield return new PartInfo(OpticsTags.Body, new I18nText("Housing", "Gehäuse"), "shape");
+            yield return new PartInfo(OpticsTags.Detail, new I18nText("Slit, grating and detector line", "Spalt, Gitter und Detektorzeile"), "shape");
+            if (!string.IsNullOrWhiteSpace(o.Str("label", ""))) yield return new PartInfo(OpticsTags.Label, new I18nText("Label", "Beschriftung"), "text");
         }
     }
 

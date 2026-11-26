@@ -82,6 +82,8 @@ namespace InventaSketch.Modules.Optics.Tests
             "optics.source.lamp", "optics.source.led", "optics.source.laser",
             "optics.detector.photodiode", "optics.detector.camera", "optics.detector.eye", "optics.screen.plain",
             "optics.object.arrow", "optics.ray", "optics.axis.line",
+            "optics.lens.thick", "optics.mirror.scanner", "optics.polarizer", "optics.waveplate", "optics.lightguide",
+            "optics.detector.spectrometer",
         };
 
         [Fact]
@@ -169,6 +171,13 @@ namespace InventaSketch.Modules.Optics.Tests
         [InlineData("auge")]
         [InlineData("glasfaser")]
         [InlineData("blende")]
+        [InlineData("polarisator")]
+        [InlineData("polarizer")]
+        [InlineData("wellenplatte")]
+        [InlineData("dicke linse")]
+        [InlineData("galvo")]
+        [InlineData("lichtleitstab")]
+        [InlineData("spektrometer")]
         public void SearchFindsEnglishAndGerman(string q) => Assert.NotEmpty(Fx.Reg().Search(q));
     }
 
