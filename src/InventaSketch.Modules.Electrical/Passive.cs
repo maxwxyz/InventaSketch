@@ -17,6 +17,10 @@ namespace InventaSketch.Modules.Electrical
         private static readonly ParamDef Coefficient = Choice("coefficient", T("Temperature coefficient", "Temperaturkoeffizient"), "ntc",
             ("ntc", "NTC (resistance falls when hot)", "Heißleiter (NTC)"), ("ptc", "PTC (resistance rises when hot)", "Kaltleiter (PTC)"));
 
+        private static readonly IReadOnlyList<Relation> CapacitorRelations =
+            ElecValues.Capacitor.Concat(ElecValues.CapacitorDynamics).Concat(AcValues.ReactiveRelations).ToList();
+        private static readonly IReadOnlyList<ValueCheck> CapacitorChecks = new[] { ElecValues.NotReducible, AcValues.NearResonance };
+
         public static IEnumerable<ElecType> Types()
         {
             yield return new ElecType("elec.resistor", T("Resistor", "Widerstand"), Cat,
@@ -80,7 +84,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, Capacitor))
             {
                 Pins = Fixed(TwoH().ToArray()), RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables,
-                Relations = ElecValues.Capacitor.Concat(ElecValues.CapacitorDynamics).ToList(), Net = ElecValues.Two("1", "2", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
+                Relations = CapacitorRelations, Net = ElecValues.Two("1", "2", ElecValues.Capacitive), Checks = CapacitorChecks,
             };
 
             yield return new ElecType("elec.capacitor.polarized", T("Polarized capacitor", "Gepolter Kondensator"), Cat,
@@ -88,7 +92,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, (p, o) => PolarCap(p, false)), Views.Ansi(20, 10, (p, o) => PolarCap(p, true)))
             {
                 Pins = Fixed(TwoH("+", "-").ToArray()), Polarized = true, RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables,
-                Relations = ElecValues.Capacitor.Concat(ElecValues.CapacitorDynamics).ToList(), Net = ElecValues.Two("+", "-", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
+                Relations = CapacitorRelations, Net = ElecValues.Two("+", "-", ElecValues.Capacitive), Checks = CapacitorChecks,
             };
 
             yield return new ElecType("elec.inductor", T("Inductor", "Spule"), Cat,
@@ -96,7 +100,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 8, Inductor))
             {
                 Pins = Fixed(TwoH().ToArray()), Params = new[] { Core }.Concat(ElecValues.InductorParams).ToList(), RefPrefix = "L",
-                Variables = ElecValues.InductorVariables, Relations = ElecValues.Inductor, Net = ElecValues.Two("1", "2", ElecValues.Inductive), Checks = ElecValues.ReducibleOnly,
+                Variables = ElecValues.InductorVariables, Relations = ElecValues.Inductor.Concat(AcValues.ReactiveRelations).ToList(), Net = ElecValues.Two("1", "2", ElecValues.Inductive), Checks = ElecValues.ReducibleOnly,
             };
 
             yield return new ElecType("elec.transformer", T("Transformer", "Transformator"), Cat,

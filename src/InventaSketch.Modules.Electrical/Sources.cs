@@ -53,8 +53,11 @@ namespace InventaSketch.Modules.Electrical
                 new[] { "source", "voltage source", "current source", "dc", "ac", "supply", "quelle", "spannungsquelle", "stromquelle", "gleichspannung", "wechselspannung", "netz" },
                 Views.Symbol(20, 10, Source))
             {
-                Pins = Fixed(TwoH("+", "-").ToArray()), Params = new[] { SourceKind }.Concat(ElecValues.SourceParams).ToList(), Polarized = true, RefPrefix = "G",
-                Variables = ElecValues.SourceVariables, Relations = ElecValues.PowerRelations, Marking = SourceMarking,
+                // The AC values (the load's |Z| and φ, cos φ, S, Q) are panel values and the power relations follow the kind; the
+                // frequency is a plain parameter (or "50 Hz" in the value text) read by the circuit analysis.
+                Pins = Fixed(TwoH("+", "-").ToArray()), Polarized = true, RefPrefix = "G",
+                Params = new[] { SourceKind }.Concat(ElecValues.SourceParams.Take(3)).Concat(AcValues.SourceParams).Append(ValueLabels.ShowValues).ToList(),
+                Variables = ElecValues.SourceVariables.Concat(AcValues.SourceVariables).ToList(), Links = AcValues.SourceLinks, Marking = SourceMarking,
                 Net = _ => NetSpec.Branch(ElecValues.SourceBranch), Checks = ElecValues.ReducibleOnly,
                 Extra = o => Choice(o, "elec.source", T("Source type", "Quellenart"), SourceKind),
             };
@@ -85,8 +88,8 @@ namespace InventaSketch.Modules.Electrical
                 Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = ElecValues.ReducibleOnly,
             };
 
-            yield return Machine("elec.motor", T("Motor", "Motor"), "M", new[] { "motor", "drive", "antrieb", "elektromotor", "m", "dc motor", "ac motor", "drehstrommotor" });
-            yield return Machine("elec.generator", T("Generator", "Generator"), "G", new[] { "generator", "alternator", "lichtmaschine", "g", "dynamo" });
+            yield return Machine("elec.motor", T("Motor", "Motor"), "M", new[] { "motor", "drive", "antrieb", "elektromotor", "m", "dc motor", "ac motor", "drehstrommotor", "star-delta", "stern-dreieck" }, true);
+            yield return Machine("elec.generator", T("Generator", "Generator"), "G", new[] { "generator", "alternator", "lichtmaschine", "g", "dynamo" }, false);
 
             yield return new ElecType("elec.sensor", T("Sensor", "Sensor"), Cat,
                 new[] { "sensor", "transducer", "measurement", "probe", "messfühler", "messwertgeber", "geber", "fühler", "aufnehmer" },
@@ -158,13 +161,27 @@ namespace InventaSketch.Modules.Electrical
             p.Poly(S.Sym, false, "lead", -10, 5, -7, 5, -7, 2, xBody, 2);
         }
 
-        private static ElecType Machine(string id, I18nText name, string letter, string[] keywords)
+        /// <summary>
+        /// Motor or generator symbol with its electrical values (round 6): U, I, P, cos φ, S, Q by the supply (three-phase
+        /// P = √3·U·I·cos φ), efficiency and mechanical power; a motor also its starting current and, for star-delta starting,
+        /// one third of it. Speed and torque belong to the Machines module. In a circuit a single-phase or DC motor is a load
+        /// with U and I (an AC load with its own power factor), a generator a source; three-phase machines are terminals of
+        /// unknown current.
+        /// </summary>
+        private static ElecType Machine(string id, I18nText name, string letter, string[] keywords, bool motor)
             => new(id, name, Cat, keywords, Views.Symbol(20, 15, (p, o) => MachineDraw(p, o, letter)))
             {
-                Pins = MachinePins, Params = new[] { Supply }, RefPrefix = letter,
-                // Machine values (P, n, T) belong to the Machines module; in a circuit the symbol only keeps the network reducible.
-                Net = o => o.Str("supply", "none") == "ac3" ? new NetSpec() : NetSpec.Branch(ElecValues.Opaque),
-                Extra = o => Choice(o, id + ".supply", T("Supply", "Stromart"), Supply),
+                Pins = MachinePins, Params = new[] { Supply }.Concat(motor ? AcValues.MotorParams : AcValues.MachineParams).ToList(), RefPrefix = letter,
+                Variables = motor ? AcValues.MotorVariables : AcValues.GeneratorVariables, Links = AcValues.MachineLinks(motor),
+                Net = o => o.Str("supply", "none") == "ac3" ? new NetSpec()
+                    : NetSpec.Branch(motor ? new BranchDef("1", "2") { U = "U", I = "I", AcLoad = true } : new BranchDef("1", "2") { U = "U", I = "I", Source = true }),
+                Checks = ElecValues.ReducibleOnly,
+                Extra = o =>
+                {
+                    var list = Choice(o, id + ".supply", T("Supply", "Stromart"), Supply).ToList();
+                    if (motor && o.Str("supply", "none") == "ac3") list.AddRange(Choice(o, "elec.motor.starting", T("Starting", "Anlauf"), AcValues.Starting));
+                    return list;
+                },
             };
 
         private static IReadOnlyList<Pin> MachinePins(SketchObject o) => o.Str("supply", "none") == "ac3"

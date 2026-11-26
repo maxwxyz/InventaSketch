@@ -48,12 +48,16 @@ namespace InventaSketch.Modules.Electrical
 
         public static readonly IReadOnlyList<ParamDef> CapacitorParams = new[]
         {
-            Voltage, Txt("charge", "Charge", "Ladung", "C"), Txt("energy", "Energy", "Energie", "J"), RSeries, Tau, Cutoff, Frequency, Reactance, ValueLabels.ShowValues,
+            Voltage, Txt("charge", "Charge", "Ladung", "C"), Txt("energy", "Energy", "Energie", "J"), RSeries, Tau, Cutoff, Frequency, Reactance,
+            Txt("current", "Current I (AC, at f)", "Strom I (Wechselstrom, bei f)", "A"), AcValues.PhaseU, AcValues.PhaseI,
+            AcValues.Resonance, AcValues.Quality, AcValues.Bandwidth, ValueLabels.ShowValues,
         };
 
         public static readonly IReadOnlyList<ParamDef> InductorParams = new[]
         {
-            Current, Txt("energy", "Energy", "Energie", "J"), RSeries, Tau, Cutoff, Frequency, Reactance, ValueLabels.ShowValues,
+            Current, Txt("energy", "Energy", "Energie", "J"), RSeries, Tau, Cutoff, Frequency, Reactance,
+            Txt("voltage", "Voltage U (AC, at f)", "Spannung U (Wechselstrom, bei f)", "V"), AcValues.PhaseU, AcValues.PhaseI,
+            AcValues.Resonance, AcValues.Quality, AcValues.Bandwidth, ValueLabels.ShowValues,
         };
 
         /// <summary>Potentiometer: resistance (value text), voltage across the track, wiper position and the divider values.</summary>
@@ -169,14 +173,18 @@ namespace InventaSketch.Modules.Electrical
             U(),
             V("Q", "Charge", "Ladung", "Q", Quantities.Charge, "charge", "C"),
             V("E", "Stored energy", "Gespeicherte Energie", "E", Quantities.Energy, "energy", "J"),
-        }.Concat(Dynamics("X_C")).ToList();
+        }.Concat(Dynamics("X_C"))
+            .Append(V("I", "Current (AC, at f)", "Strom (Wechselstrom, bei f)", "I", Quantities.Current, "current", "A") with { Relevance = VarRelevance.Panel })
+            .Concat(AcValues.PhaseVariables).Concat(AcValues.ResonanceVariables).ToList();
 
         public static readonly IReadOnlyList<VarDef> InductorVariables = new[]
         {
             new VarDef("L", T("Inductance", "Induktivität"), T("L", "L"), Quantities.Inductance) { Param = "value", OnTypeLabel = true, Unit = "H", Min = 1e-12, Max = 1e4 },
             I(),
             V("E", "Stored energy", "Gespeicherte Energie", "E", Quantities.Energy, "energy", "J"),
-        }.Concat(Dynamics("X_L")).ToList();
+        }.Concat(Dynamics("X_L"))
+            .Append(V("U", "Voltage (AC, at f)", "Spannung (Wechselstrom, bei f)", "U", Quantities.Voltage, "voltage", "V") with { Relevance = VarRelevance.Panel })
+            .Concat(AcValues.PhaseVariables).Concat(AcValues.ResonanceVariables).ToList();
 
         /// <summary>Resistance in series, time constant, cut-off frequency, frequency and reactance (panel values).</summary>
         private static IEnumerable<VarDef> Dynamics(string reactance) => new[]

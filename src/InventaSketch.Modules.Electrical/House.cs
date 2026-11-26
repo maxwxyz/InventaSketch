@@ -273,8 +273,12 @@ namespace InventaSketch.Modules.Electrical
         }
     }
 
-    /// <summary>Cable route in a floor plan with optional conductor count marks (oblique strokes).</summary>
-    internal sealed class CableRouteType : ElecPointType
+    /// <summary>
+    /// Cable route in a floor plan with optional conductor count marks (oblique strokes). Optional cable values (round 6):
+    /// conductor resistance, voltage drop with cos φ (single-phase, three-phase or DC) and losses, with the check
+    /// <c>elec.cable.drop</c> against a permitted drop the user enters (<see cref="AcValues"/>).
+    /// </summary>
+    internal sealed class CableRouteType : ElecPointType, IValueType, IValueLinks, IValueChecks
     {
         /// <summary>Corners can be inserted, ends extended and drawn on (<see cref="Polylines"/>).</summary>
         public override bool InsertablePoints => true;
@@ -285,7 +289,13 @@ namespace InventaSketch.Modules.Electrical
             "cable", "cable route", "line", "installation", "leitung", "kabel", "leitungsführung", "nym") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-20, 0), new Vec2(20, 0) };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Conductors };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Conductors }.Concat(AcValues.CableParams).ToList();
+
+        public IReadOnlyList<VarDef> Variables => AcValues.CableVariables;
+        public IReadOnlyList<Relation> Relations => AcValues.CableRelations;
+        /// <summary>The voltage drop and losses of the cable's system (from the conductor count unless chosen), aluminium's resistivity.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => AcValues.CableLinks(o);
+        IEnumerable<ValueCheck> IValueChecks.ValueChecks => new[] { AcValues.CableDrop };
         /// <summary>An installation cable (build "+" at its free ends, <see cref="Building"/>).</summary>
         public override string? LineMedium(SketchObject line) => PortMedia.ElectricInstallation;
 
