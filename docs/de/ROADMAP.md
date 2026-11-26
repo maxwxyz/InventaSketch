@@ -796,6 +796,22 @@ Aus dieser Runde noch offen:
   Ravigneaux-Momente, Kegelritzel am Tellerrad; Nummerierung der Entscheidungen im Flussdiagramm; Ausführen des
   exportierten Diagrammcodes mit LaTeX/matplotlib (weder auf dem Build-Rechner noch in der CI vorhanden); das Web-Add-in
   in der COM-Seitenleiste sieht beim Nummerieren nur die angezeigte Folie.
+- Am selben Tag in einer siebten Runde erledigt: Treppenwerte mit Schrittmaßregel (`arch.stair.steprule`, [S42]),
+  Rampenhöhe, Wandflächen, U-Wert und Transmissionsverlust, Raum- und Tür-/Fensterlisten mit Flächensummen;
+  Dreieckswerte (Sinus- und Kosinussatz, [S43]), mitlaufende Konstruktionen an Punkten (Inkreis, Umkreis,
+  Mittelsenkrechte, Winkelhalbierende, Tangenten), Fläche und Schwerpunkt von Vielecken, Kegelschnitte; ebene 2R/3R-Arme
+  mit Vorwärts- und Rückwärtskinematik, Flanschmoment, Greif- und Vakuumkräfte ([S44]), Pneumatikanschlüsse an
+  Greifern; Geschwindigkeiten und Beschleunigungen von Getrieben, Momentanpol, Kurvenwerte mit Druckwinkel, Kurbeln an
+  Wellensträngen; Fahrwiderstand und Leistung, Wendekreis, Reichweite, Sensorreichweite ([S45]); Flächen,
+  Entfernungen, Höhen aus Höhenlinien und Profile in Karten, Prüfung der Maßstabsleiste; Synchrondrehzahl und Schlupf,
+  Hochlaufzeit mit reduzierter Trägheit; Einheiten kWh/m² und kWh/kWp für PV; Ausgangsbeschriftungen und
+  Schrittnummern im Flussdiagramm (`RendersFromNeighbours`: Kästen zeichnen nur bei eingeschalteter Nummerierung aus
+  ihren Nachbarn neu); BPMN-Schnellhinzufügen mit Sequenzflüssen.
+- **Nach Runde sieben außerdem noch offen:** ein Werteanschluss am Frequenzumrichter, der f/U/P an die Motorklemmen
+  gibt (Verteiler → Maschinen); IE-Effizienzklassen; eine Größenart „Energie je Strecke“ für den Verbrauch;
+  Fahrwiderstand → Motorleistung und Routenlänge → Reichweite über Modulgrenzen; wandbezogene Maßketten,
+  Fenster-U-Werte in der Raumheizlast; Satzfiguren der Geometrie; Taktzeit von Robotern aus Achsgeschwindigkeiten;
+  eine Größenart Winkelbeschleunigung; Umbruch der Wertebeschriftung in schmalen Kästen.
 - **Sichtprüfung in PowerPoint:** die neuen Elemente sind per Unit-Test und gerasterter Galerie geprüft; die
   PowerPoint-Szenarien decken Andocken, Werte und verknüpfte Diagramme ab, nicht jedes neue Symbol.
 

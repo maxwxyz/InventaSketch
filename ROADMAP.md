@@ -713,6 +713,21 @@ Still open from this round:
   fan pressure; Ravigneaux torques, bevel pinion on the crown wheel; flowchart decision numbering; LaTeX/matplotlib
   execution of the exported chart code (no matplotlib/pdflatex on the build machine or CI); the web add-in inside the
   COM sidebar sees only the shown slide for numbering.
+- Done in a seventh round the same day: stair values with the step rule (`arch.stair.steprule`, [S42]), ramp rise,
+  wall areas, U-value and transmission loss, room and door/window schedules with floor-area sums; triangle values (laws
+  of sines and cosines, [S43]), live constructions on points (incircle, circumcircle, bisectors, tangents), polygon
+  area and centroid, conic sections; planar 2R/3R arms with forward and inverse kinematics, flange moment, gripping
+  and vacuum forces ([S44]), pneumatic ports on grippers; linkage speeds and accelerations, instant centre, cam values
+  with pressure angle, cranks on shaft lines; driving resistance and power, turning circle, EV range, sensor range
+  ([S45]); map areas, distance measures, elevation from contours and profiles, scale-bar check; synchronous speed and
+  slip, run-up time with reflected inertia; units kWh/m² and kWh/kWp for PV; flowchart exit labels and step numbers
+  (`RendersFromNeighbours`: boxes are redrawn from neighbours only while numbering is on); BPMN quick add with
+  sequence flows.
+- **Also still open after round seven:** a VFD value port feeding f/U/P to motor terminals (switchgear → machines);
+  IE efficiency classes; an "energy per distance" kind for EV consumption; driving resistance → motor power and route
+  length → EV range across modules; wall-aware dimension chains, window U-values feeding the room heating load;
+  theorem figures; cycle time of robots from axis speeds; an angular-acceleration kind; wrapping value labels in narrow
+  boxes.
 - **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries; the
   PowerPoint scenarios cover docking, values and linked charts, not every new symbol.
 
