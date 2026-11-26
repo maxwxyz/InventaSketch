@@ -500,7 +500,13 @@ Verified on Windows 11 with LibreOffice 26.8.2.2 on 2026-11-20 (`tests/integrati
   Markdown (copied to the clipboard and read back), LaTeX (`\toprule`) and as an annotation table (one undo step);
   `ISK_MUTED` and `ISK_UNITS` survive saving and reloading as .odp and .pptx (warning still muted, power still in kW).
   Pages exported as `drawing-medium.png` and `drawing.png` and reviewed (legend inside the page after the engine moved
-  it left).
+  it left). `ui_smoke.py --drawing-only` 9 checks passed in a visible window (German UI, 200 % display scaling): "Gleicher
+  Name auf Folie 2: W3" chosen in the Selection panel's list shows slide 2 with the wire selected, *Nach Medium* in the
+  Tools panel's dropdown colours the page, *Legende einfügen* adds the legend, the Values panel shows the resistor's
+  warning with rule and source beside *Stumm* and *Stumm* mutes it, *Leistung: kW* stores the preference, *Rechenblatt …*
+  opens the dialog and **real keys** (Tab ×4, Space) press *Als Tabelle einfügen*, which inserts the table. Screenshots
+  of the Tools panel, the Values panel and the dialog reviewed (the full run of all phases: `integration_test.py` 138
+  checks passed).
 
 ## Tests
 

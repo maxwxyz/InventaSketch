@@ -827,7 +827,7 @@ def drawing_panels_phase(office, out, logs):
         select_shapes(office, doc, [units_of(page)[rname]])
         time.sleep(3)
         soft_wheel(over_deck, 40)
-        soft_wheel(over_deck, -6)
+        soft_wheel(over_deck, -32)
         screenshot(window, os.path.join(out, "drawing-sidebar-values.png"))
         office.run(doc, "panel?press=mute0")
         wait_for(lambda: doc_property(doc, "ISK_MUTED") == "elec.r.power", 4)

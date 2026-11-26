@@ -555,7 +555,14 @@ bestanden; `tests/ui_smoke.py`, Bildschirmfotos gesichtet):
   CSV-Datei (Byte-Order-Mark, kW), Markdown (in die Zwischenablage kopiert und zurückgelesen), LaTeX (`\toprule`) und als
   Beschriftungstabelle (ein Rückgängig-Schritt); `ISK_MUTED` und `ISK_UNITS` überstehen Speichern und Neuladen als .odp
   und .pptx (Warnung weiter stumm, Leistung weiter in kW). Seiten als `drawing-medium.png` und `drawing.png` exportiert
-  und angesehen (Legende innerhalb der Seite, nachdem die Engine sie nach links geschoben hat).
+  und angesehen (Legende innerhalb der Seite, nachdem die Engine sie nach links geschoben hat). `ui_smoke.py
+  --drawing-only` 9 Prüfungen in einem sichtbaren Fenster bestanden (deutsche Oberfläche, 200 % Anzeigeskalierung):
+  „Gleicher Name auf Folie 2: W3“ in der Liste des Auswahl-Panels zeigt Folie 2 mit ausgewählter Leitung, *Nach Medium*
+  in der Klappliste des Werkzeug-Panels färbt die Seite, *Legende einfügen* fügt die Legende ein, das Werte-Panel zeigt
+  die Warnung des Widerstands mit Regel und Quelle neben *Stumm*, und *Stumm* schaltet sie stumm, *Leistung: kW* legt die
+  Vorgabe ab, *Rechenblatt …* öffnet den Dialog, und **echte Tasten** (Tab ×4, Leertaste) drücken *Als Tabelle
+  einfügen*, das die Tabelle einfügt. Bildschirmfotos von Werkzeug-Panel, Werte-Panel und Dialog angesehen (der
+  vollständige Lauf aller Phasen: `integration_test.py` 138 Prüfungen bestanden).
 
 ## Tests
 

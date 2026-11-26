@@ -485,7 +485,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self._row_heights = {"label": text, "control": control, "button": button,
                                  "items": 8 * text, "preview": 5 * text, "unitName": 2 * text + 4,
                                  "line": max(8, text // 2), "gap": max(4, text // 4), "two": 2 * text + 2,
-                                 "three": 3 * text + 2, "code": 8 * text}
+                                 "three": 3 * text + 2, "four": 4 * text + 2, "five": 5 * text + 2,
+                                 "six": 6 * text + 2, "code": 8 * text}
         return self._row_heights
 
     def _multiline_kind(self, text):
@@ -568,7 +569,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         for i in range(min(len(self.check_list), CHECK_SLOTS)):
             # The text shares its row with "Mute": it wraps earlier than a full-width line.
             text = self.controls["chk%d" % i].getModel().Label
-            rows.append((["chk%d" % i, "mute%d" % i], "three" if len(text) > 60 else "two", (4, 1)))
+            lines = min(6, max(2, (len(text) + 33) // 34))
+            rows.append((["chk%d" % i, "mute%d" % i], ("two", "three", "four", "five", "six")[lines - 2], (4, 1)))
         text = self.controls["checks"].getModel().Label
         if text:
             rows.append((["checks"], self._multiline_kind(text)))
@@ -1097,6 +1099,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         pos = self.controls["colorBy"].getSelectedItemPos()
         if 0 <= pos < len(drawing.COLOR_MODES):
             self._run("colorBy", {"mode": drawing.COLOR_MODES[pos]})
+            # The page's mode again (also when nothing could be coloured: an empty page shows "Off").
+            self.show_color_mode(None)
 
     def focus_calculator(self, text=None):
         expr = self.controls["calcExpr"]
