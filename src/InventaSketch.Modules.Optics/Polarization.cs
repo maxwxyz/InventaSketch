@@ -185,4 +185,106 @@ namespace InventaSketch.Modules.Optics
             yield return Ox.NumberInput(o, "optics.waveplate.angle", new I18nText("Fast axis", "Schnelle Achse"), AngleDef, "waveplate");
         }
     }
+
+    /// <summary>
+    /// Plane-parallel glass plate (window), tilted in its box by <c>tilt</c> (the angle of incidence of light along the
+    /// element's axis; 0° = upright across the axis). Both faces refract by Snell's law and, uncoated by default, reflect by
+    /// the Fresnel equations; the edges stop light. Tilted to Brewster's angle (tan θB = n) it passes p-polarised light
+    /// without loss and polarises unpolarised light partly (each face reflects about 15 % of s at n = 1.5).
+    /// </summary>
+    internal sealed class WindowType : OpticsType
+    {
+        public const string TypeId = "optics.window.plate";
+
+        public WindowType() : base(TypeId, new I18nText("Glass plate (window)", "Glasplatte (Fenster)"), OpticsCategories.Components,
+            "window", "glass plate", "plane-parallel plate", "brewster window", "brewster angle", "fresnel",
+            "fenster", "glasplatte", "planparallele platte", "brewster-fenster", "brewster-winkel", "fresnel")
+        { }
+
+        public static readonly ParamDef IndexDef = Pm.Num("n", "Refractive index n", "Brechzahl n", 1.5, 1.01, 3.0, null, 0.01);
+        public static readonly ParamDef TiltDef = Pm.Num("tilt", "Tilt (angle of incidence along the axis)", "Neigung (Einfallswinkel entlang der Achse)", 0, -80, 80, "°", 1);
+        public static readonly ParamDef BrewsterDef = Pm.Bool("brewster", "At Brewster's angle (tilt = arctan n)", "Im Brewster-Winkel (Neigung = arctan n)", false);
+        /// <summary>A new element (no drawings to keep): uncoated by default, so it shows the Fresnel reflection losses.</summary>
+        public static readonly ParamDef CoatingDef = Pm.Coating("none");
+
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { IndexDef, TiltDef, BrewsterDef, CoatingDef, Pm.Label };
+        public override Size2 DefaultSize => new(24, 34);
+        public override IReadOnlyList<string> Companions => new[] { PolarizerType.TypeId, Sources.LaserId, Detectors.PhotodiodeId, Detectors.ScreenId };
+
+        private static double Index(SketchObject o) => Geo.Clamp(o.Num("n", 1.5), 1.01, 3.0);
+
+        /// <summary>The tilt in degrees: Brewster's angle arctan n when <c>brewster</c> is set, else the parameter <c>tilt</c>.</summary>
+        internal static double Tilt(SketchObject o) => o.Flag("brewster", false) ? Fresnel.BrewsterAngle(1, Index(o)) : Geo.Clamp(o.Num("tilt", 0), -80, 80);
+
+        /// <summary>Direction along the plate, its face normal (towards +x at 0°), half length and half thickness, all inside the box.</summary>
+        private static (Vec2 V, Vec2 U, double Half, double Ht) Layout(SketchObject o)
+        {
+            double hw = o.Size.W / 2, hh = o.Size.H / 2;
+            var ht = Geo.Clamp(0.12 * Math.Min(o.Size.W, o.Size.H), 0.3, 4) / 2;
+            var a = Tilt(o);
+            var v = Grips.LineDirection(a);
+            var u = new Vec2(Math.Cos(Geo.DegToRad(a)), Math.Sin(Geo.DegToRad(a)));
+            const double margin = 0.3;
+            var lx = Math.Abs(v.X) > 1e-9 ? (hw - margin - ht * Math.Abs(u.X)) / Math.Abs(v.X) : double.PositiveInfinity;
+            var ly = Math.Abs(v.Y) > 1e-9 ? (hh - margin - ht * Math.Abs(u.Y)) / Math.Abs(v.Y) : double.PositiveInfinity;
+            return (v, u, Math.Max(0.2, Math.Min(lx, ly)), ht);
+        }
+
+        public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
+        {
+            var (v, u, half, ht) = Layout(o);
+            var list = new List<Primitive>
+            {
+                Prim.Polygon(new[] { v * half - u * ht, v * half + u * ht, v * -half + u * ht, v * -half - u * ht }, Ox.GlassBody) with { Tag = OpticsTags.Body },
+            };
+            list.AddRange(Ox.Label(o));
+            return list;
+        }
+
+        internal override IReadOnlyList<Surface> Surfaces(SketchObject o)
+        {
+            var (v, u, half, ht) = Layout(o);
+            var n = Index(o);
+            var coating = Fresnel.Of(o, "none");
+            Surface Face(Vec2 a, Vec2 b, Vec2 outward) => new(SurfaceKind.Refract, a, b) { Normal = outward, Index = n, Coating = coating };
+            return new[]
+            {
+                Face(v * -half - u * ht, v * half - u * ht, u * -1),
+                Face(v * -half + u * ht, v * half + u * ht, u),
+                new Surface(SurfaceKind.Absorb, v * half - u * ht, v * half + u * ht),
+                new Surface(SurfaceKind.Absorb, v * -half - u * ht, v * -half + u * ht),
+            };
+        }
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            yield return Anchor.Point(AnchorRole.Port, Vec2.Zero, "o");
+        }
+
+        /// <summary>The tilt as a grip on the upper end of the plate, dragged around the centre (whole degrees; releases Brewster's angle).</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var (v, _, half, _) = Layout(o);
+            yield return Grips.Page(o, Grips.Tilt, v * half, DragConstraint.Free, Grips.Label("Tilt", "Neigung", Tilt(o), "°"), OpticsTags.Body);
+        }
+
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+            => key == Grips.Tilt && Grips.LineDegrees(Grips.ToLocal(o, pagePos)) is double deg
+                ? o.WithParam("tilt", Geo.Clamp(deg, -80, 80)).WithParam("brewster", false)
+                : o;
+
+        public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
+        {
+            yield return new PartInfo(OpticsTags.Body, new I18nText("Glass plate", "Glasplatte"), "shape");
+            if (!string.IsNullOrWhiteSpace(o.Str("label", ""))) yield return new PartInfo(OpticsTags.Label, new I18nText("Label", "Beschriftung"), "text");
+        }
+
+        protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
+        {
+            yield return Ox.Toggle(o, "optics.window.brewster", new I18nText("Brewster's angle", "Brewster-Winkel"), "brewster", false, "window");
+            if (!o.Flag("brewster", false)) yield return Ox.NumberInput(o, "optics.window.tilt", new I18nText("Tilt", "Neigung"), TiltDef, "window");
+            yield return Ox.NumberInput(o, "optics.n", new I18nText("Refractive index", "Brechzahl"), IndexDef, "window");
+            foreach (var opt in Ox.CoatingChoice(o, CoatingDef, "window")) yield return opt;
+        }
+    }
 }

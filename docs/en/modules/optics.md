@@ -4,14 +4,16 @@ Library: `src/InventaSketch.Modules.Optics` · Tests: `tests/InventaSketch.Modul
 German version: [../../de/modules/optics.md](../../de/modules/optics.md)
 
 The module provides optical elements for technical figures and teaching slides — lenses (thin and thick), mirrors
-(also a galvo scanner mirror), prisms, beam splitters, stops, gratings, filters, polarisers, wave plates, a light guide,
-an optical fibre, light sources, detectors (also a spectrometer), a screen, an object arrow and the optical axis — and
-**light rays that are traced live through the elements**. All symbols are drawn independently; no standard symbol
-artwork or tables are copied and no compliance with a standard is claimed.
+(also a galvo scanner mirror), prisms, beam splitters (schematic, non-polarising and polarising), stops, gratings,
+filters, polarisers, wave plates, a glass plate (also as a Brewster window), a light guide, an optical fibre, light
+sources, detectors (also a spectrometer), a screen, an object arrow and the optical axis — and **light rays that are
+traced live through the elements**, carrying their intensity and polarisation. All symbols are drawn independently; no
+standard symbol artwork or tables are copied and no compliance with a standard is claimed.
 
 It is a **sketching** module: the ray tracer is two-dimensional and uses ideal (paraxial) thin lenses and curved mirrors;
-only the thick lens, prisms and the light guide are traced face by face with Snell's law. It does not design or optimise
-optical systems (no aberration analysis, radiometry or Fresnel losses).
+only the thick lens, prisms, the glass plate and the light guide are traced face by face with Snell's law. Fresnel
+reflection losses and the polarisation they cause are optional per element (section "Fresnel losses and coatings"). It
+does not design or optimise optical systems (no aberration analysis or radiometry in absolute units).
 
 ## Conventions
 
@@ -31,12 +33,12 @@ optical systems (no aberration analysis, radiometry or Fresnel losses).
 
 | Type id | Element | Parameters (all optional) |
 |---|---|---|
-| `optics.lens.converging` | Converging lens; views `shape` (section) and `symbol` (double arrow, heads outward) | `shape` biconvex/planoconvex/meniscus, `f` (40), `focal` (F, F′ markers), `rays`, `bundle`, `beam`, `label` |
+| `optics.lens.converging` | Converging lens; views `shape` (section) and `symbol` (double arrow, heads outward) | `shape` biconvex/planoconvex/meniscus, `f` (40), `focal` (F, F′ markers), `rays`, `bundle`, `beam`, `coating` (ideal, inspector only), `label` |
 | `optics.lens.diverging` | Diverging lens; views `shape` and `symbol` (heads inward) | `shape` biconcave/planoconcave/meniscus, as above |
 | `optics.mirror.plane` | Plane mirror with hatched back | `label` |
 | `optics.mirror.concave` / `optics.mirror.convex` | Curved mirrors | `f` (40), `focal` (F and centre of curvature C/M), `label` |
-| `optics.prism.triangle` | Prism, equilateral (deviating) or right-angle (reflecting) | `shape`, `n` (1.5, d line), `dispersion`, `dn` = n(F) − n(C) (0.03), `label` |
-| `optics.splitter.cube` / `optics.splitter.plate` | Beam splitter: the diagonal (bottom left to top right) transmits and reflects | `label` |
+| `optics.prism.triangle` | Prism, equilateral (deviating) or right-angle (reflecting) | `shape`, `n` (1.5, d line), `dispersion`, `dn` = n(F) − n(C) (0.03), `coating` (ideal), `label` |
+| `optics.splitter.cube` / `optics.splitter.plate` | Beam splitter: the diagonal (bottom left to top right) transmits and reflects; the polarising one draws its splitting surface double (cube) or a centre line (plate) | `split` schematic/nonpolarizing/polarizing (schematic), `reflectance` (reflected share when non-polarising, 0.5), `label` |
 | `optics.stop.aperture` | Aperture stop / slit (two blades) | `opening` (fraction of the height, 0.35), `label` |
 | `optics.grating.transmission` | Transmission grating (plate with grooves) | `angle` (first-order angle at 550 nm, 20°), `orders` (1–3), `label` |
 | `optics.filter.plate` | Filter plate, neutral or coloured | `tint` neutral/red/green/blue/yellow, `label` |
@@ -49,18 +51,20 @@ optical systems (no aberration analysis, radiometry or Fresnel losses).
 | `optics.detector.eye` | Eye (section): cornea, iris, lens, retina, optic nerve | `label` |
 | `optics.screen.plain` | Screen | `label` |
 | `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `image` off/image/construction (image), `names` (false), `label` |
-| `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic) |
+| `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic), `showValues` (intensity and polarisation at the ray ends, false) |
 | `optics.axis.line` | Optical axis (dash-dot centre line, point object) | `label` |
-| `optics.lens.thick` | Thick lens: two spherical faces, traced at both (box width = thickness, box height = aperture) | `shape` biconvex/planoconvex/biconcave/planoconcave, `n` (1.5), `sag` (depth of the curved faces as a share of the width, 0.35), `focal` (F, F′, principal planes H, H′), `rays`, `beam`, `label` |
+| `optics.lens.thick` | Thick lens: two spherical faces, traced at both (box width = thickness, box height = aperture) | `shape` biconvex/planoconvex/biconcave/planoconcave, `n` (1.5), `sag` (depth of the curved faces as a share of the width, 0.35), `focal` (F, F′, principal planes H, H′), `rays`, `beam`, `coating` (ideal), `label` |
 | `optics.mirror.scanner` | Galvo scanner mirror: plane mirror on a pivot, turned inside its box | `angle` (mirror angle, 45°; 0° = upright like a plane mirror), `scan` (mechanical scan range ±, 10°), `fan` (end positions and ray fan, false), `label` |
 | `optics.polarizer` | Linear polariser: plate with its transmission axis as a double arrow | `angle` (transmission axis, 0°), `label` |
 | `optics.waveplate` | Wave plate: plate with its fast axis (dashed double arrow) and "λ/4"/"λ/2" | `retardance` quarter/half (quarter), `angle` (fast axis, 45°), `label` |
-| `optics.lightguide` | Light guide (rectangular glass rod, total internal reflection) | `n` (1.5), `label` |
+| `optics.lightguide` | Light guide (rectangular glass rod, total internal reflection) | `n` (1.5), `coating` (ideal), `label` |
+| `optics.window.plate` | Glass plate (window): plane-parallel plate tilted in its box; the edges stop light | `n` (1.5), `tilt` (angle of incidence along the axis, 0°, −80° … 80°), `brewster` (tilt = arctan n, false), `coating` (**uncoated** by default), `label` |
 | `optics.detector.spectrometer` | Spectrometer: housing with entry slit, reflection grating, detector line and the dispersed light drawn inside | `label` |
 
-Library items (44) include the lens shapes and symbols, thick biconvex and plano-convex lenses, three mirrors, the
-scanner mirror with and without its scan range, deviating/dispersing/right-angle prisms, both splitters, aperture and
-slit, grating, neutral and red filters, light guide, linear polariser, quarter- and half-wave plate, fibre, lamp (cone
+Library items (48) include the lens shapes and symbols, thick biconvex and plano-convex lenses, three mirrors, the
+scanner mirror with and without its scan range, deviating/dispersing/right-angle prisms, both splitters (schematic), the
+50:50 cube (non-polarising) and the polarising cube (PBS), aperture and slit, grating, neutral and red filters, light
+guide, linear polariser, quarter- and half-wave plate, glass plate and Brewster window, fibre, lamp (cone
 and parallel), LED, red and green laser, photodiode, camera, eye, screen, spectrometer, traced and freely drawn light
 ray, optical axis and object arrow.
 
@@ -99,7 +103,11 @@ ordinary attachment. Nothing has to be re-traced by hand.
   extensions to the virtual focal point as dashed **virtual rays**.
 - Curved mirrors: ideal, as a thin mirror in the vertex plane with focal length f (C at 2f); the ray turns on the drawn
   surface and is aimed so that parallel rays meet exactly in F. Convex mirrors draw virtual rays.
-- Plane mirrors, beam splitters: law of reflection, exact. The back of a mirror stops light.
+- Plane mirrors, beam splitters: law of reflection, exact. The back of a mirror stops light. Mirrors are ideal (all light
+  reflected, polarisation kept). Beam splitters (`split`): **schematic** (default, as before: transmitted and reflected
+  ray both keep the full intensity), **non-polarising** (the share `reflectance` reflected, the rest transmitted, both with
+  the incoming polarisation) or **polarising** (ideal PBS: the p part transmitted, polarised p, the s part reflected,
+  polarised s; unpolarised light is halved). A part below 0.5 % is not drawn.
 - Prisms: Snell's law at every face, total internal reflection when it applies. With dispersion, white light entering
   the prism splits into five colours (656, 589, 546, 486, 436 nm) with n(λ) from a two-term Cauchy fit through `n`
   and `dn`. The dispersing prism item uses `dn` = 0.05 (strong flint-like dispersion, chosen for visibility).
@@ -124,13 +132,50 @@ ordinary attachment. Nothing has to be re-traced by hand.
   the drawing (90°). A polariser passes half of unpolarised light and the share cos²(θ − axis) of polarised light (Malus's
   law) and polarises along its axis; below 0.5 % left (crossed polarisers) the ray ends there. A wave plate retards the
   component along its slow axis by π/2 (λ/4) or π (λ/2): a half-wave plate turns linear polarisation (θ → 2·axis − θ), a
-  quarter-wave plate at 45° makes it circular (any analyser then passes half). Mirrors, splitters, refraction and gratings
-  keep the polarisation and the intensity (no Fresnel coefficients, splitters do not halve the intensity). Weaker light is
-  drawn more transparent (opacity = relative intensity, at least 0.2).
+  quarter-wave plate at 45° makes it circular (any analyser then passes half). The state is a coherency matrix, so light
+  can also be **partially polarised** (behind a Brewster window). Mirrors and gratings keep the polarisation and the
+  intensity; beam splitters and glass faces change them as described above and below. Weaker light is drawn more
+  transparent (opacity = relative intensity, at least 0.2); light at full intensity is drawn exactly as before.
 - The spectrometer is a detector for the tracer: rays end on its housing (at the slit wall); the grating and the spectrum
   inside are drawn schematically, not traced.
 - After the last element a ray runs on for `tail` mm; automatic (0): as long again as the way so far (30–400 mm), and the
   open ends of a bundle are lined up across it. A free ray that meets nothing ends at its second point.
+- **Values at the ray ends** (`showValues`, toggle **Values at ray ends**, off by default): every
+  traced ray (not the scan fan rays) writes its relative intensity and polarisation at its end (part `values`, text
+  2.5 mm, above the end; right of it for rays running up or down): "50 % (linear 0°)", "25 % (circular)",
+  "86 % (16 % polarised)" (degree of polarisation), "100 %" for unpolarised light; German "polarisiert", "zirkular",
+  "elliptisch", decimal comma. A ray ending on a detector thus shows what the detector receives.
+
+### Fresnel losses and coatings
+
+Glass faces (prism, thick lens, light guide, glass plate) and thin lenses have a parameter `coating` (**Glass
+surfaces**, a choice in the context bar except on thin lenses, where it is set in the inspector):
+
+| Value | Meaning |
+|---|---|
+| `ideal` | Ideal faces: no reflection losses and no change of the polarisation, also not on total internal reflection. **Default of every element that existed before**, so existing drawings render unchanged. |
+| `none` | Uncoated glass: the Fresnel equations for s and p at every face (default of the glass plate). |
+| `ar` | Anti-reflection coated: one quarter-wave layer of index √n designed for 550 nm, traced as a thin film (no reflection at 550 nm and normal incidence, a little at other wavelengths and angles); total internal reflection as uncoated. |
+
+The physics (`Fresnel`, all angles from the face normal, loss-free media n1 → n2):
+
+- Reflectances R_s = r_s², R_p = r_p² with r_s = (n1·cos θi − n2·cos θt) / (n1·cos θi + n2·cos θt) and
+  r_p = (n1·cos θt − n2·cos θi) / (n1·cos θt + n2·cos θi); transmittances T = 1 − R. Uncoated glass n = 1.5 reflects 4 %
+  per face at normal incidence (a thin lens therefore passes 0.96² = 92.2 % on the axis), 9.2 % (s) and 0.85 % (p) at 45°.
+- Brewster angle tan θB = n2 / n1 (56.31° for n = 1.5): p is not reflected at all, s about 14.8 % per face. A plate
+  tilted to Brewster's angle (`brewster`, library item **Brewster window**) passes p-polarised light without loss; inside
+  it the light meets the second face at the internal Brewster angle 90° − θB, so that face reflects no p either.
+  Unpolarised light leaves partially p-polarised: intensity (1 + T_s²)/2 = 86 % with degree of polarisation
+  (1 − T_s²)/(1 + T_s²) = 16 %; a polariser behind it passes 50 % along p and 36.3 % along s.
+- Total internal reflection beyond the critical angle sin θc = n2 / n1 (41.8° for n = 1.5): all light is reflected, with a
+  phase difference between p and s (`Fresnel.ReflectionPhase`). Angles are measured in each ray's own frame, in which an
+  ideal mirror changes nothing; in that frame a total reflection at 45° in n = 1.5 shifts p against s by 180° − 36.87°
+  (textbook: tan(Δ/2) = cos θ·√(sin²θ − (n2/n1)²) / sin²θ, plus the 180° of the frame), and two total reflections at 54.6°
+  in n = 1.51 add up to a quarter wave (the Fresnel rhomb). A right-angle prism with uncoated faces therefore turns linear
+  45° light elliptical.
+- A thin lens is taken as two plane faces of glass n = 1.5 across its axis, met at the ray's angle to the axis.
+- Partial reflections at glass faces lower the transmitted ray; they are not traced as rays of their own (no ghost
+  images). Light that is (practically) gone, below 0.5 %, ends the ray.
 
 ## Image construction
 
@@ -178,6 +223,7 @@ them generically). A drag only writes the parameter; the box (`Size`) and the po
 | Thick lens with its own bundle docked | `beam` | edge of the bundle at its start | across the axis | `beam`, whole mm (the focal length follows from shape, box and `n`, so it has no grip) |
 | Scanner mirror | `angle` | upper end of the mirror | freely, around the pivot | `angle` = direction of the mirror line, whole degrees, folded into −90° … 90° |
 | Polariser, wave plate | `axis` | end of the axis double arrow | freely, around the centre | `angle` = direction of the axis line, whole degrees, −90° … 90° |
+| Glass plate (window) | `tilt` | upper end of the plate | freely, around the centre | `tilt` = direction of the plate, whole degrees, −80° … 80°; releases `brewster` |
 | Free traced ray | `dir` | on the drawn ray, halfway to its second point or to the first element it meets | freely, around the start (arc) | the second point turned around the first, whole degrees (clockwise on screen), length kept |
 
 Every grip carries a bilingual label with its current value ("Focal length f: 40 mm" / "Brennweite f: 40 mm", "Half cone
@@ -200,8 +246,8 @@ naturally); the angle of a grating's first order is set in its number field.
 ## Parts and cleaning
 
 Part keys (`PartLooks`): `body`, `focal`, `hatch`, `detail`, `label` on elements; `image`, `construction` and `names`
-on the object arrow (listed while drawn); `ray` (all rays, each `ray.<i>`) and `virtual` on rays; `axis` on the optical
-axis. They can be restyled or hidden individually.
+on the object arrow (listed while drawn); `ray` (all rays, each `ray.<i>`), `virtual` and `values` (the readout at the
+ends, while shown) on rays; `axis` on the optical axis. They can be restyled or hidden individually.
 
 Clean slides (`Sanitize`): optics elements carry no values worth hiding; the generic pass replaces free-text labels
 (designators such as `L1` stay). Focal lengths, indices and positions are kept.
@@ -235,9 +281,12 @@ recomputed from the document, so JSON round trips render identically.
 
 ## Limits and next steps
 
-- Two-dimensional, sequential; thin lenses and curved mirrors are paraxial ideals. No interference, no Fresnel
-  reflection/transmission coefficients, no polarisation change on reflection or refraction (Brewster angle, phase shift
-  on total reflection), no polarising beam splitters.
+- Two-dimensional, sequential; thin lenses and curved mirrors are paraxial ideals. No interference. Fresnel losses only
+  where `coating` is not ideal; partial reflections at glass faces are not drawn as rays (no ghosts). Mirrors are ideal
+  (no metal reflectance or phase), splitters ideal (no extinction ratio, no absorption). The anti-reflection coating is
+  an idealised single layer (index √n).
+- The ray readout is a label at the ray ends; optics elements have no value card (detectors do not yet report the
+  received intensity as a value).
 - The object arrow's image construction uses thin lenses and curved mirrors only (not the thick lens; its traced rays do
   pass it). The thick lens has no focal-length grip.
 - The spectrometer does not trace the light inside; its spectrum is a schematic drawing.
@@ -246,5 +295,5 @@ recomputed from the document, so JSON round trips render identically.
   element's single optical surface.
 - The image construction uses the first lens or curved mirror on the arrow's axis only (no image of an image through a
   second element); the traced ray bundle does pass every element.
-- Possible next steps: images through several elements, thick-lens imaging for the object arrow, polarising beam
-  splitters, Michelson/Mach-Zehnder templates.
+- Possible next steps: images through several elements, thick-lens imaging for the object arrow, received intensity as
+  a detector value, ghost reflections, Michelson/Mach-Zehnder templates.

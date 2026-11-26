@@ -83,7 +83,7 @@ namespace InventaSketch.Modules.Optics.Tests
             "optics.detector.photodiode", "optics.detector.camera", "optics.detector.eye", "optics.screen.plain",
             "optics.object.arrow", "optics.ray", "optics.axis.line",
             "optics.lens.thick", "optics.mirror.scanner", "optics.polarizer", "optics.waveplate", "optics.lightguide",
-            "optics.detector.spectrometer",
+            "optics.detector.spectrometer", "optics.window.plate",
         };
 
         [Fact]
@@ -178,6 +178,9 @@ namespace InventaSketch.Modules.Optics.Tests
         [InlineData("galvo")]
         [InlineData("lichtleitstab")]
         [InlineData("spektrometer")]
+        [InlineData("brewster")]
+        [InlineData("glasplatte")]
+        [InlineData("pbs")]
         public void SearchFindsEnglishAndGerman(string q) => Assert.NotEmpty(Fx.Reg().Search(q));
     }
 

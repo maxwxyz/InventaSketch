@@ -10,7 +10,8 @@ namespace InventaSketch.Modules.Optics
     /// scanner), prisms, beam splitters, stops, gratings, filters, polarisers, wave plates, light guide, optical fibre, light
     /// sources, detectors (also a spectrometer), screen, object arrow and optical axis, and light rays that are traced live
     /// through the elements (thin lenses and curved mirrors paraxial; plane mirrors, splitters, prism faces, thick-lens faces
-    /// and light guides exact; linear polarisation by Jones vectors). Every element is insertable without parameters and scales freely; focal lengths
+    /// and light guides exact; polarisation as a coherency matrix, optional Fresnel losses per element, polarising and
+    /// non-polarising beam splitters, a glass plate / Brewster window). Every element is insertable without parameters and scales freely; focal lengths
     /// are given in the drawing scale (see docs/en/modules/optics.md).
     /// </summary>
     public sealed class OpticsModule : IModule
@@ -21,7 +22,7 @@ namespace InventaSketch.Modules.Optics
             new MirrorType("plane"), new MirrorType("concave"), new MirrorType("convex"), new ScannerMirrorType(),
             new PrismType(), new SplitterType(cube: true), new SplitterType(cube: false),
             new StopType(), new GratingType(), new FilterType(), new FibreType(),
-            new PolarizerType(), new WaveplateType(), new LightGuideType(),
+            new PolarizerType(), new WaveplateType(), new LightGuideType(), new WindowType(),
             new LampType(), new LedType(), new LaserType(),
             new PhotodiodeType(), new CameraType(), new EyeType(), new ScreenType(), new SpectrometerType(),
             new ObjectArrowType(), RayType.Instance, new OpticalAxisType(),
@@ -102,6 +103,10 @@ namespace InventaSketch.Modules.Optics
                 kw: new[] { "right angle", "total internal reflection", "totalreflexion", "umlenkprisma", "90" });
             Add("optics.splitter.cube", SplitterType.CubeId, "Beam splitter cube", "Strahlteilerwürfel");
             Add("optics.splitter.plate", SplitterType.PlateId, "Beam splitter plate", "Strahlteilerplatte");
+            Add("optics.splitter.cube.5050", SplitterType.CubeId, "Beam splitter cube 50:50 (non-polarizing)", "Strahlteilerwürfel 50:50 (nicht polarisierend)",
+                P(("split", "nonpolarizing")), kw: new[] { "50:50", "non-polarizing", "nicht polarisierend", "intensity", "intensität" });
+            Add("optics.splitter.pbs", SplitterType.CubeId, "Polarizing beam splitter cube (PBS)", "Polarisationsstrahlteilerwürfel (PBS)",
+                P(("split", "polarizing")), kw: new[] { "pbs", "polarizing", "polarising", "polarisierend", "polarisation", "s and p", "s und p" });
 
             // Stops, gratings, filters & fibres.
             Add("optics.stop.aperture", StopType.TypeId, "Aperture stop", "Blende");
@@ -114,6 +119,10 @@ namespace InventaSketch.Modules.Optics
             Add("optics.polarizer", PolarizerType.TypeId, "Linear polarizer", "Linearpolarisator");
             Add("optics.waveplate", WaveplateType.TypeId, "Quarter-wave plate (λ/4)", "Viertelwellenplatte (λ/4)", kw: new[] { "quarter", "viertel", "circular", "zirkular" });
             Add("optics.waveplate.half", WaveplateType.TypeId, "Half-wave plate (λ/2)", "Halbwellenplatte (λ/2)", P(("retardance", "half")), kw: new[] { "half", "halb", "rotate polarization", "polarisation drehen" });
+            Add("optics.window", WindowType.TypeId, "Glass plate (window)", "Glasplatte (Fenster)", size: new Size2(8, 34),
+                kw: new[] { "fresnel", "reflection loss", "reflexionsverlust" });
+            Add("optics.window.brewster", WindowType.TypeId, "Brewster window", "Brewster-Fenster", P(("brewster", true)),
+                kw: new[] { "brewster", "polarization by reflection", "polarisation durch reflexion", "laser tube", "laserröhre" });
 
             // Light sources.
             Add("optics.source.lamp", Sources.LampId, "Lamp (light source)", "Lampe (Lichtquelle)");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Optics
@@ -16,7 +17,10 @@ namespace InventaSketch.Modules.Optics
         CurvedMirror,
         /// <summary>Glass face (prism): Snell's law, total internal reflection when it applies.</summary>
         Refract,
-        /// <summary>Beam splitter surface: the ray continues and a reflected ray branches off.</summary>
+        /// <summary>
+        /// Beam splitter surface: the ray continues and a reflected ray branches off (schematic: both at full intensity;
+        /// non-polarising: divided by <see cref="Surface.Reflectance"/>; polarising: p transmitted, s reflected).
+        /// </summary>
         Split,
         /// <summary>Aperture/slit plane: rays farther than <see cref="Surface.Open"/> from the centre are stopped.</summary>
         Stop,
@@ -73,6 +77,12 @@ namespace InventaSketch.Modules.Optics
         public double Retardance { get; init; }
         /// <summary>Scanner mirror: mechanical half scan range in degrees (0 = no scan fan).</summary>
         public double Fan { get; init; }
+        /// <summary>Refracting faces and thin lenses: how the glass treats the light (ideal, uncoated Fresnel, anti-reflection).</summary>
+        public Coating Coating { get; init; }
+        /// <summary>Beam splitter: how the light is divided.</summary>
+        public SplitMode Split { get; init; }
+        /// <summary>Non-polarising beam splitter: reflected share of the intensity.</summary>
+        public double Reflectance { get; init; } = 0.5;
 
         /// <summary>A polyline as consecutive surface segments sharing the settings of <paramref name="proto"/>.</summary>
         public static IEnumerable<Surface> Chain(Surface proto, IReadOnlyList<Vec2> pts)
@@ -175,9 +185,9 @@ namespace InventaSketch.Modules.Optics
 
     /// <summary>
     /// State of the light along a traced ray: wavelength (nm, 0 = white), relative intensity (1 at the source), polarisation
-    /// (null = unpolarised) and whether the ray belongs to the scan fan of a scanner mirror.
+    /// (coherency matrix, also partial; null = unpolarised) and whether the ray belongs to the scan fan of a scanner mirror.
     /// </summary>
-    internal sealed record RayState(double Lambda, double Intensity = 1, Jones? Pol = null, bool Fan = false);
+    internal sealed record RayState(double Lambda, double Intensity = 1, Coherency? Pol = null, bool Fan = false);
 
     /// <summary>One traced ray: its polyline, the wavelength and intensity of each segment and its virtual (dashed) extensions.</summary>
     internal sealed class TracedPath
@@ -186,20 +196,23 @@ namespace InventaSketch.Modules.Optics
         public List<Vec2> Points { get; } = new();
         /// <summary>Wavelength per segment (nm, 0 = white).</summary>
         public List<double> Lambdas { get; } = new();
-        /// <summary>Relative intensity per segment (1 = as emitted; polarisers lower it).</summary>
+        /// <summary>Relative intensity per segment (1 = as emitted; polarisers, splitters and Fresnel losses lower it).</summary>
         public List<double> Intensities { get; } = new();
+        /// <summary>Polarisation per segment (null = unpolarised).</summary>
+        public List<Coherency?> Polarizations { get; } = new();
         public List<(Vec2 A, Vec2 B, double Lambda)> Virtual { get; } = new();
         /// <summary>True if the ray ended on a detector, screen, stop or housing (or was blocked by a polariser).</summary>
         public bool Absorbed { get; set; }
         /// <summary>True for a ray of the scan fan of a scanner mirror (drawn dashed).</summary>
         public bool Fan { get; set; }
 
-        public void LineTo(Vec2 p, double lambda, double intensity = 1)
+        public void LineTo(Vec2 p, double lambda, double intensity = 1, Coherency? pol = null)
         {
             if (p.DistanceTo(Points[Points.Count - 1]) < 1e-9) return;
             Points.Add(p);
             Lambdas.Add(lambda);
             Intensities.Add(intensity);
+            Polarizations.Add(pol);
         }
 
         public Vec2 Last => Points[Points.Count - 1];
@@ -260,8 +273,11 @@ namespace InventaSketch.Modules.Optics
     /// surface of an element on the page, is changed there (thin lens, mirror, refraction, splitting …) and runs on.
     /// Lenses and curved mirrors are ideal and paraxial (slope change −y/f, so all parallel rays meet in the focal point);
     /// plane mirrors, splitters, prism faces, the spherical faces of thick lenses and light guides follow the law of reflection
-    /// and Snell's law exactly. A ray carries its intensity and an optional linear/elliptical polarisation (Jones vector) that
-    /// polarisers and wave plates change; reflection and refraction keep it (no Fresnel coefficients).
+    /// and Snell's law exactly. A ray carries its intensity and its polarisation (coherency matrix in the ray's p/s frame:
+    /// unpolarised, partially or fully polarised) that polarisers, wave plates and polarising splitters change. Glass faces
+    /// and thin lenses with a coating other than ideal apply the Fresnel equations (losses for s and p, Brewster angle, phase
+    /// shift on total internal reflection); ideal mirrors and ideal faces keep intensity and polarisation. Partial reflections
+    /// at glass faces lower the transmitted ray but are not drawn as rays of their own.
     /// </summary>
     internal static class RayTracer
     {
@@ -334,12 +350,12 @@ namespace InventaSketch.Modules.Optics
                         // A free ray that meets nothing ends where it was drawn to.
                         var free = step == 0 && minReach > 0;
                         var len = free ? minReach : Math.Max(after, minReach - travelled);
-                        if (len > 1e-9) path.LineTo(p + d * len, lambda, st.Intensity);
+                        if (len > 1e-9) path.LineTo(p + d * len, lambda, st.Intensity, st.Pol);
                         if (!free && tail <= 0 && path.Points.Count >= 2) open.Add(path);
                         break;
                     }
                     var at = p + d * hit.T;
-                    path.LineTo(at, lambda, st.Intensity);
+                    path.LineTo(at, lambda, st.Intensity, st.Pol);
                     travelled += hit.T;
                     var e = hit.E;
                     var s = hit.S;
@@ -365,6 +381,16 @@ namespace InventaSketch.Modules.Optics
                         case SurfaceKind.ThinLens:
                             {
                                 var nd = Deflect(ld, hit.Local.Y - s.Centre.Y, s.F);
+                                if (s.Coating != Coating.Ideal)
+                                {
+                                    // Two faces of glass n = Index, taken as plane faces across the axis at the ray's angle.
+                                    var cosI = Math.Abs(ld.X) / Math.Max(1e-12, ld.Length);
+                                    var n = Spectrum.Index(s.Index, s.Dispersion, lambda);
+                                    var cosG = Math.Sqrt(Math.Max(0, 1 - (1 - cosI * cosI) / (n * n)));
+                                    var (p1, s1) = Fresnel.Factors(s.Coating, 1, n, cosI, false, s.Index, lambda);
+                                    var (p2, s2) = Fresnel.Factors(s.Coating, n, 1, cosG, false, s.Index, lambda);
+                                    if (!Pass(ref st, p1 * p2, s1 * s2)) { path.Absorbed = true; break; }
+                                }
                                 next = nd;
                                 if (virtualRays && s.F < 0) AddVirtual(path, e, hit.Local, nd, s, lambda);
                                 break;
@@ -385,8 +411,36 @@ namespace InventaSketch.Modules.Optics
                         case SurfaceKind.Split:
                             {
                                 var n = (s.B - s.A).Perp.Normalized();
-                                Branch(Mirror(ld, n), st);
-                                next = ld;
+                                var reflected = Mirror(ld, n);
+                                if (s.Split == SplitMode.Schematic)
+                                {
+                                    Branch(reflected, st);
+                                    next = ld;
+                                    break;
+                                }
+                                // Shares and states of the reflected and the transmitted light.
+                                double rShare, tShare;
+                                Coherency? rPol = st.Pol, tPol = st.Pol;
+                                if (s.Split == SplitMode.Polarizing)
+                                {
+                                    var c = st.Pol ?? Coherency.Unpolarized;
+                                    tShare = c.Transmission(0);
+                                    rShare = c.Transmission(90);
+                                    tPol = Coherency.Linear(0);
+                                    rPol = Coherency.Linear(90);
+                                }
+                                else
+                                {
+                                    rShare = Geo.Clamp(s.Reflectance, 0, 1);
+                                    tShare = 1 - rShare;
+                                }
+                                if (st.Intensity * rShare >= MinIntensity) Branch(reflected, st with { Intensity = st.Intensity * rShare, Pol = rPol });
+                                if (st.Intensity * tShare < MinIntensity) path.Absorbed = true;
+                                else
+                                {
+                                    st = st with { Intensity = st.Intensity * tShare, Pol = tPol };
+                                    next = ld;
+                                }
                                 break;
                             }
                         case SurfaceKind.Reflect:
@@ -411,28 +465,38 @@ namespace InventaSketch.Modules.Optics
                                 {
                                     // White light entering a dispersing glass: one ray per colour from here on.
                                     result.Dispersed = true;
-                                    foreach (var line in Spectrum.Lines) Branch(Refract(ld, normal, Spectrum.Index(s.Index, s.Dispersion, line)), st with { Lambda = line });
+                                    foreach (var line in Spectrum.Lines)
+                                    {
+                                        var face = Interface(ld, normal, Spectrum.Index(s.Index, s.Dispersion, line));
+                                        var ls = st with { Lambda = line };
+                                        if (Pass(ref ls, s, face, line)) Branch(face.Dir, ls);
+                                    }
                                 }
-                                else next = Refract(ld, normal, Spectrum.Index(s.Index, s.Dispersion, lambda));
+                                else
+                                {
+                                    var face = Interface(ld, normal, Spectrum.Index(s.Index, s.Dispersion, lambda));
+                                    if (Pass(ref st, s, face, lambda)) next = face.Dir;
+                                    else path.Absorbed = true;
+                                }
                                 break;
                             }
                         case SurfaceKind.Polarizer:
                             {
                                 // Malus's law for polarised light, half of unpolarised light; behind it the light is polarised
                                 // along the axis. Practically nothing left (crossed polarisers) ends the ray.
-                                var share = st.Pol is Jones j ? j.Transmission(s.Angle) : 0.5;
+                                var share = st.Pol is Coherency j ? j.Transmission(s.Angle) : 0.5;
                                 var intensity = st.Intensity * share;
                                 if (intensity < MinIntensity) path.Absorbed = true;
                                 else
                                 {
                                     next = ld;
-                                    st = st with { Intensity = intensity, Pol = Jones.Linear(s.Angle) };
+                                    st = st with { Intensity = intensity, Pol = Coherency.Linear(s.Angle) };
                                 }
                                 break;
                             }
                         case SurfaceKind.Retarder:
                             next = ld;
-                            if (st.Pol is Jones jp) st = st with { Pol = jp.Retard(s.Angle, s.Retardance) };
+                            if (st.Pol is Coherency jp) st = st with { Pol = jp.Retard(s.Angle, s.Retardance).OrUnpolarized() };
                             break;
                         case SurfaceKind.Grating:
                             {
@@ -529,15 +593,57 @@ namespace InventaSketch.Modules.Optics
         /// Snell's law at a face with outward normal <paramref name="outward"/> between air and glass of index
         /// <paramref name="n"/>; total internal reflection when no refracted ray exists.
         /// </summary>
-        internal static Vec2 Refract(Vec2 d, Vec2 outward, double n)
+        internal static Vec2 Refract(Vec2 d, Vec2 outward, double n) => Interface(d, outward, n).Dir;
+
+        /// <summary>A ray meeting a glass face: the new direction, total internal reflection, cos θi and the indices before/behind.</summary>
+        internal readonly record struct Face(Vec2 Dir, bool Total, double CosI, double N1, double N2);
+
+        /// <summary>Snell's law (or total internal reflection) at a face between air and glass, with the data the Fresnel equations need.</summary>
+        internal static Face Interface(Vec2 d, Vec2 outward, double n)
         {
             var entering = d.Dot(outward) < 0;
             var normal = entering ? outward : outward * -1;   // points back to the side the ray comes from
             var eta = entering ? 1 / n : n;
             var cosI = -normal.Dot(d);
             var k = 1 - eta * eta * (1 - cosI * cosI);
-            if (k < 0) return (d + normal * (2 * cosI)).Normalized();
-            return (d * eta + normal * (eta * cosI - Math.Sqrt(k))).Normalized();
+            var (n1, n2) = entering ? (1.0, n) : (n, 1.0);
+            var c = Math.Min(1, cosI / Math.Max(1e-12, d.Length));
+            if (k < 0) return new Face((d + normal * (2 * cosI)).Normalized(), true, c, n1, n2);
+            return new Face((d * eta + normal * (eta * cosI - Math.Sqrt(k))).Normalized(), false, c, n1, n2);
+        }
+
+        /// <summary>The Fresnel factors of a glass face applied to <paramref name="st"/>; false if (practically) nothing is left.</summary>
+        private static bool Pass(ref RayState st, Surface s, Face face, double lambda)
+        {
+            if (s.Coating == Coating.Ideal) return true;
+            var (p, sf) = Fresnel.Factors(s.Coating, face.N1, face.N2, face.CosI, face.Total, s.Index, lambda);
+            return Pass(ref st, p, sf);
+        }
+
+        /// <summary>
+        /// The diagonal Jones matrix (<paramref name="p"/>, <paramref name="s"/>) applied to the state: intensity times the
+        /// share passed, polarisation changed (unpolarised light stays unpolarised when both factors are equal in size).
+        /// False if less than <see cref="MinIntensity"/> is left.
+        /// </summary>
+        private static bool Pass(ref RayState st, Complex p, Complex s)
+        {
+            double share;
+            Coherency? pol;
+            if (st.Pol is null && Math.Abs(p.Magnitude - s.Magnitude) < 1e-12)
+            {
+                share = p.Magnitude * p.Magnitude;
+                pol = null;
+            }
+            else
+            {
+                var (state, sh) = (st.Pol ?? Coherency.Unpolarized).Apply(p, s);
+                share = sh;
+                pol = state.OrUnpolarized();
+            }
+            var intensity = st.Intensity * share;
+            if (intensity < MinIntensity) return false;
+            st = st with { Intensity = intensity, Pol = pol };
+            return true;
         }
 
         /// <summary>Law of reflection at a surface with unit normal <paramref name="n"/> (either side).</summary>
