@@ -45,7 +45,7 @@ namespace InventaSketch.Modules.Machines
             return IsCrossSection && o.Str("rotor", "spm") == "asm" ? Kloss(c) : Envelope(c);
         }
 
-        public override bool DependsOnNeighbours => HasCurves;
+        public override bool HasDependents => HasCurves;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
             => HasCurves ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();

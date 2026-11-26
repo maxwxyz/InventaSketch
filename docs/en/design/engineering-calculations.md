@@ -1377,9 +1377,9 @@ reference; the chart side is described in [charts.md](../modules/charts.md#linke
 - **The link is a parameter.** `chart.linked` stores `link` = "&lt;element id&gt;#&lt;set key&gt;" and nothing else of the
   curves. `Characteristics.Resolve` solves the element (budget 200 ms) and computes the set; the result is cached per
   document instance and registry (documents are immutable), so the several calls of one render pass solve once.
-- **Redraw.** The element types return their linked charts from `Dependents` and set `DependsOnNeighbours` (only the
-  instances that offer sets, so other symbols of the same class keep rendering without context); the chart sets
-  `DependsOnNeighbours` too. The engine's `ChangeSet` and the COM host's dependent units then redraw the chart in the
+- **Redraw.** The element types return their linked charts from `Dependents` and set `HasDependents` (only the
+  instances that offer sets; they render on their own, so PowerPoint keeps their shape when they are moved); the chart
+  sets `DependsOnNeighbours`, it renders from its element. The engine's `ChangeSet` and the COM host's dependent units then redraw the chart in the
   undo step of the element's change. A value of the element that changes because a *neighbour* changed (a flow passed
   on through a pipe) does not reach the chart until the element or the chart is redrawn (open, 14.4).
 - **Rendering as a figure.** The linked chart builds a figure specification from the set (`LinkedFigure`) and draws it

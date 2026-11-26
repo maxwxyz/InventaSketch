@@ -117,6 +117,10 @@ namespace InventaSketch.Modules.Optics
         /// <summary>Rays are redrawn by the elements (their dependents), they have none of their own.</summary>
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => Array.Empty<string>();
 
+        /// <summary>A ray is traced through the elements of its page.</summary>
+        public override bool DependsOnNeighbours => true;
+        public override bool HasDependents => false;
+
         private static Style RayStyle(string colour) => new() { Role = LineRole.Thin, StrokeWidth = 0.35, Stroke = colour };
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
@@ -260,7 +264,7 @@ namespace InventaSketch.Modules.Optics
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, LensType.DivergingId, Sources.ObjectId, MirrorType.ConcaveId, Detectors.ScreenId };
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => Array.Empty<string>();
-        public override bool DependsOnNeighbours => false;
+        public override bool HasDependents => false;
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {

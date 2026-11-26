@@ -438,6 +438,10 @@ namespace InventaSketch.Modules.Optics.Tests
             Assert.Contains(arrow.Id, deps);
             Assert.True(r.TypeOf(doc.Get(rayId)!).DependsOnNeighbours);
             Assert.True(r.TypeOf(arrow).DependsOnNeighbours);
+            // The lens renders on its own: it names dependents but does not read its neighbours, so a host keeps its shape
+            // when it is moved (PowerPoint redraws only the rays and images).
+            Assert.True(r.TypeOf(lens).HasDependents);
+            Assert.False(r.TypeOf(lens).DependsOnNeighbours);
             // The arrow itself (no optical surface) and an arrow without image are no dependents of each other.
             Assert.DoesNotContain(arrow.Id, r.TypeOf(arrow).Dependents(arrow, ctx));
             var off = Edits.Replace(doc, arrow.WithParam("image", "off"));

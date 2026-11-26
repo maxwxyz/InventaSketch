@@ -674,7 +674,7 @@ namespace InventaSketch.AddIn.OnSlide
             var lang = _lang();
             var o = (_gripOwner is null ? null : unit.Doc.Get(_gripOwner)) ?? unit.Objects.FirstOrDefault(x => registry.Type(x.Type) is not null);
             if (o is null) return;
-            var full = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
+            var full = SketchUnits.NeedsContext(registry, unit.Doc) || SketchUnits.HasDependents(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
             // A handle that writes into another element (the operating point of a linked chart sets the pump's flow, Calc 5):
             // the slide document changes; the other units take their changes in the same undo step.
             if (registry.Type(o.Type) is IDocumentHandles)

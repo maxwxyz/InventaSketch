@@ -65,6 +65,25 @@ namespace InventaSketch.Engine.Tests
             Assert.Equal("460 W", P().GetProperty("display").GetString());
         }
 
+        /// <summary>
+        /// Sources of linked charts name the charts as dependents but render on their own: hosts that keep objects in
+        /// separate units (PowerPoint) must not redraw them on every move (2026-11-26 regression: moved gears and PV strings
+        /// were replaced, so references to their shapes broke).
+        /// </summary>
+        [Theory]
+        [InlineData("mech.spur.axial")]
+        [InlineData("energy.pv.string.10")]
+        [InlineData("elec.resistor")]
+        [InlineData("optics.lens.biconvex")]
+        public void ChartSourcesHaveDependentsButRenderOnTheirOwn(string itemId)
+        {
+            var registry = ModuleCatalog.CreateDefault();
+            var item = registry.Item(itemId)!;
+            var type = registry.Type(item.TypeId)!;
+            Assert.True(type.HasDependents, itemId);
+            Assert.False(type.DependsOnNeighbours, itemId);
+        }
+
         private static void ThrowIfError(string json)
         {
             using var doc = JsonDocument.Parse(json);

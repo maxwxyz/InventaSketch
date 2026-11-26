@@ -79,7 +79,7 @@ angedockt, heißt die Aktion **Strahlenbündel entfernen** und entfernt es.
 
 **Live-Verfolgung.** Strahlen werden bei jedem Zeichnen aus dem aktuellen Dokument verfolgt: Alle Optik-Elemente der
 Seite (ohne ausgeblendete Ebenen) wirken mit. Jedes Optik-Element meldet die Strahlen seiner Seite als abhängige Objekte
-(`ObjectType.Dependents`, `DependsOnNeighbours`); Elemente, die auf Licht wirken (eine optische Fläche haben), melden
+(`ObjectType.Dependents`, `HasDependents`; nur Strahlen und Gegenstandspfeile setzen `DependsOnNeighbours`); Elemente, die auf Licht wirken (eine optische Fläche haben), melden
 zusätzlich die Gegenstandspfeile der Seite, die ein Bild zeichnen. Verschieben, Drehen, Skalieren oder Ändern eines
 Elements oder das Ziehen eines seiner Griffe zeichnet Strahlen und Bilder daher im selben Rückgängig-Schritt neu, der
 angedockte Startpunkt folgt seinem Emitter über die normale Anbindung. Nichts muss von Hand neu verfolgt werden.

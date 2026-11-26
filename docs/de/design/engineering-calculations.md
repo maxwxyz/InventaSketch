@@ -1438,8 +1438,8 @@ ist der Code; die Diagrammseite beschreibt [charts.md](../modules/charts.md#verk
   Ergebnis wird je Dokumentinstanz und Registry zwischengespeichert (Dokumente sind unveränderlich), daher löst ein
   Zeichendurchgang mit mehreren Aufrufen nur einmal.
 - **Neuzeichnen.** Die Elementtypen geben ihre verknüpften Diagramme aus `Dependents` zurück und setzen
-  `DependsOnNeighbours` (nur die Instanzen, die Sätze anbieten; andere Symbole derselben Klasse zeichnen weiter ohne
-  Kontext); auch das Diagramm setzt `DependsOnNeighbours`. `ChangeSet` der Engine und die abhängigen Einheiten des
+  `HasDependents` (nur die Instanzen, die Sätze anbieten; sie zeichnen für sich, daher behält PowerPoint ihre Form beim
+  Verschieben); das Diagramm setzt `DependsOnNeighbours`, es zeichnet aus seinem Element. `ChangeSet` der Engine und die abhängigen Einheiten des
   COM-Hosts zeichnen das Diagramm dann im Rückgängig-Schritt der Elementänderung neu. Ein Wert des Elements, der sich
   ändert, weil sich ein *Nachbar* geändert hat (ein über ein Rohr übernommener Volumenstrom), erreicht das Diagramm erst,
   wenn Element oder Diagramm neu gezeichnet werden (offen, 14.4).

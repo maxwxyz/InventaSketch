@@ -31,7 +31,7 @@ namespace InventaSketch.Modules.Mechanical
         public CharacteristicSet? Characteristic(SketchObject o, string key, CharacteristicContext c)
             => HasCurves && key == TrainSet ? Train(c) : null;
 
-        public override bool DependsOnNeighbours => HasCurves;
+        public override bool HasDependents => HasCurves;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
             => HasCurves ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();

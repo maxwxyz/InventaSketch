@@ -32,7 +32,7 @@ Assert-Isk $S ($null -ne $gear) 'a gear sits on the shaft'
 $gear.Select(); Start-Sleep 3
 $addin.Command("ins:$bearing") | Out-Null; Start-Sleep 4
 Write-IskShapes $S
-Assert-Isk $S ((Get-Bearings).Count -eq 1) 'with the gear selected, the bearing is inserted (onto its shaft)'
+Assert-Isk $S (@(Get-Bearings).Count -eq 1) 'with the gear selected, the bearing is inserted (onto its shaft)'
 Test-OnShaft 'from the gear'
 Save-IskShot $S '1-bearing-from-gear'
 
@@ -49,7 +49,7 @@ Move-IskMouse ($r.X + $r.W * 0.75 + 2) ($r.CY - 22 * $k); Start-Sleep -Milliseco
 Save-IskShot $S '2-fitted-ghost' -Around ($r.X - 60), ($r.CY - 200), ($r.W + 120), 400
 Invoke-IskClick ($r.X + $r.W * 0.75 + 2) ($r.CY - 22 * $k) -WaitMs 4000
 Write-IskShapes $S
-Assert-Isk $S ((Get-Bearings).Count -eq 1) 'the click inserts the bearing'
+Assert-Isk $S (@(Get-Bearings).Count -eq 1) 'the click inserts the bearing'
 Test-OnShaft 'at the pointer'
 Save-IskShot $S '3-bearing-at-pointer'
 Send-IskEscape; Start-Sleep 1

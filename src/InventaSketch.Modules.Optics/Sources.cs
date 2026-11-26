@@ -430,6 +430,9 @@ namespace InventaSketch.Modules.Optics
         public override bool IsPart => false;
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.AxisId, MirrorType.ConcaveId, Detectors.ScreenId };
 
+        /// <summary>The image is constructed through the lens or curved mirror in front of the arrow.</summary>
+        public override bool DependsOnNeighbours => true;
+
         /// <summary>
         /// The arrow, its optional name and – with a lens or curved mirror in front of it on its axis – its image (real solid,
         /// virtual dashed) and optionally the construction rays (<see cref="Imaging"/>). The image lies outside the box, like the
