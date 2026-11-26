@@ -6,7 +6,7 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Energy
 {
     /// <summary>
-    /// Energy systems module: PV, wind, generator sets, inverters and converters, battery storage, e-mobility, sector
+    /// Energy systems module: PV, wind, hydropower, generator sets, inverters and converters, battery and pumped storage, e-mobility, sector
     /// coupling (heat pump, CHP, thermal storage, hydrogen) and the grid connection with single-line diagram elements
     /// across voltage levels. Every element has a pictorial view for slides and a single-line view; cables, pipes and
     /// flow arrows are point-geometry lines whose ends dock on the elements' ports and on busbars.
@@ -16,6 +16,7 @@ namespace InventaSketch.Modules.Energy
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
             Generation.Types().Cast<ObjectType>()
+                .Concat(Hydro.Types())
                 .Concat(Conversion.Types()).Concat(Sector.Types()).Concat(Consumers.Types()).Concat(Grid.Types())
                 .Concat(new ObjectType[] { new CableType(), new PipeType(), new FlowType() })
                 .ToList());

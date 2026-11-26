@@ -1,7 +1,7 @@
 # Modul Energiesysteme (`energy`)
 
-Photovoltaik, Wind, Stromaggregate, Wechselrichter und Stromrichter, Batteriespeicher, E-Mobilität, Sektorkopplung
-(Wärmepumpe, BHKW, Wärmespeicher, Wasserstoff) und der Netzanschluss mit Elementen für Einlinienschaltbilder über alle
+Photovoltaik, Wind, Wasserkraft, Stromaggregate, Wechselrichter und Stromrichter, Batterie- und Pumpspeicher,
+E-Mobilität, Sektorkopplung (Wärmepumpe, BHKW, Wärmespeicher, Wasserstoff) und der Netzanschluss mit Elementen für Einlinienschaltbilder über alle
 Spannungsebenen – für Folien und schnelle technische Skizzen von Energiesystemen. Jedes Element hat **zwei Ansichten
 desselben Elements**:
 
@@ -77,10 +77,12 @@ Größen sind die Entwurfsgrößen bildhaft / Einlinienschaltbild (B x H, mm auf
 | `energy.pv.string` | PV string / PV-String | 50x26 / 40x22 | dc | `modules` (6, 2–24; Aktionen mehr/weniger), `power` je Modul (430 Wp) |
 | `energy.pv.array` | PV array / PV-Generator (Feld) | 50x34 / 40x22 | dc | `power` (10 kWp), `rows` (2, 1–6), `columns` (5, 1–12) |
 | `energy.wind.turbine` | Wind turbine / Windenergieanlage | 30x44 / 38x24 | ac (unten) | `power` (3 MW), `rotor` (0°; Aktion „Rotor drehen“, Animationsbilder) |
+| `energy.hydro.turbine` | Hydro power plant / Wasserkraftanlage | 40x30 / 38x24 | ac (oben), water (Oberwasser, links), tail (Unterwasser, rechts) | `power` (10 MW); bildhaft: Stausee, Staumauer, Druckrohrleitung, Krafthaus mit Generator und Turbine; Einlinienschaltbild: Generator über Turbine auf einer Welle |
 | `energy.gen.genset` | Generator set (genset) / Stromaggregat | 36x24 / 38x24 | ac | `power` (100 kVA), `fuel` diesel/gas/biogas/h2 |
 | `energy.conv.inverter` | Inverter / Wechselrichter | 24x30 / 38x24 | ac, dc (+ bat bei Hybrid) | `power` (10 kW), `phases` 3/1, `kind` pv/hybrid/battery |
 | `energy.conv.converter` | Power converter / Stromrichter | 24x30 / 38x24 | a, b | `power` (10 kW), `kind` acdc (Gleichrichter)/dcdc/acac (Frequenzumrichter) |
 | `energy.storage.battery` | Battery storage / Batteriespeicher | 24x30 / 36x24 | dc | `capacity` (10 kWh), `soc` (75 %, Füllstand), `form` wall/cabinet/container |
+| `energy.storage.pumped` | Pumped storage plant / Pumpspeicherkraftwerk | 44x30 / 38x26 | ac (oben) | `power` (300 MW, Turbinenbetrieb), `capacity` (2400 MWh); Ober- und Unterbecken, umkehrbare Maschine M/G, Pfeile für Turbinen- und Pumpbetrieb |
 | `energy.heat.heatpump` | Heat pump / Wärmepumpe | 34x24 / 38x24 | el, heat | `power` (8 kW), `source` air/ground/water; HP/WP nach Oberflächensprache |
 | `energy.heat.chp` | CHP unit / Blockheizkraftwerk (BHKW) | 40x24 / 38x28 | el, fuel, heat | `power` (50 kWel), `thermal` (80 kWth), `fuel` gas/biogas/h2 |
 | `energy.heat.storage` | Thermal storage tank / Wärmespeicher | 24x32 / 28x26 | charge, discharge | `volume` (1000 l; ab 10 000 l in m³) |
@@ -120,8 +122,11 @@ BESS), `energy.heat.heatpump.ground`, `energy.heat.chp.biogas`, `energy.h2.elect
 `.ehv` / `.dc` / `.data`, Leitungen `energy.line.pipe.<carrier>` und Energieflüsse `energy.line.flow.<carrier>`.
 
 Suchbegriffe decken beide Sprachen ab, z. B. Photovoltaik, Wechselrichter, Speicher, Ladestation, Wallbox,
-Netzanschluss, Hausanschluss, Elektrolyseur, Brennstoffzelle, Wasserstoff, BHKW, Wärmepumpe, Trafo, Sammelschiene,
-Leistungsschalter, Trennschalter, Einlinienschaltbild.
+Netzanschluss, Hausanschluss, Elektrolyseur, Brennstoffzelle, Wasserstoff, BHKW, Wärmepumpe, Wasserkraft,
+Pumpspeicher, Trafo, Sammelschiene, Leistungsschalter, Trennschalter, Einlinienschaltbild.
+
+Solarkollektoren gibt es hier nicht doppelt: die Gebäudetechnik bietet `bs.heat.solarthermal`, und ihre Heizungsrohre
+docken an den Wärmeanschlüssen der Energieelemente an (siehe „Werte über Anschlüsse“).
 
 Kategorien: `energy.generation` Generation / Erzeugung, `energy.storage` Storage & conversion / Speicher & Umrichter,
 `energy.sector` Sector coupling & hydrogen / Sektorkopplung & Wasserstoff, `energy.consumers` Consumers & e-mobility /
@@ -150,7 +155,7 @@ Verbraucher & E-Mobilität, `energy.grid` Grid connection & single-line / Netzan
 siehe Benutzerhandbuch): `dc` und `bat` ein DC-Kabel, `ac`, `el`, `poc`, `hv`, `mv`, `lv` ein AC-Kabel mit der Spannung,
 die das Element für diesen Anschluss angibt (Transformatorwicklungen, Netzeinspeisung), `data` eine
 Kommunikationsleitung, `heat`, `charge`/`discharge` (Wärmespeicher) eine Wärmeleitung, `fuel` eine Gasleitung, `water`
-eine Wasserleitung, `h2` eine Wasserstoffleitung; Schaltgeräte, Zähler und Sammelschienen ein Kabel (DC bei
+und `tail` (Wasserkraftanlage) eine Wasserleitung, `h2` eine Wasserstoffleitung; Schaltgeräte, Zähler und Sammelschienen ein Kabel (DC bei
 DC-Sammelschienen); Umrichter je Seite DC oder AC nach ihrer Umformung; Ladepunkt und Fahrzeug DC beim DC-Laden. Der
 Wärmeanschluss der Wärmepumpe nimmt Wärme- und Kälteleitungen. Danach folgen die Elemente mit einem Anschluss desselben
 Mediums (ein PV-String nach einem PV-Modul, ein Wechselrichter oder eine Batterie nach einem DC-Kabel). Kabel führen
@@ -173,7 +178,9 @@ Werte sind optional: jedes Element lässt sich weiterhin ohne sie einfügen und 
 sie mit der Wertekarte (*Bearbeiten ▸ Werte ▸*, die Schaltfläche *Werte* in Erkunden und Ingenieur), gespeichert in
 optionalen Textparametern (Ingenieurabschnitt des Inspektors). Die vorhandenen Bemessungsparameter werden in ihren
 gespeicherten Einheiten als Werte gelesen: `power` von Modul und String (Wp), Feld `power` (kWp), Wechselrichter und
-Ladepunkt `power` (kW), Batterie `capacity` (kWh), Wärmepumpe `power` (kW), Sammelschiene `voltage` (kV), Transformator
+Ladepunkt `power` (kW), Batterie `capacity` (kWh), Wärmepumpe `power` (kW), BHKW `power` und `thermal` (kW),
+Wärmespeicher `volume` (l), Elektrolyseur und Brennstoffzelle `power` (kW), Pumpspeicher `power` (MW) und `capacity`
+(MWh), Sammelschiene `voltage` (kV), Transformator
 `power` (kVA), `hv` und `lv` (kV), String `modules`. Weil sie beim Einfügen gespeichert werden, zeigt ein String sofort
 seine STC-Leistung und ein Transformator seine Bemessungsströme. Kartengrößen stehen vorn. Entwurfsnotizen:
 [engineering-calculations.md, Abschnitt 13](../design/engineering-calculations.md#13-umsetzungsnotizen-calc-4-fluid-prozess-gebäudetechnik-energie-25112026).
@@ -186,9 +193,15 @@ seine STC-Leistung und ein Transformator seine Bemessungsströme. Kartengrößen
 | Wechselrichter | *P*_DC (`powerDc`), *P*_AC (`powerAc`), *I*_AC (`currentAc`, je Außenleiter), *U*_oc,max (von den Strings); Panel η (`efficiency`, Vorgabe 97 %), *R* (`dcAcRatio`), *P*_AC,N (`power`), *U*_AC (`voltageAc`, Außenleiterspannung, Vorgabe 400 V), cos φ (`powerFactor`, Vorgabe 1), *U*_mpp,min, *I*_sc (`iscDc`), *U*_mpp (`vmpDc`), *U*_DC,max (`udcMax`), *U*_MPPT,min/max (`mpptMin`, `mpptMax`), *I*_DC,max (`idcMax`) | *P*_AC = η·*P*_DC [S33]; *R* = *P*_DC/*P*_AC,N [S34]; dreiphasig *I*_AC = *P*_AC/(√3·*U*_AC·cos φ), einphasig *I*_AC = *P*_AC/((*U*_AC/√3)·cos φ) [S7] |
 | Netz-Sammelschiene, Netzanschlusszähler (Verteiler) | *P* (`powerIn`, Summe der Einspeisungen), *I* (`current`, je Außenleiter), *U* (Sammelschiene `voltage` in kV, Zähler `systemVoltage`); Panel cos φ (`powerFactor`, Vorgabe 1) | *I* = *P*/(√3·*U*·cos φ); DC-Sammelschiene *I* = *P*/*U* [S7] |
 | Batteriespeicher | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); Panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P* [S35] |
-| Ladepunkt | *P* (`power`), *U* (`voltage`, Vorgabe 400 V), *I* (`current`); Panel cos φ | AC: *P* = √3·*U*·*I*·cos φ; DC-Laden: *P* = *U*·*I* [S7] |
-| Wärmepumpe | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); Panel θ_VL (`flowTemp`), θ_Q (`sourceTemp`) | Φ_H = COP·*P*_el [S32] |
+| Ladepunkt | *P* (`power`), *U* (`voltage`, Vorgabe 400 V), *I* (`current`), *t* (`chargeTime`); Panel cos φ, *E* (`chargeEnergy`, zu ladende Energie) | AC: *P* = √3·*U*·*I*·cos φ; DC-Laden: *P* = *U*·*I* [S7]; *t* = *E*/*P* (konstante Leistung, ohne Verluste) [S35] |
+| Wärmepumpe | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); Panel θ_Q (`sourceTemp`), Heizwasser: θ_VL (`flowTemp`), θ_RL (`returnTemp`), V̇ (`flowRate`); Ingenieur ρ (`density`, 1000 kg/m³), *c* (`specificHeat`, 4,19 kJ/(kg·K)) | Φ_H = COP·*P*_el [S32]; Φ_H = ρ·*c*·V̇·(θ_VL − θ_RL) [S29] |
+| BHKW | *P*_el (`power`), Φ_th (`thermal`), *P*_B (`powerFuel`, Brennstoffleistung, Heizwert), η_el (`efficiencyEl`); Panel η_th (`efficiencyTh`), Heizwasser wie bei der Wärmepumpe | *P*_el = η_el·*P*_B; Φ_th = η_th·*P*_B [S38]; Φ_th = ρ·*c*·V̇·(θ_VL − θ_RL) [S29] |
+| Wärmespeicher | *Q* (`heat`, gespeicherte Wärme), *V* (`volume`), Δθ (`deltaT`, Spreizung), θ_Sp (`temperature`, oben); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
+| Elektrolyseur | *P*_el (`power`), *P*_H2 (`powerH2`, Heizwert), η (`efficiency`), ṁ_H2 (`hydrogenFlow`) | *P*_H2 = η·*P*_el [S38]; *P*_H2 = ṁ_H2·*H*_i mit *H*_i = 33,3 kWh/kg (120 MJ/kg) [S29] |
+| Brennstoffzelle | *P*_el (`power`), *P*_H2 (`powerH2`), η_el (`efficiency`), Φ_th (`heatOutput`); Panel η_th (`efficiencyTh`), ṁ_H2 (`hydrogenFlow`), Heizwasser wie bei der Wärmepumpe | *P*_el = η_el·*P*_H2; Φ_th = η_th·*P*_H2 [S38]; *P*_H2 = ṁ_H2·*H*_i [S29]; Φ_th = ρ·*c*·V̇·(θ_VL − θ_RL) [S29] |
 | Windenergieanlage | *P* (`powerWind`), *D* (`diameter`), *v* (`windSpeed`), *c*_p (`cp`); Ingenieur ρ (`airDensity`, Vorgabe 1,225 kg/m³) | *P* = ½·ρ·π·*D*²/4·*v*³·*c*_p [S36] |
+| Wasserkraftanlage | *P* (`powerHydro`, Leistung aus dem Wasser; die Nennleistung `power` bleibt Beschriftung), *Q* (`flow`), *H* (`head`, Nettofallhöhe), η (`efficiency`, gesamt); Ingenieur ρ (`waterDensity`, 1000 kg/m³) | *P* = ρ·*g*·*Q*·*H*·η, *g* = 9,80665 m/s² [S27] |
+| Pumpspeicherkraftwerk | *E*_el (`capacity`), *P* (`power`, Turbine), *V* (`reservoirVolume`, Nutzinhalt des Oberbeckens), *H* (`head`); Panel *E*_pot (`energyPotential`), η_T (`efficiency`, Turbinenbetrieb, gesamt), *Q* (`flow`), *t* (`generatingTime`); Ingenieur ρ | *E*_pot = ρ·*g*·*V*·*H* [S27]; *E*_el = η_T·*E*_pot [S38]; *P* = ρ·*g*·*Q*·*H*·η_T [S27]; *t* = *E*_el/*P* [S1] |
 | Leistungstransformator | *S*_r (`power`), *I*_OS (`currentHv`), *I*_US (`currentLv`); Panel *U*_OS (`hv`), *U*_US (`lv`) | *I* = *S*_r/(√3·*U*) je Seite [S7] |
 
 **Werte über Anschlüsse.** Kabel verbinden Anschlüsse zu Netzen (eine Sammelschiene verbindet alle Anschlusspunkte und
@@ -196,8 +209,27 @@ die Schiene). DC-Seite: die Stringspannungen *U*_oc,max, *U*_mpp,min und *U*_mpp
 Strings müssen übereinstimmen, sonst zeigt die Karte einen Konflikt); Kurzschlussstrom und STC-Leistung paralleler Strings
 addieren sich am Wechselrichter. AC-Seite: die Netzspannung gilt gemeinsam; die AC-Leistung der Wechselrichter addiert
 sich an einer Sammelschiene oder an der Geräteseite (Anschluss b) eines Zählers, der sie an seiner Netzseite (Anschluss a)
-weitergibt. Die 0,4 kV der Sammelschiene werden so zu *U*_AC des Wechselrichters. Die Schlüssel (`P`, `U`, `I`) sind
-dieselben wie in anderen Modulen, aber keine Verknüpfung reicht ins Elektromodul (Module hängen nie voneinander ab).
+weitergibt. Die 0,4 kV der Sammelschiene werden so zu *U*_AC des Wechselrichters.
+
+**Wärme und Wasserstoff.** Wärmeleitungen (`energy.line.pipe` mit Energieträger Wärme) und Wasserstoffleitungen sind
+ebenfalls Netzleitungen. Ein Wärmeanschluss (`heat` von Wärmepumpe, BHKW und Brennstoffzelle) gibt den Volumenstrom V̇
+des Heizwassers und seine Vorlauftemperatur θ_VL weiter; der Wärmespeicher gibt seine obere Temperatur θ_Sp an
+`charge` und `discharge` (Be- und Entladung oben im Schichtenspeicher). Ein Wasserstoffanschluss (`h2` von Elektrolyseur
+und Brennstoffzelle) gibt *P*_H2 und ṁ_H2 weiter. Das sind Durchflussgrößen: die beiden Elemente eines unverzweigten
+Strangs teilen sie. Gas-, Kälte- und Wasserleitungen führen keine Werte.
+
+**Verknüpfung mit anderen Modulen** (engineering-calculations.md, Abschnitt 6.1). Die Energienetze nennen ihre
+physikalischen Schlüssel ausdrücklich (`NetSpec.Keys`): `Uac`, `Ustr` → `U`; `Pac`, `Pdc` → `P`; `Vdot` → `Vdot`;
+`theta` → `theta`; `m` → `m`; Grenzwerte (*U*_oc,max, *U*_mpp,min, *I*_sc) und *P*_H2 bleiben im Modul. Eine
+Energie-Wärmepumpe, die über ein Heizungsrohr der Gebäudetechnik (`bs.pipe.flow`) oder eine Energie-Wärmeleitung an
+einem Heizkörper hängt, gibt ihm daher V̇ und θ_VL, und am Heizkörper eingetragene Werte fließen in die Wärmepumpe
+zurück (θ_RL aus ihrer Heizleistung). Die Wärmepumpe der Energiesysteme und die der Gebäudetechnik bleiben zwei Typen
+(Systemsicht und Hausinstallation), nennen aber dieselben Größen (Φ, *P*_el, COP, θ_VL, θ_RL, θ_Q, V̇, ρ, *c*), sodass
+ihre Werte sich an einer Verknüpfung treffen; eine Gebäude-Wärmepumpe, die einen Energie-Wärmespeicher lädt, gibt ihre
+Vorlauftemperatur weiter. Die Wasseranschlüsse `water` und `tail` der Wasserkraftanlage geben ihren Durchfluss *Q* an
+Wasserleitungen anderer Module. Wärmeanschlüsse der Energieelemente sind einfach (Einliniensicht): ein Vor- und ein
+Rücklaufrohr am selben Anschluss werden zu einem Netz der Gebäudetechnik verbunden; an einen Energie-Wärmeanschluss
+daher nur das Vorlaufrohr zeichnen.
 
 Beispiele (Abnahmekriterien): 10 Module mit *U*_oc = 49,5 V, β = −0,27 %/K und θ_min = −10 °C ergeben
 *U*_oc,max = 10 · 49,5 V · 1,0945 = 541,8 V, und ein Wechselrichter mit *U*_DC,max = 500 V zeigt die Warnung
@@ -226,7 +258,7 @@ enthält (die Standardschriften von Office und LibreOffice tun das). Die Windene
 
 ## Tests und Galerie
 
-`tests/InventaSketch.Modules.Energy.Tests` (77 Tests): Registrierung und Id-Konventionen, zweisprachige Namen,
+`tests/InventaSketch.Modules.Energy.Tests` (114 Tests): Registrierung und Id-Konventionen, zweisprachige Namen,
 Parameter, Optionen und Aktionen, beide Ansichten mit ihren Icons, Einfügen ohne Parameter, Bibliothekseinträge mit
 gültigen Parametern und Ansichten, jeder Bibliothekseintrag in jeder Ansicht in beiden Sprachen innerhalb seiner Box
 (auch gestreckt, gestaucht, mit jeder Auswahl und den Grenzen jeder Zahl), jeder Parameter ändert Zeichnung oder
@@ -240,4 +272,8 @@ Energieflusses, Zahlenformate und eingegebene Spannungen. Der Galerietest schrei
 beiden Ansichten, gestreckt und beschriftet, alle Vorlagen in beiden Ansichten sowie zwei Beispielsysteme – ein
 Heim-Energiesystem und ein MS/NS-Einlinienschaltbild – jeweils bildhaft und als Einlinienschaltbild); weitere
 Tests prüfen, dass jedes Kabelende der Beispiele in beiden Ansichten auf seinem Anschluss bleibt und jedes gerade
-Kabel nach dem Ansichtswechsel des ganzen Schaltbilds ein senkrechtes Segment bleibt.
+Kabel nach dem Ansichtswechsel des ganzen Schaltbilds ein senkrechtes Segment bleibt. `HeatHydroValueTests` prüfen die
+Werte von Wasserkraft, Pumpspeicher, Elektrolyseur, Brennstoffzelle, BHKW, Wärmepumpe, Wärmespeicher und die Ladedauer,
+Wärme- und Wasserstoffleitungen als Netzleitungen und die ausdrücklichen Schlüssel;
+`tests/InventaSketch.Engine.Tests/EnergyHeatJoinTests.cs` prüft die Verknüpfung mit der Gebäudetechnik im
+Standardkatalog.

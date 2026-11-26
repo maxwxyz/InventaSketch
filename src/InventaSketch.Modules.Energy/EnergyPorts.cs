@@ -34,6 +34,8 @@ namespace InventaSketch.Modules.Energy
                 case "fuel":
                     return PortConnection.Of(PortMedia.Gas, "energy.line.pipe.gas");
                 case "water":
+                case "tail":
+                    // Water in (headwater, electrolyser feed) and out (tailwater of a hydro power plant).
                     return PortConnection.Of(PortMedia.Water, "energy.line.pipe.water");
                 case "h2":
                     return PortConnection.Of(PortMedia.Hydrogen, "energy.line.pipe.hydrogen");

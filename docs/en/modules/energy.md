@@ -1,7 +1,7 @@
 # Energy systems module (`energy`)
 
-PV, wind, generator sets, inverters and converters, battery storage, e-mobility, sector coupling (heat pump, CHP,
-thermal storage, hydrogen) and the grid connection with single-line diagram elements across voltage levels — for
+PV, wind, hydropower, generator sets, inverters and converters, battery and pumped storage, e-mobility, sector coupling
+(heat pump, CHP, thermal storage, hydrogen) and the grid connection with single-line diagram elements across voltage levels — for
 slides and quick technical sketches of energy systems. Every element has **two views of the same element**:
 
 | View id | Label (EN / DE) | Icon | What it shows |
@@ -70,10 +70,12 @@ and `showLabel` (true).
 | `energy.pv.string` | PV string / PV-String | 50x26 / 40x22 | dc | `modules` (6, 2–24; more/fewer actions), `power` per module (430 Wp) |
 | `energy.pv.array` | PV array / PV-Generator (Feld) | 50x34 / 40x22 | dc | `power` (10 kWp), `rows` (2, 1–6), `columns` (5, 1–12) |
 | `energy.wind.turbine` | Wind turbine / Windenergieanlage | 30x44 / 38x24 | ac (bottom) | `power` (3 MW), `rotor` (0°; "turn rotor" action, animation frames) |
+| `energy.hydro.turbine` | Hydro power plant / Wasserkraftanlage | 40x30 / 38x24 | ac (top), water (headwater, left), tail (tailwater, right) | `power` (10 MW); pictorial: reservoir, dam, penstock, powerhouse with generator and turbine; single-line: generator over a turbine on one shaft |
 | `energy.gen.genset` | Generator set (genset) / Stromaggregat | 36x24 / 38x24 | ac | `power` (100 kVA), `fuel` diesel/gas/biogas/h2 |
 | `energy.conv.inverter` | Inverter / Wechselrichter | 24x30 / 38x24 | ac, dc (+ bat when hybrid) | `power` (10 kW), `phases` 3/1, `kind` pv/hybrid/battery |
 | `energy.conv.converter` | Power converter / Stromrichter | 24x30 / 38x24 | a, b | `power` (10 kW), `kind` acdc (rectifier)/dcdc/acac (frequency converter) |
 | `energy.storage.battery` | Battery storage / Batteriespeicher | 24x30 / 36x24 | dc | `capacity` (10 kWh), `soc` (75 %, fill level), `form` wall/cabinet/container |
+| `energy.storage.pumped` | Pumped storage plant / Pumpspeicherkraftwerk | 44x30 / 38x26 | ac (top) | `power` (300 MW, generating), `capacity` (2400 MWh); upper and lower reservoir, reversible machine M/G, arrows for generating and pumping |
 | `energy.heat.heatpump` | Heat pump / Wärmepumpe | 34x24 / 38x24 | el, heat | `power` (8 kW), `source` air/ground/water; HP/WP by UI language |
 | `energy.heat.chp` | CHP unit / Blockheizkraftwerk (BHKW) | 40x24 / 38x28 | el, fuel, heat | `power` (50 kWel), `thermal` (80 kWth), `fuel` gas/biogas/h2 |
 | `energy.heat.storage` | Thermal storage tank / Wärmespeicher | 24x32 / 28x26 | charge, discharge | `volume` (1000 l; m³ from 10 000 l) |
@@ -113,8 +115,11 @@ and variants: `energy.pv.string.10`, `energy.pv.array.large` (100 kWp), `energy.
 `.ehv` / `.dc` / `.data`, pipes `energy.line.pipe.<carrier>` and flows `energy.line.flow.<carrier>`.
 
 Search keywords cover both languages, e.g. Photovoltaik, Wechselrichter, Speicher, Ladestation, Wallbox,
-Netzanschluss, Hausanschluss, Elektrolyseur, Brennstoffzelle, Wasserstoff, BHKW, Wärmepumpe, Trafo, Sammelschiene,
-Leistungsschalter, Trennschalter, Einlinienschaltbild.
+Netzanschluss, Hausanschluss, Elektrolyseur, Brennstoffzelle, Wasserstoff, BHKW, Wärmepumpe, Wasserkraft,
+Pumpspeicher, Trafo, Sammelschiene, Leistungsschalter, Trennschalter, Einlinienschaltbild.
+
+Solar thermal collectors are not duplicated here: building services offers `bs.heat.solarthermal`, and its heating pipes
+dock on the energy heat ports (see "Port flows").
 
 Categories: `energy.generation` Generation / Erzeugung, `energy.storage` Storage & conversion / Speicher & Umrichter,
 `energy.sector` Sector coupling & hydrogen / Sektorkopplung & Wasserstoff, `energy.consumers` Consumers & e-mobility /
@@ -141,7 +146,7 @@ Verbraucher & E-Mobilität, `energy.grid` Grid connection & single-line / Netzan
 **Build "+" (connections).** Every free port offers its line first (`ObjectType.Connection`, see the user guide): `dc`
 and `bat` a DC cable, `ac`, `el`, `poc`, `hv`, `mv`, `lv` an AC cable at the voltage the element states for that port
 (transformer windings, grid infeed), `data` a communication line, `heat`, `charge`/`discharge` (heat storage) a heat
-pipe, `fuel` a gas pipe, `water` a water pipe, `h2` a hydrogen pipe; switchgear, meters and busbars a cable (DC for DC
+pipe, `fuel` a gas pipe, `water` and `tail` (hydro power plant) a water pipe, `h2` a hydrogen pipe; switchgear, meters and busbars a cable (DC for DC
 busbars); converters DC or AC per side by their conversion; charger and vehicle DC for DC charging. The heat port of the
 heat pump takes heat and cooling pipes. Then the elements with a port of the same medium (a PV string after a PV module,
 an inverter or battery after a DC cable). Cables carry `electric.dc`, `electric.ac` or `data`, pipes their carrier; the
@@ -162,7 +167,8 @@ Values are optional: every element still inserts and scales without them. They a
 card (*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text parameters
 (engineering section of the inspector). The existing rating parameters are read as values in their stored units:
 module and string `power` (Wp), array `power` (kWp), inverter and charger `power` (kW), battery `capacity` (kWh), heat
-pump `power` (kW), busbar `voltage` (kV), transformer `power` (kVA), `hv` and `lv` (kV), string `modules`. Because
+pump `power` (kW), CHP `power` and `thermal` (kW), thermal storage `volume` (l), electrolyser and fuel cell `power` (kW),
+pumped storage `power` (MW) and `capacity` (MWh), busbar `voltage` (kV), transformer `power` (kVA), `hv` and `lv` (kV), string `modules`. Because
 these are stored when an element is inserted, a string shows its STC power and a transformer its rated currents right
 away. Card variables come first. Design notes:
 [engineering-calculations.md, section 13](../design/engineering-calculations.md#13-implementation-notes-calc-4-fluid-process-building-services-energy-2026-11-25).
@@ -175,18 +181,39 @@ away. Card variables come first. Design notes:
 | Inverter | *P*_DC (`powerDc`), *P*_AC (`powerAc`), *I*_AC (`currentAc`, per phase), *U*_oc,max (from the strings); panel η (`efficiency`, default 97 %), *R* (`dcAcRatio`), *P*_AC,N (`power`), *U*_AC (`voltageAc`, line-to-line, default 400 V), cos φ (`powerFactor`, default 1), *U*_mpp,min, *I*_sc (`iscDc`), *U*_mpp (`vmpDc`), *U*_DC,max (`udcMax`), *U*_MPPT,min/max (`mpptMin`, `mpptMax`), *I*_DC,max (`idcMax`) | *P*_AC = η·*P*_DC [S33]; *R* = *P*_DC/*P*_AC,N [S34]; three-phase *I*_AC = *P*_AC/(√3·*U*_AC·cos φ), single-phase *I*_AC = *P*_AC/((*U*_AC/√3)·cos φ) [S7] |
 | Grid busbar, grid connection meter (boards) | *P* (`powerIn`, sum of the feeders), *I* (`current`, per phase), *U* (busbar `voltage` in kV, meter `systemVoltage`); panel cos φ (`powerFactor`, default 1) | *I* = *P*/(√3·*U*·cos φ); DC busbar *I* = *P*/*U* [S7] |
 | Battery storage | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P* [S35] |
-| EV charger | *P* (`power`), *U* (`voltage`, default 400 V), *I* (`current`); panel cos φ | AC: *P* = √3·*U*·*I*·cos φ; DC charging: *P* = *U*·*I* [S7] |
-| Heat pump | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); panel θ_F (`flowTemp`), θ_Q (`sourceTemp`) | Φ_H = COP·*P*_el [S32] |
+| EV charger | *P* (`power`), *U* (`voltage`, default 400 V), *I* (`current`), *t* (`chargeTime`); panel cos φ, *E* (`chargeEnergy`, energy to charge) | AC: *P* = √3·*U*·*I*·cos φ; DC charging: *P* = *U*·*I* [S7]; *t* = *E*/*P* (constant power, no losses) [S35] |
+| Heat pump | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); panel θ_Q (`sourceTemp`), heating water: θ_F (`flowTemp`), θ_R (`returnTemp`), V̇ (`flowRate`); engineer ρ (`density`, 1000 kg/m³), *c* (`specificHeat`, 4.19 kJ/(kg·K)) | Φ_H = COP·*P*_el [S32]; Φ_H = ρ·*c*·V̇·(θ_F − θ_R) [S29] |
+| CHP unit | *P*_el (`power`), Φ_th (`thermal`), *P*_F (`powerFuel`, fuel power, lower heating value), η_el (`efficiencyEl`); panel η_th (`efficiencyTh`), heating water as on the heat pump | *P*_el = η_el·*P*_F; Φ_th = η_th·*P*_F [S38]; Φ_th = ρ·*c*·V̇·(θ_F − θ_R) [S29] |
+| Thermal storage | *Q* (`heat`, stored heat), *V* (`volume`), Δθ (`deltaT`, spread), θ_S (`temperature`, top); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
+| Electrolyser | *P*_el (`power`), *P*_H2 (`powerH2`, lower heating value), η (`efficiency`), ṁ_H2 (`hydrogenFlow`) | *P*_H2 = η·*P*_el [S38]; *P*_H2 = ṁ_H2·*H*_i with *H*_i = 33.3 kWh/kg (120 MJ/kg) [S29] |
+| Fuel cell | *P*_el (`power`), *P*_H2 (`powerH2`), η_el (`efficiency`), Φ_th (`heatOutput`); panel η_th (`efficiencyTh`), ṁ_H2 (`hydrogenFlow`), heating water as on the heat pump | *P*_el = η_el·*P*_H2; Φ_th = η_th·*P*_H2 [S38]; *P*_H2 = ṁ_H2·*H*_i [S29]; Φ_th = ρ·*c*·V̇·(θ_F − θ_R) [S29] |
 | Wind turbine | *P* (`powerWind`), *D* (`diameter`), *v* (`windSpeed`), *c*_p (`cp`); engineer ρ (`airDensity`, default 1.225 kg/m³) | *P* = ½·ρ·π·*D*²/4·*v*³·*c*_p [S36] |
+| Hydro power plant | *P* (`powerHydro`, power from the water; the rated `power` stays a label), *Q* (`flow`), *H* (`head`, net head), η (`efficiency`, overall); engineer ρ (`waterDensity`, 1000 kg/m³) | *P* = ρ·*g*·*Q*·*H*·η, *g* = 9.80665 m/s² [S27] |
+| Pumped storage plant | *E*_el (`capacity`), *P* (`power`, turbine), *V* (`reservoirVolume`, usable volume of the upper reservoir), *H* (`head`); panel *E*_pot (`energyPotential`), η_T (`efficiency`, generating, overall), *Q* (`flow`), *t* (`generatingTime`); engineer ρ | *E*_pot = ρ·*g*·*V*·*H* [S27]; *E*_el = η_T·*E*_pot [S38]; *P* = ρ·*g*·*Q*·*H*·η_T [S27]; *t* = *E*_el/*P* [S1] |
 | Power transformer | *S*_r (`power`), *I*_HV (`currentHv`), *I*_LV (`currentLv`); panel *U*_HV (`hv`), *U*_LV (`lv`) | *I* = *S*_r/(√3·*U*) per side [S7] |
 
 **Port flows.** Cables join ports into nets (a busbar joins all its taps and its bar). DC side: the string voltages
 *U*_oc,max, *U*_mpp,min and *U*_mpp are shared by the whole net (parallel strings have to agree, otherwise the card shows a
 conflict); the short-circuit current and the STC power of parallel strings add up at the inverter. AC side: the system
 voltage is shared; the AC power of the inverters adds up at a busbar or at the device side (port b) of a meter, and the
-meter passes it on at its grid side (port a). The busbar's 0.4 kV therefore becomes the inverter's *U*_AC. The keys
-(`P`, `U`, `I`) are the same as in other modules, but no link crosses into the electrical module (modules never depend
-on each other).
+meter passes it on at its grid side (port a). The busbar's 0.4 kV therefore becomes the inverter's *U*_AC.
+
+**Heat and hydrogen.** Heat pipes (`energy.line.pipe` with carrier heat) and hydrogen pipes are net lines too. A heat
+port (`heat` of heat pump, CHP and fuel cell) gives the heating water's volume flow V̇ and its flow temperature θ_F;
+the thermal storage gives its top temperature θ_S at `charge` and `discharge` (charged and discharged at the top of a
+stratified tank). A hydrogen port (`h2` of electrolyser and fuel cell) gives *P*_H2 and ṁ_H2. These are through
+quantities: they are shared by the two elements of an unbranched run. Gas, cooling and water pipes carry no values.
+
+**Joins with other modules** (engineering-calculations.md, section 6.1). The energy nets state their physical keys
+explicitly (`NetSpec.Keys`): `Uac`, `Ustr` → `U`; `Pac`, `Pdc` → `P`; `Vdot` → `Vdot`; `theta` → `theta`; `m` → `m`;
+limits (*U*_oc,max, *U*_mpp,min, *I*_sc) and *P*_H2 stay inside the module. So an energy heat pump connected by a
+building-services heating pipe (`bs.pipe.flow`) or by an energy heat pipe to a radiator passes V̇ and θ_F to it, and a
+radiator's entered values flow back into the heat pump (θ_R from its heating power). The energy heat pump and the
+building-services heat pump stay two types (system view vs. building installation) but name the same variables
+(Φ, *P*_el, COP, θ_F, θ_R, θ_Q, V̇, ρ, *c*), so their values meet at a junction; a building heat pump charging an energy
+thermal storage passes its flow temperature. The water ports `water` and `tail` of the hydro power plant give its flow
+*Q* to water lines of other modules. Energy heat ports are single (single-line view): a flow and a return pipe docked
+on the same port are joined into one building-services net, so draw only the flow pipe to an energy heat port.
 
 Examples (accept criteria): 10 modules with *U*_oc = 49.5 V, β = −0.27 %/K and θ_min = −10 °C give
 *U*_oc,max = 10 · 49.5 V · 1.0945 = 541.8 V, and an inverter with *U*_DC,max = 500 V shows the warning `pv.voc.max`.
@@ -215,7 +242,7 @@ LibreOffice fonts do). The wind turbine offers animation frames (rotor steps of 
 
 ## Tests and gallery
 
-`tests/InventaSketch.Modules.Energy.Tests` (77 tests): registration and id conventions, bilingual names, parameters,
+`tests/InventaSketch.Modules.Energy.Tests` (114 tests): registration and id conventions, bilingual names, parameters,
 options and actions, both views with their icons, insertion without parameters, library items resolve to valid
 parameters and views, every library item rendered in every view in both languages inside its box (also stretched,
 squashed, with every choice and the limits of every number), every parameter changes the drawing or the ports,
@@ -228,4 +255,7 @@ branches), orthogonal routing, conductor marks and labels, pipe codes, the flow 
 voltages. The gallery test writes `gallery/*.html` (every type in both views, stretched and named, all presets in both
 views, and two sample systems — a home energy system and an MV/LV single-line diagram — each in the pictorial and the
 single-line view); further tests check that every cable end of the samples stays on its port in both views and
-that every straight cable stays one vertical segment after switching the whole diagram.
+that every straight cable stays one vertical segment after switching the whole diagram. `HeatHydroValueTests` check
+the values of hydropower, pumped storage, electrolyser, fuel cell, CHP, heat pump, thermal storage and the charging
+time, the heat and hydrogen pipes as net lines and the explicit keys; `tests/InventaSketch.Engine.Tests/EnergyHeatJoinTests.cs`
+checks the joins with building services in the default catalogue.

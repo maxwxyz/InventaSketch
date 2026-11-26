@@ -76,8 +76,8 @@ namespace InventaSketch.Modules.Energy.Tests
     {
         public static readonly string[] AllTypeIds =
         {
-            "energy.pv.module", "energy.pv.string", "energy.pv.array", "energy.wind.turbine", "energy.gen.genset",
-            "energy.conv.inverter", "energy.conv.converter", "energy.storage.battery",
+            "energy.pv.module", "energy.pv.string", "energy.pv.array", "energy.wind.turbine", "energy.gen.genset", "energy.hydro.turbine",
+            "energy.conv.inverter", "energy.conv.converter", "energy.storage.battery", "energy.storage.pumped",
             "energy.heat.heatpump", "energy.heat.chp", "energy.heat.storage", "energy.h2.electrolyser", "energy.h2.fuelcell", "energy.h2.tank",
             "energy.mobility.charger", "energy.mobility.ev", "energy.load.building", "energy.control.ems",
             "energy.grid.infeed", "energy.grid.transformer", "energy.grid.transformer3", "energy.grid.substation", "energy.grid.meter",
@@ -223,6 +223,10 @@ namespace InventaSketch.Modules.Energy.Tests
         [InlineData("wasserstoff", "energy.line.pipe.hydrogen")]
         [InlineData("solarpark", "energy.pv.park")]
         [InlineData("hausanschluss", "energy.grid.infeed.lv")]
+        [InlineData("Wasserkraft", "energy.hydro.turbine")]
+        [InlineData("hydropower", "energy.hydro.turbine")]
+        [InlineData("pumpspeicher", "energy.storage.pumped")]
+        [InlineData("pumped storage", "energy.storage.pumped")]
         public void SearchFindsElementsInBothLanguages(string query, string itemId)
             => Assert.Contains(Fx.Reg().Search(query), i => i.Id == itemId);
 

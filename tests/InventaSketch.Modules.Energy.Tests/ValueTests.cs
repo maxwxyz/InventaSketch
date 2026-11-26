@@ -45,7 +45,7 @@ namespace InventaSketch.Modules.Energy.Tests
         public void ValueTypesDeclareBilingualVariablesWithParametersAndSources()
         {
             var r = Fx.Reg();
-            foreach (var id in new[] { "energy.pv.module", "energy.pv.string", "energy.pv.array", "energy.conv.inverter", "energy.grid.busbar", "energy.grid.meter", "energy.storage.battery", "energy.mobility.charger", "energy.heat.heatpump", "energy.wind.turbine", "energy.grid.transformer" })
+            foreach (var id in new[] { "energy.pv.module", "energy.pv.string", "energy.pv.array", "energy.conv.inverter", "energy.grid.busbar", "energy.grid.meter", "energy.storage.battery", "energy.mobility.charger", "energy.heat.heatpump", "energy.heat.chp", "energy.heat.storage", "energy.h2.electrolyser", "energy.h2.fuelcell", "energy.wind.turbine", "energy.hydro.turbine", "energy.storage.pumped", "energy.grid.transformer" })
             {
                 var t = r.Type(id)!;
                 Assert.True(ValueModel.HasValues(t), id);
