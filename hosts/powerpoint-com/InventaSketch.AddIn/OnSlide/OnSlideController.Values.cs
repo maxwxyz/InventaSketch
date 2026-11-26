@@ -203,8 +203,94 @@ namespace InventaSketch.AddIn.OnSlide
             };
             Log.Info("Value card: " + model.Title + (focusKey is null ? "" : " [" + focusKey + "]"));
             var calculator = ValueCard.ShowCard(model, focusKey, at, _view?.MainWindow ?? IntPtr.Zero, lang, actions);
-            if (calculator is not null) CalculatorDialog.ShowCalculator(lang, calculator);
+            if (calculator == ValueCard.SheetCommand) ShowCalcSheet(new[] { objectId });
+            else if (calculator is not null) CalculatorDialog.ShowCalculator(lang, calculator);
             if (_mode == Mode.Armed && _view is { } view) { ShowBar(view); DrawPointHandles(view); }
+        }
+
+        /// <summary>
+        /// The calculation sheet (Calc 6) of <paramref name="objectIds"/>, else of the selected elements, else of the whole
+        /// slide: solved with every unit of the slide as context; "Insert as table" puts it beside the selection as an
+        /// annotation table (one undo step).
+        /// </summary>
+        internal void ShowCalcSheet(IReadOnlyList<string>? objectIds = null)
+        {
+            try
+            {
+                if (ComputeCalcSheet(objectIds) is not { } sheet) return;
+                CalcSheetDialog.Show(_lang(), sheet.Rows, sheet.Scope, sheet.Rows.Count == 0 ? null : cells => InsertCalcTable(cells, sheet.Anchor), null);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Calculation sheet", ex);
+            }
+        }
+
+        /// <summary>
+        /// Automation (UI tests): the calculation sheet of the selection or slide as text in <paramref name="mode"/> (csv,
+        /// markdown, latex, table); with <paramref name="insert"/> it is also inserted as a table.
+        /// </summary>
+        internal string CalcSheetText(string mode, bool insert) => OnUi(() =>
+        {
+            if (ComputeCalcSheet(null) is not { } sheet) return "";
+            var lang = _lang();
+            if (insert && sheet.Rows.Count > 0) InsertCalcTable(CalcSheet.TableCells(sheet.Rows, lang), sheet.Anchor);
+            return mode switch
+            {
+                "markdown" => CalcSheet.Markdown(sheet.Rows, lang),
+                "latex" => CalcSheet.Latex(sheet.Rows, lang),
+                "table" => CalcSheet.TableCells(sheet.Rows, lang),
+                _ => CalcSheet.Csv(sheet.Rows, lang),
+            };
+        });
+
+        private (IReadOnlyList<CalcSheetRow> Rows, string Scope, System.Drawing.RectangleF Anchor)? ComputeCalcSheet(IReadOnlyList<string>? objectIds)
+        {
+            {
+                var slide = CurrentSlide();
+                if (slide is null) return null;
+                var registry = _registry();
+                var lang = _lang();
+                var units = SketchUnits.All(slide);
+                var doc = SketchUnits.Combined(units);
+                var selected = new List<SketchUnit>();
+                try
+                {
+                    var sel = _app.ActiveWindow.Selection;
+                    if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes)
+                        for (var i = 1; i <= sel.ShapeRange.Count; i++)
+                            if (SketchUnits.IsUnit(sel.ShapeRange[i]) && SketchUnits.Read(sel.ShapeRange[i]) is { } u) selected.Add(u);
+                }
+                catch (Exception) { /* no window selection */ }
+                var ids = objectIds?.ToList()
+                    ?? (selected.Count > 0 ? selected.SelectMany(u => u.Objects.Select(o => o.Id)).ToList() : doc.Pages[0].Order.ToList());
+                var scope = objectIds is not null || selected.Count > 0 ? T("selection", "Auswahl") : T("slide", "Folie");
+                var table = ValueSolver.Solve(doc, registry, ids, new ValueSolveOptions { BudgetMs = 2000 }, lang);
+                var rows = CalcSheet.Rows(table, registry, ids, lang, ValueLevelSetting.Digits(Level()));
+                Log.Info("Calculation sheet: " + rows.Count + " rows (" + scope + ")");
+                var anchor = (selected.Count > 0 ? selected : units).Select(u => u.BoundsPt).DefaultIfEmpty(new System.Drawing.RectangleF(50, 50, 0, 0))
+                    .Aggregate(System.Drawing.RectangleF.Union);
+                return (rows, scope, anchor);
+            }
+        }
+
+        /// <summary>The sheet as an annotation table right of <paramref name="anchorPt"/> (or below it near the slide edge).</summary>
+        private void InsertCalcTable(string cells, System.Drawing.RectangleF anchorPt)
+        {
+            var slide = CurrentSlide();
+            var registry = _registry();
+            if (slide is null || registry.Item("ann.table") is not { } item) return;
+            var lines = cells.Split('\n').Length;
+            var size = new Size2(150, Math.Max(12, 6.5 * lines));
+            var setup = _app.ActivePresentation.PageSetup;
+            var slideW = setup.SlideWidth / Geo.PtPerMm;
+            var x = anchorPt.Right / Geo.PtPerMm + 8 + size.W / 2;
+            var y = anchorPt.Top / Geo.PtPerMm + size.H / 2;
+            if (x + size.W / 2 > slideW) { x = Math.Max(size.W / 2 + 5, anchorPt.Left / Geo.PtPerMm + size.W / 2); y = anchorPt.Bottom / Geo.PtPerMm + 8 + size.H / 2; }
+            var o = registry.Create(item, new Vec2(x, y)).WithParam("cells", cells) with { Size = size };
+            _app.StartNewUndoEntry();
+            SketchUnits.Draw(slide, registry, SingleUnitDoc(o), _lang());
+            Log.Info("Calculation sheet inserted as a table: " + (lines - 1) + " rows");
         }
 
         /// <summary>Where the card opens: right of the selected element, at its top (screen pixels).</summary>

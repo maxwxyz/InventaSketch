@@ -664,6 +664,8 @@ namespace InventaSketch.AddIn
             sb.Append("<button id=\"IskMenuCalculator\" label=\"").Append(L(T("Calculator with units \u2026", "Rechner mit Einheiten \u2026"))).Append("\" imageMso=\"CalculatorInsert\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Calculate and convert with units: 230 V * 16 A, 1500 rpm in rad/s, 12 mm + 0.5 in, (4k7 \u03a9 || 10 k\u03a9).",
                           "Mit Einheiten rechnen und umrechnen: 230 V * 16 A, 1500 min\u207b\u00b9 in rad/s, 12 mm + 0,5 in, (4k7 \u03a9 || 10 k\u03a9)."))).Append("\" />");
+            // The calculation sheet of the selection or the slide (Calc 6): CSV, Markdown, LaTeX or a table on the slide.
+            Item("IskMenuCalcSheet", T("Calculation sheet \u2026", "Rechenblatt \u2026"), "TableInsert");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
             sb.Append("<menu id=\"IskMenuLanguage\" label=\"").Append(L(T("Proofing language", "Korrektursprache"))).Append("\" imageMso=\"SetLanguage\">");
@@ -719,6 +721,7 @@ namespace InventaSketch.AddIn
                 {
                     case "IskMenuSymbol": Tools.InsertSymbol(_app); break;
                     case "IskMenuCalculator": CalculatorDialog.ShowCalculator(_lang); break;
+                    case "IskMenuCalcSheet": _onSlide?.ShowCalcSheet(); break;
                     case "IskMenuDecimals":
                         if (Tools.AskDecimals(german) is { } d)
                         {
@@ -2103,6 +2106,7 @@ namespace InventaSketch.AddIn
 
         /// <summary>Screen rectangle of the floating bar as last shown (UI tests).</summary>
         internal string LastBarRect() => _onSlide?.LastBarRect ?? "";
+        internal string CalcSheetText(string mode, bool insert) => _onSlide?.CalcSheetText(mode, insert) ?? "";
 
         internal bool ApplyLineGroup(double g)
         {

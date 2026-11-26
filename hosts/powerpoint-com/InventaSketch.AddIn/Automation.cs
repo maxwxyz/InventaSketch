@@ -328,6 +328,13 @@ namespace InventaSketch.AddIn
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown; "" if none yet.</summary>
         public string BarRect() => _connect.LastBarRect();
 
+        /// <summary>The calculation sheet of the selection or slide (mode csv, markdown, latex, table); <paramref name="insert"/> also inserts it as a table.</summary>
+        public string CalcSheet(string mode, bool insert)
+        {
+            try { return _connect.CalcSheetText(mode, insert); }
+            catch (Exception ex) { Log.Error("Automation.CalcSheet", ex); return ""; }
+        }
+
         /// <summary>Imports a data file's text (CSV/TSV, GeoJSON, GPX) as "Import data …" does; "" on success, else the message.</summary>
         public string ImportData(string fileName, string text)
         {
