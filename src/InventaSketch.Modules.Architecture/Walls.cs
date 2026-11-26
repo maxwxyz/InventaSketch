@@ -294,8 +294,13 @@ namespace InventaSketch.Modules.Architecture
     /// and the kind-specific hatch or fill between them. Thickness is given in real millimetres and converted with
     /// the plan scale (default 1:100).
     /// </summary>
-    internal sealed class WallType : PointType
+    internal sealed class WallType : PointType, IValueType, IValueLinks
     {
+        public IReadOnlyList<VarDef> Variables => WallValues.Vars;
+        public IReadOnlyList<Relation> Relations => WallValues.Rels;
+        /// <summary>Length from the centre line and the area of the doors and windows in the wall (relations of the wall alone).</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => WallValues.Links(o, ctx);
+
         public const string TypeId = "arch.wall";
 
         public static readonly double[] Thicknesses = { 75, 100, 115, 150, 175, 200, 240, 300, 365, 425, 490 };
@@ -318,7 +323,7 @@ namespace InventaSketch.Modules.Architecture
 
         public override IReadOnlyList<ViewDef> Views => new[] { BoxType.PlanView, BoxType.ElevationView };
 
-        public override IReadOnlyList<ParamDef> Parameters => new[]
+        public override IReadOnlyList<ParamDef> Parameters => new ParamDef[]
         {
             Pm.Num("thickness", "Thickness", "Dicke", 240, 10, 2000, "mm", 5),
             Pm.Choice("kind", "Kind", "Art", "exterior", ("exterior", "Exterior wall", "Außenwand"), ("interior", "Interior wall (load-bearing)", "Innenwand (tragend)"), ("partition", "Partition wall", "Trennwand (leicht)"))
@@ -326,7 +331,7 @@ namespace InventaSketch.Modules.Architecture
             Pm.Bool("closed", "Closed loop", "Geschlossen", false),
             Pm.Num("height", "Height (elevation)", "Höhe (Ansicht)", 2750, 100, 20000, "mm", 25, advanced: true),
             Pm.Scale,
-        };
+        }.Concat(WallValues.Params).ToList();
 
         /// <summary>Wall thickness in page millimetres (real thickness divided by the plan scale).</summary>
         public static double ThicknessOnPage(SketchObject o, SketchDocument? doc) => Math.Max(0.05, o.Num("thickness", 240)) / Arch.ScaleOf(o, doc);
@@ -421,6 +426,8 @@ namespace InventaSketch.Modules.Architecture
                         if (Arch.DistanceToSegment(c, w.A(k), w.B(k)) <= Math.Max(w.Half, WallBuilder.JoinTolerance)) { yield return other.Id; break; }
                 }
             }
+            // Schedules list the gross floor area from closed exterior walls.
+            foreach (var id in Schedules.On(o, doc)) yield return id;
         }
 
         /// <summary>True if a free end of <paramref name="a"/> lies on a segment of <paramref name="b"/> (joint or butt).</summary>
@@ -616,6 +623,11 @@ namespace InventaSketch.Modules.Architecture
             var p = ctx.Doc.ResolvePoints(o);
             if (p.Count >= 3) yield return Anchor.Point(AnchorRole.Center, Centroid(p), "c");
         }
+
+        /// <summary>Room schedules on the same page list the room's name and area: they are redrawn with it.</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => Schedules.On(o, ctx.Doc);
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {

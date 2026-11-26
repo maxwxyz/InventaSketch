@@ -21,15 +21,21 @@ namespace InventaSketch.Modules.Architecture
             yield return Stair("arch.stair.spiral", "Spiral stair", "Wendeltreppe", new Size2(20, 20), 12, Spiral, "spiral", "wendeltreppe", "helical", "spindel");
         }
 
-        private static BoxType Stair(string id, string en, string de, Size2 size, int steps, DrawFn draw, params string[] kw)
-            => new(id, new I18nText(en, de), ArchCategories.Stairs, size, draw, Kw.Concat(kw).ToArray())
+        private static StairType Stair(string id, string en, string de, Size2 size, int steps, DrawFn draw, params string[] kw)
+            => new(id, new I18nText(en, de), size, steps, draw, Kw.Concat(kw).Concat(StairType.ValueKeywords).ToArray())
             {
                 Params = new[]
                 {
-                    Pm.Int("steps", "Number of steps", "Anzahl Stufen", steps, 2, 60),
+                    Pm.Int("steps", "Number of steps (risers)", "Anzahl Stufen (Steigungen)", steps, 2, 60),
                     Pm.Bool("down", "Walking line reversed", "Lauflinie umgekehrt", false),
+                    new ParamDef(StairType.StoreyParam, new I18nText("Storey height (default 2.75 m)", "Geschosshöhe (Vorgabe 2,75 m)"), ParamKind.Number)
+                        { Min = 0.2, Max = 20, Unit = "m", Step = 0.05, Advanced = true },
+                    new ParamDef(StairType.RiserParam, new I18nText("Riser height", "Steigungshöhe"), ParamKind.Text) { Unit = "cm", Advanced = true },
+                    Pm.Scale,
+                    ValueLabels.ShowValues,
                 },
                 Extra = o => Actions(o, steps),
+                ExtraInDocument = (o, ctx) => new[] { StairType.FitAction(o, ctx, id, steps) },
             };
 
         private static IEnumerable<ContextAction> Actions(SketchObject o, int def)
@@ -40,7 +46,37 @@ namespace InventaSketch.Modules.Architecture
             yield return new ContextAction("arch.steps.dec", new I18nText("Fewer steps (" + Math.Max(2, n - 1) + ")", "Weniger Stufen (" + Math.Max(2, n - 1) + ")"), IconIds.CountFewer, x => x.WithParam("steps", Math.Max(2, x.Int("steps", def) - 1))) { Group = "steps" };
         }
 
-        private static int Steps(SketchObject o, int def) => Math.Max(2, Math.Min(60, o.Int("steps", def)));
+        internal static int Steps(SketchObject o, int def) => Math.Max(2, Math.Min(60, o.Int("steps", def)));
+
+        /// <summary>
+        /// Depth (page mm) of one drawn tread along the walking line for <paramref name="n"/> steps in a box of
+        /// <paramref name="size"/>, exactly as the plan draws it: straight W/n; L and U the tread of the first flight; spiral the
+        /// arc per step on the walking line (60 % of the radius).
+        /// </summary>
+        internal static double TreadOnPage(string id, Size2 size, int n)
+        {
+            var c = new Canvas(size);
+            n = Math.Max(2, Math.Min(60, n));
+            switch (id)
+            {
+                case "arch.stair.l":
+                    {
+                        var b = c.K / 3;
+                        double l1 = c.W - b, l2 = c.H - b;
+                        var n1 = Math.Max(1, Math.Min(n - 1, (int)Math.Round(n * l1 / Math.Max(1e-9, l1 + l2))));
+                        return Math.Max(0, l1) / n1;
+                    }
+                case "arch.stair.u":
+                    {
+                        var d = Math.Min(c.Hh, c.W * 0.35);
+                        return (c.W - d) / Math.Max(1, (n + 1) / 2);
+                    }
+                case "arch.stair.spiral":
+                    return 2 * Math.PI * 0.6 * (c.Hw + c.Hh) / 2 / n;
+                default:
+                    return c.W / n;
+            }
+        }
 
         /// <summary>Walking line with a start circle and an arrow at the end (reversed for "down").</summary>
         private static void WalkLine(Canvas c, IList<Vec2> pts, bool down)

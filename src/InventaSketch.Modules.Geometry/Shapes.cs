@@ -45,83 +45,18 @@ namespace InventaSketch.Modules.Geometry
 
         /// <summary>Name of a circle centre: M in German, O in English.</summary>
         public static string CircleCentre(Lang lang) => lang == Lang.De ? "M" : "O";
-    }
 
-    /// <summary>Triangle with labelled vertices, sides and angles and the classic constructions.</summary>
-    internal sealed class TriangleType : MathBoxType
-    {
-        public TriangleType() : base("math.shape.triangle", new I18nText("Triangle", "Dreieck"), MathCategories.Figures,
-            "triangle", "dreieck", "right triangle", "rechtwinklig", "isosceles", "gleichschenklig", "equilateral", "gleichseitig",
-            "incircle", "inkreis", "circumcircle", "umkreis", "median", "seitenhalbierende", "altitude", "höhe", "schwerpunkt", "centroid") { }
-
-        public override Size2 DefaultSize => new(50, 40);
-        public override IReadOnlyList<string> Companions => new[] { "math.angle.mark", "math.point.labelled", "math.circle.thales" };
-
-        public static readonly ParamDef Kind = Pm.Choice("kind", "Kind", "Art", "general",
-            ("general", "General", "Allgemein"), ("right", "Right-angled (γ = 90°)", "Rechtwinklig (γ = 90°)"),
-            ("isosceles", "Isosceles", "Gleichschenklig"), ("equilateral", "Equilateral", "Gleichseitig"));
-        public static readonly ParamDef ConstructionDef = Pm.Choice("construction", "Construction", "Konstruktion", "none",
-            ("none", "None", "Keine"), ("incircle", "Incircle (angle bisectors)", "Inkreis (Winkelhalbierende)"),
-            ("circumcircle", "Circumcircle (perpendicular bisectors)", "Umkreis (Mittelsenkrechte)"),
-            ("medians", "Medians and centroid", "Seitenhalbierende und Schwerpunkt"), ("altitudes", "Altitudes and orthocentre", "Höhen und Höhenschnittpunkt"));
-
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[]
+        /// <summary>
+        /// Draws one of the classic constructions of the triangle A, B, C (incircle with the angle bisectors, circumcircle with the
+        /// perpendicular bisectors, medians and centroid, altitudes and orthocentre) with the named centre and its port
+        /// <c>centre</c>; <paramref name="k"/> scales marks and dots, <paramref name="ts"/> is the text height of the centre name.
+        /// </summary>
+        public static void Construct(Fig f, Vec2 A, Vec2 B, Vec2 C, string construction, Lang lang, double k, double ts)
         {
-            Kind, ConstructionDef,
-            Pm.Bool("vertexLabels", "Vertex labels (A, B, C)", "Eckpunkte beschriften (A, B, C)", true),
-            Pm.Bool("sideLabels", "Side labels (a, b, c)", "Seiten beschriften (a, b, c)", true),
-            Pm.Bool("angleMarks", "Angle marks (α, β, γ)", "Winkel markieren (α, β, γ)", false),
-        };
-
-        /// <summary>Vertices A, B, C (counter-clockwise on screen) in local coordinates, before constructions shrink them.</summary>
-        internal static (Vec2 A, Vec2 B, Vec2 C) Vertices(string kind, Rect r)
-        {
-            Vec2 V(double fx, double fy) => new(r.X + fx * r.W, r.Y + fy * r.H);
-            switch (kind)
-            {
-                case "right": return (V(1, 1), V(0, 0), V(0, 1)); // right angle at C (bottom left), legs along the box edges
-                case "isosceles": return (V(0, 1), V(1, 1), V(0.5, 0));
-                case "equilateral":
-                    {
-                        var h = Math.Sqrt(3) / 2;
-                        var pts = new[] { new Vec2(0, h), new Vec2(1, h), new Vec2(0.5, 0) };
-                        var (map, _) = Mx.FitUniform(pts, r);
-                        return (map(pts[0]), map(pts[1]), map(pts[2]));
-                    }
-                default: return (V(0, 1), V(1, 1), V(0.3, 0));
-            }
-        }
-
-        internal override void Draw(Fig f, SketchObject o, Lang lang)
-        {
-            var k = K(o);
-            var tl = Mx.LabelSize * k;
-            bool vl = o.Flag("vertexLabels", true), sl = o.Flag("sideLabels", true), am = o.Flag("angleMarks", false);
-            var kind = o.Str("kind", "general");
-            var construction = o.Str("construction", "none");
-            var m = vl || sl ? 1.0 + tl : 0.6;
-            var inner = new Rect(-o.Size.W / 2 + m, -o.Size.H / 2 + m, Math.Max(1, o.Size.W - 2 * m), Math.Max(1, o.Size.H - 2 * m));
-            var (A, B, C) = Vertices(kind, inner);
-
-            // Constructions that reach outside the triangle (circumcircle, altitudes of obtuse triangles) shrink the figure.
-            var extent = new List<Vec2> { A, B, C };
-            var cc = Tri.Circumcircle(A, B, C);
-            if (construction == "circumcircle" && cc is { } c0) extent.AddRange(Mx.CircleBox(c0.Centre, c0.Radius));
-            if (construction == "altitudes" && cc is { } c1) extent.Add(A + B + C - c1.Centre * 2);
-            var eb = Rect.FromPoints(extent);
-            if (eb.W > inner.W + 1e-9 || eb.H > inner.H + 1e-9 || !inner.Contains(eb))
-            {
-                var s = Math.Min(1, Math.Min(inner.W / Math.Max(eb.W, 1e-9), inner.H / Math.Max(eb.H, 1e-9)));
-                Vec2 Map(Vec2 p) => inner.Center + (p - eb.Center) * s;
-                (A, B, C) = (Map(A), Map(B), Map(C));
-                cc = Tri.Circumcircle(A, B, C);
-            }
-
-            f.Poly(new[] { A, B, C }, Mx.Outline, closed: true, tag: MathTags.Outline);
             var shortest = Math.Min(A.DistanceTo(B), Math.Min(B.DistanceTo(C), C.DistanceTo(A)));
             var dotR = Math.Max(0.35, 0.5 * Math.Min(1.5, k));
             var cons = Mx.Construction;
-            var ts = tl * 0.85;
+            var cc = Tri.Circumcircle(A, B, C);
 
             void CentreLabel(Vec2 p, Vec2 dir)
             {
@@ -191,13 +126,102 @@ namespace InventaSketch.Modules.Geometry
                         break;
                     }
             }
+        }
+    }
+
+    /// <summary>
+    /// Triangle with labelled vertices, sides and angles and the classic constructions; values a, b, c, α, β, γ, A and u with
+    /// the law of sines and cosines (<see cref="TriValues"/>). Entered values appear in the side and angle labels; the kind
+    /// "true to the values" draws the shape they give.
+    /// </summary>
+    internal sealed class TriangleType : MathBoxType, IValueType
+    {
+        public IReadOnlyList<VarDef> Variables => TriValues.Vars;
+        public IReadOnlyList<Relation> Relations => TriValues.Rels;
+
+        public TriangleType() : base("math.shape.triangle", new I18nText("Triangle", "Dreieck"), MathCategories.Figures,
+            "triangle", "dreieck", "right triangle", "rechtwinklig", "isosceles", "gleichschenklig", "equilateral", "gleichseitig",
+            "incircle", "inkreis", "circumcircle", "umkreis", "median", "seitenhalbierende", "altitude", "höhe", "schwerpunkt", "centroid",
+            "law of sines", "law of cosines", "sinussatz", "kosinussatz", "triangle calculation", "dreiecksberechnung", "sss", "sws", "wsw") { }
+
+        public override Size2 DefaultSize => new(50, 40);
+        public override IReadOnlyList<string> Companions => new[] { "math.angle.mark", "math.point.labelled", "math.circle.thales" };
+
+        public static readonly ParamDef Kind = Pm.Choice("kind", "Kind", "Art", "general",
+            ("general", "General", "Allgemein"), ("right", "Right-angled (γ = 90°)", "Rechtwinklig (γ = 90°)"),
+            ("isosceles", "Isosceles", "Gleichschenklig"), ("equilateral", "Equilateral", "Gleichseitig"),
+            ("values", "True to the entered values", "Maßstäblich nach den Werten"));
+        public static readonly ParamDef ConstructionDef = Pm.Choice("construction", "Construction", "Konstruktion", "none",
+            ("none", "None", "Keine"), ("incircle", "Incircle (angle bisectors)", "Inkreis (Winkelhalbierende)"),
+            ("circumcircle", "Circumcircle (perpendicular bisectors)", "Umkreis (Mittelsenkrechte)"),
+            ("medians", "Medians and centroid", "Seitenhalbierende und Schwerpunkt"), ("altitudes", "Altitudes and orthocentre", "Höhen und Höhenschnittpunkt"));
+
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[]
+        {
+            Kind, ConstructionDef,
+            Pm.Bool("vertexLabels", "Vertex labels (A, B, C)", "Eckpunkte beschriften (A, B, C)", true),
+            Pm.Bool("sideLabels", "Side labels (a, b, c)", "Seiten beschriften (a, b, c)", true),
+            Pm.Bool("angleMarks", "Angle marks (α, β, γ)", "Winkel markieren (α, β, γ)", false),
+        }.Concat(TriValues.Params).ToList();
+
+        /// <summary>Vertices A, B, C (counter-clockwise on screen) in local coordinates, before constructions shrink them.</summary>
+        internal static (Vec2 A, Vec2 B, Vec2 C) Vertices(string kind, Rect r)
+        {
+            Vec2 V(double fx, double fy) => new(r.X + fx * r.W, r.Y + fy * r.H);
+            switch (kind)
+            {
+                case "right": return (V(1, 1), V(0, 0), V(0, 1)); // right angle at C (bottom left), legs along the box edges
+                case "isosceles": return (V(0, 1), V(1, 1), V(0.5, 0));
+                case "equilateral":
+                    {
+                        var h = Math.Sqrt(3) / 2;
+                        var pts = new[] { new Vec2(0, h), new Vec2(1, h), new Vec2(0.5, 0) };
+                        var (map, _) = Mx.FitUniform(pts, r);
+                        return (map(pts[0]), map(pts[1]), map(pts[2]));
+                    }
+                default: return (V(0, 1), V(1, 1), V(0.3, 0));
+            }
+        }
+
+        internal override void Draw(Fig f, SketchObject o, Lang lang)
+        {
+            var k = K(o);
+            var tl = Mx.LabelSize * k;
+            bool vl = o.Flag("vertexLabels", true), sl = o.Flag("sideLabels", true), am = o.Flag("angleMarks", false);
+            var kind = o.Str("kind", "general");
+            var construction = o.Str("construction", "none");
+            var m = vl || sl ? 1.0 + tl : 0.6;
+            var inner = new Rect(-o.Size.W / 2 + m, -o.Size.H / 2 + m, Math.Max(1, o.Size.W - 2 * m), Math.Max(1, o.Size.H - 2 * m));
+            var (A, B, C) = kind == "values" && TriValues.Shape(o) is var (sa, sb, sc) ? TriValues.Place(sa, sb, sc, inner) : Vertices(kind, inner);
+
+            // Constructions that reach outside the triangle (circumcircle, altitudes of obtuse triangles) shrink the figure.
+            var extent = new List<Vec2> { A, B, C };
+            var cc = Tri.Circumcircle(A, B, C);
+            if (construction == "circumcircle" && cc is { } c0) extent.AddRange(Mx.CircleBox(c0.Centre, c0.Radius));
+            if (construction == "altitudes" && cc is { } c1) extent.Add(A + B + C - c1.Centre * 2);
+            var eb = Rect.FromPoints(extent);
+            if (eb.W > inner.W + 1e-9 || eb.H > inner.H + 1e-9 || !inner.Contains(eb))
+            {
+                var s = Math.Min(1, Math.Min(inner.W / Math.Max(eb.W, 1e-9), inner.H / Math.Max(eb.H, 1e-9)));
+                Vec2 Map(Vec2 p) => inner.Center + (p - eb.Center) * s;
+                (A, B, C) = (Map(A), Map(B), Map(C));
+                cc = Tri.Circumcircle(A, B, C);
+            }
+
+            f.Poly(new[] { A, B, C }, Mx.Outline, closed: true, tag: MathTags.Outline);
+            var shortest = Math.Min(A.DistanceTo(B), Math.Min(B.DistanceTo(C), C.DistanceTo(A)));
+            var ts = tl * 0.85;
+            Tri.Construct(f, A, B, C, construction, lang, k, ts);
 
             var verts = new[] { A, B, C };
-            if (am)
+            // Entered angles are marked with their value ("α = 40°") also without the angle marks.
+            var angles = TriValues.AngleKeys.Select(key => TriValues.Entered(o, key)).ToArray();
+            if (am || angles.Any(x => x.Length > 0))
             {
-                var greek = new[] { "α", "β", "γ" };
+                var greek = TriValues.Greek;
                 for (var i = 0; i < 3; i++)
                 {
+                    if (!am && angles[i].Length == 0) continue;
                     Vec2 v = verts[i], p = verts[(i + 1) % 3], q = verts[(i + 2) % 3];
                     Vec2 u1 = (p - v).Normalized(), u2 = (q - v).Normalized();
                     var rr = Math.Min(6 * k, Math.Min(v.DistanceTo(p), v.DistanceTo(q)) * 0.3);
@@ -208,7 +232,9 @@ namespace InventaSketch.Modules.Geometry
                     else
                     {
                         Mx.AngleArc(f, v, u1, u2, rr);
-                        if (bis != Vec2.Zero) f.Text(v + bis * (rr * 0.55 + Mx.HalfExtentAlong(greek[i], ts * 0.8, bis) + 0.4), greek[i], ts * 0.8, italic: true);
+                        var text = angles[i].Length > 0 ? greek[i] + " = " + angles[i] : greek[i];
+                        var at = Mx.WedgeDistance(text, ts * 0.8, Math.Abs(sweep) / 2, rr * 0.55 + Mx.HalfExtentAlong(text, ts * 0.8, bis) + 0.4);
+                        if (bis != Vec2.Zero) f.Text(v + bis * at, text, ts * 0.8, italic: angles[i].Length == 0);
                     }
                 }
             }
@@ -221,9 +247,15 @@ namespace InventaSketch.Modules.Geometry
                     var mid = Vec2.Lerp(p, q, construction == "circumcircle" ? 0.3 : 0.5);
                     var n = (q - p).Normalized().Perp;
                     if (n.Dot(opp - mid) > 0) n = -n;
-                    f.Text(Mx.Beside(mid, n, name, tl, 0.8), name, tl, italic: true);
+                    // An entered side shows its value as typed ("a = 5 cm").
+                    var value = TriValues.Entered(o, name);
+                    var text = value.Length > 0 ? name + " = " + value : name;
+                    f.Text(Mx.Beside(mid, n, text, tl, 0.8), text, tl, italic: value.Length == 0);
                 }
             }
+            // An entered area stands inside the triangle.
+            var area = TriValues.Entered(o, "area");
+            if (area.Length > 0 && construction == "none") f.Text((A + B + C) / 3, "A = " + area, ts * 0.8);
             var names = new[] { "A", "B", "C" };
             for (var i = 0; i < 3; i++)
             {

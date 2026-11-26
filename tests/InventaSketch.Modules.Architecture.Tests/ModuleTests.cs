@@ -62,7 +62,7 @@ namespace InventaSketch.Modules.Architecture.Tests
             "arch.sanitary.wc", "arch.sanitary.washbasin", "arch.sanitary.shower", "arch.sanitary.bathtub",
             "arch.hvac.radiator", "arch.hvac.heatpump", "arch.hvac.boiler", "arch.hvac.pipe",
             "arch.site.north", "arch.site.level", "arch.site.section", "arch.site.boundary", "arch.site.parking", "arch.site.tree",
-            "arch.lift", "arch.ramp", "arch.railing", "arch.shaft", "arch.void", "arch.roof",
+            "arch.lift", "arch.ramp", "arch.railing", "arch.shaft", "arch.void", "arch.roof", "arch.schedule",
         };
 
         [Fact]
@@ -550,6 +550,8 @@ namespace InventaSketch.Modules.Architecture.Tests
                 At("arch.site.section", 0, 0, o => o with { Points = new[] { new Vec2(50, 90), new Vec2(170, 90) } }),
                 At("arch.site.tree", 195, 95),
                 At("arch.hvac.heatpump", 175, 70, o => Rot(o, 90)),
+                At("arch.schedule", 245, 60),
+                At("arch.schedule.openings", 245, 120),
             };
             doc = Edits.Add(doc, doc.Pages[0].Id, objs.ToArray());
             return (r, doc);
