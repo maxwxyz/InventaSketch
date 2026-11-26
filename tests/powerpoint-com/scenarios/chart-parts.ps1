@@ -56,13 +56,15 @@ Assert-Isk $S (@(Get-PartLeaves $shape 'grid.major').Count -eq 0) 'the grid togg
 # 3. A click on the curve selects the part: the bar shows part actions.
 $shape.Select(); Start-Sleep 2
 $c = $curve[0]
-# A node of the curve freeform (slide points), converted to mm for the pixel helper.
+# Halfway between two nodes of the curve freeform (slide points): a node itself is a data point, which selects the point
+# part (charts v2); between nodes the click selects the curve.
 $n = $c.Nodes.Count
-$node = $c.Nodes.Item([int][math]::Max(1, [math]::Floor($n / 2))).Points
-$flat = @($node | ForEach-Object { $_ }); $pt = @([double]$flat[0], [double]$flat[1])
+$k = [int][math]::Max(1, [math]::Floor($n / 2))
+$a = @($c.Nodes.Item($k).Points | ForEach-Object { $_ }); $b2 = @($c.Nodes.Item([math]::Min($n, $k + 1)).Points | ForEach-Object { $_ })
+$pt = @((([double]$a[0] + [double]$b2[0]) / 2), (([double]$a[1] + [double]$b2[1]) / 2))
 $part = $addin.PartAt($name, $pt[0], $pt[1])
 Write-IskInfo ("node {0} of {1} at {2:N1} / {3:N1} pt: part '{4}'" -f [math]::Floor($n / 2), $n, $pt[0], $pt[1], $part)
-Assert-Isk $S ($part -eq 'series.0') 'the engine finds the curve at one of its nodes'
+Assert-Isk $S ($part -eq 'series.0') 'the engine finds the curve between two of its nodes'
 $scr = ConvertTo-IskPixel $S @(($pt[0] * 25.4 / 72), ($pt[1] * 25.4 / 72))
 Invoke-IskClick $scr[0] $scr[1] 2500
 Save-IskShot $S '2-part-selected'

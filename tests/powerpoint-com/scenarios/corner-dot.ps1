@@ -14,7 +14,9 @@ function Get-Handles {
 function Wire { @(Get-IskShapes $S 'ISK:elec.wire*')[0] }
 
 $addin.Insert('elec.wire.free') | Out-Null; Start-Sleep 1
-$ws = Wire; $ws.Left = 200; $ws.Top = 300
+# Each move may redraw the unit (new shape): look the wire up again before the next property.
+$ws = Wire; $ws.Left = 200; Start-Sleep 1
+$ws = Wire; $ws.Top = 300
 Start-Sleep 1
 $ws = Wire; $ws.Select(); Start-Sleep 3
 $p0 = Get-IskPoints $ws

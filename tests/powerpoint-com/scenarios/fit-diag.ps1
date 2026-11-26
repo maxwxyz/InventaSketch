@@ -10,7 +10,9 @@ function Info($label, $sh) {
 $S.Window.Selection.Unselect()
 $n = $addin.Insert('mech.shaft.body'); Write-IskInfo ("Insert returned '" + $n + "'")
 $sh = $S.Slide.Shapes.Item($n); Info 'shaft after insert' $sh
-$sh.Left = 250; $sh.Top = 230; Start-Sleep 1; Info 'shaft moved' $sh
+# Each move may redraw the unit (new shape): look the shaft up again.
+function Shaft { @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'mech\.shaft' } | Select-Object -First 1 }
+$sh.Left = 250; Start-Sleep 1; $sh = Shaft; $sh.Top = 230; Start-Sleep 1; $sh = Shaft; Info 'shaft moved' $sh
 $sh.Select(); Start-Sleep 2
 Write-IskInfo ("bar: " + $addin.BarIds())
 $addin.Command('ins:mech.spur.side') | Out-Null; Start-Sleep 3
