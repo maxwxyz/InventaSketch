@@ -41,12 +41,33 @@ gleiten sie entlang der Welle.
 | `mech.converter.torque` | Torque converter / Drehmomentwandler | Kupplungen | `stick` (Deckel, Pumpe, Turbine, Leitrad auf Freilauf, gestellfeste Leitradwelle), `section` | `lockup` (Überbrückungskupplung) | `ground` (Befestigung) |
 | `mech.parklock` | Park lock (parking pawl) / Parksperre | Kupplungen | `stick`, `axial` (Parksperrenrad, Sperrklinke, Betätigungskegel) | `teeth` (6–30, Standard 12), `engaged` (Standard an) | `pivot` (Befestigung) |
 | `mech.cvt` | CVT variator / CVT-Variator | Riemen- & Kettentriebe | `stick` (zwei Kegelscheibenpaare auf parallelen Wellen), `axial` (Scheiben mit Bandschleife) | `ratio` (0,4–2,5, Standard 1), `chain` | `hub` und `hub2` (Nabe, je Welle eine) |
-| `mech.gearset.harmonic` | Strain wave gear / Wellgetriebe | Zahnräder | `stick` (Wellgenerator, Flexspline-Topf, gestellfester Circular Spline), `axial` | — | `ground` (Befestigung) |
-| `mech.gearset.cycloidal` | Cycloidal drive / Zykloidgetriebe | Zahnräder | `stick` (Exzenter, Scheibe, Bolzenring, Abtriebsbolzen), `axial` (Zykloidscheibe im Bolzenring) | `lobes` (5–29, Standard 11; Bolzen = Höcker + 1) | `ground` (Befestigung) |
+| `mech.gearset.harmonic` | Strain wave gear / Wellgetriebe | Zahnräder | `stick` (Wellgenerator, Flexspline-Topf, gestellfester Circular Spline), `axial` | — | `ground` (Befestigung); Schema: `in`, `out` (Nabe, Gliedanschlüsse) |
+| `mech.gearset.cycloidal` | Cycloidal drive / Zykloidgetriebe | Zahnräder | `stick` (Exzenter, Scheibe, Bolzenring, Abtriebsbolzen), `axial` (Zykloidscheibe im Bolzenring) | `lobes` (5–29, Standard 11; Bolzen = Höcker + 1) | `ground` (Befestigung); Schema: `in`, `out` (Nabe, Gliedanschlüsse) |
 | `mech.clutch.slip` | Slip clutch (torque limiter) / Rutschkupplung (26.11.2026) | Kupplungen | `stick` (zwei Reibscheiben mit Belag dazwischen, Druckfeder gegen einen Bund), `side` (Scheiben, Belag, Naben, Federpaket, Stellmutter) | — (Werteparameter `slipTorque`, siehe unten) | — |
 
 Alle außer dem CVT haben ihren Anker `hub` in der Boxmitte auf der Wellenachse. Der CVT hat je Scheibe eine Nabe und sitzt
 damit gleichzeitig auf zwei Wellen; die Laufradien des Bandes folgen der Übersetzung (ihre Summe bleibt konstant).
+
+**Gliedanschlüsse von Getriebeeinheiten** (26.11.2026, Runde 4). Radsätze und der CVT haben Glieder, die mit
+verschiedenen Drehzahlen laufen; jedes Glied sitzt deshalb über einen *Gliedanschluss* auf seiner eigenen Welle: einem
+Nabenanker am Ende des Wellenstummels des Glieds auf der Achse. Eine Welle, deren Achse durch den Anschluss läuft (sie
+rastet dort wie auf jeder Nabe ein), oder ein Teil, dessen Nabe konzentrisch dazu liegt, sitzt auf diesem Glied und
+folgt den Werten der Einheit (siehe „Verknüpfungen zwischen Elementen“ unten).
+
+| Typ | Anschlüsse (Id des Nabenankers → Glied) |
+|---|---|
+| `mech.gearset.planetary` | Schema: `sun` (rechter Stummel → *n*_s, *M*_s), `carrier` (linker Stummel → *n*_c, *M*_c); Stirnansichten: die Mittenbohrung `hub` → Sonne |
+| `mech.gearset.ravigneaux` | Schema: `sun1` (linker Stummel → kleine Sonne *n*_s1), `sun2` (rechter Stummel → große Sonne *n*_s2); Stirnansicht: `hub` → große Sonne |
+| `mech.gearset.differential` | `left` (→ *n*₁, *M*₁), `right` (→ *n*₂, *M*₂) an den äußeren Enden der Achswellen (Schema und Schnitt) |
+| `mech.gearset.harmonic`, `mech.gearset.cycloidal` | Schema: `in` (linker Stummel → *n*₁, *M*₁), `out` (rechter Stummel → *n*₂, *M*₂); Stirnansichten: die Mittenbohrung `hub` → Antrieb |
+| `mech.cvt` | `hub` (Primärscheibe → *n*₁, *M*₁), `hub2` (Sekundärscheibe → *n*₂, *M*₂) |
+
+Die Mittenbohrung tritt hinter einen Stummelanschluss zurück: eine Welle, die von der Mitte über den Sonnenstummel nach
+außen läuft, ist die Sonnenwelle. Eine Welle durch zwei Gliedanschlüsse würde die Einheit blockieren: sie sitzt auf
+keinem Glied. Die Hohlräder der Radsätze und der Korb des Differentials haben keinen Anschluss (ihre Drehzahl am Satz
+eintragen, z. B. *n*_r = 0 für ein gehäusefestes Hohlrad), ebenso der Steg des Ravigneaux-Satzes (seine Hohlwelle endet
+dort, wo die Welle der kleinen Sonne endet).
+
 Kontextaktionen: Freilauf „Sperrrichtung umkehren“, Wandler „Überbrückungskupplung an/aus“, Parksperre „Zähne ±1“ und
 „eingelegt/gelöst“, CVT „Übersetzung ±0,2“ und „Kette/Schubgliederband“, Zykloidgetriebe „Höcker ±1“.
 
@@ -142,7 +163,7 @@ Drehzahlen *n*, Drehmomente *M* und Leistungen *P* sind Beträge; *P* = 2π·*n*
 | Stirnrad/Schrägstirnrad, Hohlrad, Kegelrad, Schneckenrad | *z* (`teeth`), *m* (`module`, mm), *n* (`speed`), *M* (`torque`); Panel *P* (`power`), *d* (`diameter`); Ingenieur η (`efficiency`, Vorgabe 100 %) | *d* = *m*·*z* [S16]; *P* = 2π·*n*·*M* [S18] |
 | Schnecke | *z* = Gangzahl (`starts`), *m*, *n*, *M*; *P*, η | *P* = 2π·*n*·*M* |
 | Zahnstange | *m*, *v* (`linSpeed`), *F* (`force`); Panel *P*, Ritzel *z*_p (`pinionTeeth`), *d*_p (`pinionDiameter`, mm), *n*_p (`pinionSpeed`), *M*_p (`pinionTorque`) | *P* = *F*·*v* [S1]; *d*_p = *m*·*z*_p [S16]; *v* = ω·*r* = π·*d*_p·*n*_p; *F* = *M*/*r* = 2·*M*_p/*d*_p [S18] |
-| Planetensatz | *z*_s (`zs`, Vorgabe 20), *z*_r (`zr`, Vorgabe 52), *n*_s (`speeds`), *n*_c (`speedc`); Panel *n*_r (`speedr`), *M*_s, *M*_r, *M*_c (`torques`, `torquer`, `torquec`); Ingenieur *k* = *z*_p1/*z*_p2 für Stufenplaneten (`stepRatio`, Vorgabe 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *M*_r = *M*_s·*k*·*z*_r/*z*_s; *M*_s + *M*_r + *M*_c = 0 [S39]. Drehzahlen und Momente sind hier vorzeichenbehaftet (gleicher Drehsinn positiv) |
+| Planetensatz | *z*_s (`zs`, Vorgabe 20), *z*_r (`zr`, Vorgabe 52), *n*_s (`speeds`), *n*_c (`speedc`); Panel *n*_r (`speedr`), *M*_s, *M*_r, *M*_c (`torques`, `torquer`, `torquec`); Ingenieur *k* = *z*_p1/*z*_p2 für Stufenplaneten (`stepRatio`, Vorgabe 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *M*_r = *M*_s·*k*·*z*_r/*z*_s; *M*_s + *M*_r + *M*_c = 0; also *M*_c = −*M*_s·(1 + *k*·*z*_r/*z*_s) [S39]. Drehzahlen und Momente sind hier vorzeichenbehaftet (gleicher Drehsinn positiv) |
 | Ravigneaux-Radsatz | *n*_s1 (`speeds1`, kleine Sonne), *n*_s2 (`speeds2`, große Sonne), *n*_r (`speedr`), *n*_c (`speedc`); Panel *z*_s1 (`zs1`, Vorgabe 14), *z*_s2 (`zs2`, Vorgabe 20), *z*_r (`zr`, Vorgabe 52) | *n*_s2 − *n*_c = −(*z*_r/*z*_s2)·(*n*_r − *n*_c) (lange Planeten); *n*_s1 − *n*_c = +(*z*_r/*z*_s1)·(*n*_r − *n*_c) (Planetenpaare: zwei Außeneingriffe, die Planetenzähnezahlen kürzen sich) [S39]. Drehzahlen vorzeichenbehaftet. Keine Momentbeziehungen (zwei Freiheitsgrade: die Aufteilung hängt davon ab, welche Glieder festgehalten werden) |
 | Kegelraddifferential (`mech.gearset.differential`) | *n*_c (`speedc`, Korb/Tellerrad), *n*₁, *n*₂ (`speed1`, `speed2`, Achswellen), *M*_c (`torquec`); Panel *M*₁, *M*₂ (`torque1`, `torque2`) | *n*_c = (*n*₁ + *n*₂)/2 [S39] (vorzeichenbehaftet); *M*₁ = *M*₂ = *M*_c/2 (offenes Differential, Reibung vernachlässigt) [S18] |
 | Wellgetriebe | *z*_f (`flexTeeth`, Vorgabe 200), *z*_c (`circularTeeth`, Vorgabe 202), *i* (`ratio`), *n*₂ (`speedOut`); Panel *n*₁ (`speedIn`), *M*₁ (`torqueIn`), *M*₂ (`torqueOut`); Ingenieur η (`efficiency`, Vorgabe 100 %) | *i* = *n*₁/*n*₂ = −*z*_f/(*z*_c − *z*_f) (Hohlrad fest, Wellgenerator treibt, Abtrieb am Flexrad; Willis mit dem Wellgenerator als Steg) [S39]; *n*₁ = *i*·*n*₂; *M*₂ = \|*i*\|·η·*M*₁ [S18]. Drehzahlen vorzeichenbehaftet: *i* < 0, der Abtrieb dreht gegen den Antrieb |
@@ -186,13 +207,31 @@ bewegt sich mit“):
   *M* = *F*·*z*·*p*/(2π)) wird nur gesetzt, solange höchstens zwei Teile über das Trum Moment aufnehmen oder abgeben; bei
   drei oder mehr unterscheidet sich die Umfangskraft je Trumabschnitt, und es wird kein Moment bestimmt.
 - *Spindel und Mutter*: die Mutter auf der Spindel übernimmt deren *v* und *F*.
+- *Getriebeeinheiten* (Planetensatz, Ravigneaux, Differential, Well- und Zykloidgetriebe, CVT): ein Glied, das auf einer
+  Welle oder einem Teil sitzt (siehe „Gliedanschlüsse von Getriebeeinheiten“), teilt die Drehzahl des Wellenstrangs dieses
+  Teils und, wenn der Strang Moment führt, dessen Moment. Das angeschlossene Glied zählt als ein Teil, das Moment aufnimmt
+  oder abgibt: Motor, Welle und Sonne geben das Moment weiter, ein zweites Zahnrad auf derselben Welle bildet eine
+  Verzweigung, und es wird kein Moment weitergegeben. Drehzahlen und Momente von Wellen sind Beträge, die Glieder der
+  Sätze vorzeichenbehaftet: die Welle übernimmt den Betrag (*n* = \|*n*_m\|, *M* = \|*M*_m\|), ein von seiner Welle
+  angetriebenes Glied nimmt den positiven Drehsinn an. Beispiel: Motorwelle mit 1000 min⁻¹ und 10 N·m an der Sonne
+  (*z*_s = 20), Hohlrad fest (*z*_r = 52): die Stegwelle läuft mit 1000·20/72 = 277,8 min⁻¹ und 36 N·m. Drehzahlen und
+  Momente des CVT sind Beträge und werden unverändert verknüpft: bei Übersetzung 2 ergeben 3000 min⁻¹ und 100 N·m am
+  Antrieb mit η = 90 % an der Abtriebswelle 1500 min⁻¹ und 180 N·m. Zwei Einheiten auf einer Welle (ein CVT treibt den
+  Steg eines Planetensatzes) geben das Moment über sie weiter.
+- *Zahnstange und Ritzel*: ein Stirnrad in Stirnansicht, dessen Teilkreis die Teillinie der Zahnstange auf der
+  Zahnseite berührt (innerhalb der Länge der Zahnstange; 45 % der Zahnhöhe unter den Zahnköpfen, im Schema mittig zwischen
+  Körperlinie und Zahnköpfen), ist das Ritzel der Zahnstange: sie übernimmt *n*_p, *M*_p, *z*_p und *d*_p von diesem
+  Rad, so folgt *v* = ω·*r* dem Ritzel (und der Wellenstrang des Ritzels erhält seine Drehzahl aus einer eingetragenen
+  Zahnstangengeschwindigkeit). Bei zwei oder mehr solchen Rädern übernimmt die Zahnstange keines (Ritzelwerte an der
+  Zahnstange eintragen).
 - Antriebsstrangteile des Maschinenmoduls (E-Maschine, Verbrennungsmotor, Rad) auf einer Welle gehören mit denselben
   Schlüsseln zum Wellenstrang.
 
 **Wellenstränge über Modulgrenzen.** Die Regel des Wellenstrangs teilen alle Module (Kern `ShaftLines`, auf den
 Kopplungsbeziehungen aufgebaut): Wellen, Keilwellen, Kupplungen, Rutschkupplungen und Kardangelenke geben das Moment unverändert weiter,
 Lager übernehmen nur die Drehzahl, Planetenträger, Differentialkorb, Radsätze und die Gewindetrieb-Mutter bleiben
-draußen. Elemente beliebiger Module mit einer Drehzahl *n* (und einem Moment *T*), deren Nabe auf einer Wellenachse
+draußen (Radsätze und der CVT setzen ihre Glieder stattdessen auf Wellen; die Kernregel für Elemente anderer Module
+zählt ein angeschlossenes Glied noch nicht als Momentteil). Elemente beliebiger Module mit einer Drehzahl *n* (und einem Moment *T*), deren Nabe auf einer Wellenachse
 oder einer anderen Nabe sitzt, gehören zum Strang. Jedes Modul verknüpft seine Elemente sternförmig mit der Welle oder
 Kupplung des Strangs, so teilen eine E-Maschine des Maschinenmoduls, eine mechanische Welle und eine Pumpe des Prozess-
 oder Fluidmoduls *n* und, bei höchstens zwei Momentgliedern, *T*: die Leistung 2π·*n*·*T* des Antriebs wird zur
@@ -213,10 +252,13 @@ Riemen oder die Kette bemisst: zwei davon, deren Teilkreise sich berühren, käm
 | `mech.cvt.range` | CVT-Übersetzung (eingetragen oder aus *n*₁/*n*₂ bestimmt) außerhalb der Spreizung ihres Parameters `ratio` (0,4 … 2,5) | Warnung | [S18] |
 | `mech.clutch.slip` | Moment durch eine Rutschkupplung (ihr eigenes *M*, aus dem Wellenstrang verknüpft) über *M*_R | Warnung | [S18] |
 
-Noch nicht vorhanden: Momentbeziehungen des Ravigneaux-Radsatzes (nur Drehzahlen); eine Verknüpfung der Zahnstange mit
-einem gezeichneten Ritzel (Zähnezahl, Drehzahl und Moment des Ritzels an der Zahnstange eintragen); die Radsatz-Elemente
-(Planetensatz, Ravigneaux, Differential, Well- und Zykloidgetriebe, CVT) sind nicht mit den Wellen verknüpft, auf denen
-sie sitzen (ihre Gliederdrehzahlen sind eigene Werte); Willis über getrennte Planetenteile; Momentaufteilung an
+Noch nicht vorhanden: Momentbeziehungen des Ravigneaux-Radsatzes (nur Drehzahlen); Anschlüsse für die Hohlräder, den
+Differentialkorb (Tellerrad, von einem Kegelritzel getrieben) und den Steg des Ravigneaux-Satzes; Eingriffe mit einem
+Radsatz (ein Rad an der Außenseite des Hohlrads); der Drehsinn einer Welle (eine Welle übernimmt den Betrag eines
+vorzeichenbehafteten Glieds; werden An- und Abtriebsdrehzahl eines Satzes eingetragen, dessen Abtrieb rückwärts dreht,
+entsteht ein Widerspruch: den Abtrieb am Satz eintragen); die Verknüpfungen von Zahnstange und Radsatz im bewegten
+Räderzug des Kerns (Drehen eines Teils verschiebt keine Zahnstange, und der Kern behandelt einen Radsatz im Schema, den
+zwei Wellen tragen, als einen starren Körper); Willis über getrennte Planetenteile; Momentaufteilung an
 Verzweigungen (Wellenstränge und Trume mit drei oder mehr momentführenden Teilen). Kein Festigkeitsnachweis (ISO 6336,
 DIN 743, EN 13906 über *F* = *c*·*s* und *M* = *c*_φ·φ hinaus), keine Auslegung des Rutschmoments (Reibradius,
 Reibflächenzahl, Federkraft).

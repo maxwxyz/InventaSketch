@@ -39,12 +39,30 @@ anchor snaps onto a shaft axis, the shaft carries them when it moves or turns, a
 | `mech.converter.torque` | Torque converter / Drehmomentwandler | Couplings | `stick` (cover, pump, turbine, stator on freewheel, grounded stator shaft), `section` | `lockup` (lock-up clutch) | `ground` (Mount) |
 | `mech.parklock` | Park lock (parking pawl) / Parksperre | Couplings | `stick`, `axial` (park gear, pawl, actuator cone) | `teeth` (6–30, default 12), `engaged` (default on) | `pivot` (Mount) |
 | `mech.cvt` | CVT variator / CVT-Variator | Belt & chain drives | `stick` (two cone-pulley pairs on parallel shafts), `axial` (pulleys with belt loop) | `ratio` (0.4–2.5, default 1), `chain` | `hub` and `hub2` (Hub, one per shaft) |
-| `mech.gearset.harmonic` | Strain wave gear / Wellgetriebe | Gears | `stick` (wave generator, flexspline cup, grounded circular spline), `axial` | — | `ground` (Mount) |
-| `mech.gearset.cycloidal` | Cycloidal drive / Zykloidgetriebe | Gears | `stick` (eccentric, disc, pin ring, output pins), `axial` (cycloid disc in the pin ring) | `lobes` (5–29, default 11; pins = lobes + 1) | `ground` (Mount) |
+| `mech.gearset.harmonic` | Strain wave gear / Wellgetriebe | Gears | `stick` (wave generator, flexspline cup, grounded circular spline), `axial` | — | `ground` (Mount); schematic: `in`, `out` (Hub, member ports) |
+| `mech.gearset.cycloidal` | Cycloidal drive / Zykloidgetriebe | Gears | `stick` (eccentric, disc, pin ring, output pins), `axial` (cycloid disc in the pin ring) | `lobes` (5–29, default 11; pins = lobes + 1) | `ground` (Mount); schematic: `in`, `out` (Hub, member ports) |
 | `mech.clutch.slip` | Slip clutch (torque limiter) / Rutschkupplung (2026-11-26) | Couplings | `stick` (two friction discs with the lining between them, pressure spring against a collar), `side` (discs, lining, hubs, spring pack, adjusting nut) | — (value parameter `slipTorque`, see below) | — |
 
 All of them except the CVT have their `hub` anchor at the box centre on the shaft axis. The CVT has one hub per pulley,
 so it sits on two shafts at once; the running radii of the belt follow the ratio (their sum stays constant).
+
+**Member ports of gear units** (2026-11-26, round 4). Gear sets and the CVT have members that turn at different speeds,
+so each member docks on its own shaft through a *member port*: a Hub anchor at the end of the member's shaft stub on
+the axis. A shaft whose axis passes through the port (it snaps there like onto any hub), or a part whose hub is
+concentric with it, is docked on that member and follows the unit's values (see "Links between elements" below).
+
+| Type | Ports (Hub anchor id → member) |
+|---|---|
+| `mech.gearset.planetary` | schematic: `sun` (right stub → *n*_s, *T*_s), `carrier` (left stub → *n*_c, *T*_c); axial views: the centre bore `hub` → sun |
+| `mech.gearset.ravigneaux` | schematic: `sun1` (left stub → small sun *n*_s1), `sun2` (right stub → large sun *n*_s2); axial view: `hub` → large sun |
+| `mech.gearset.differential` | `left` (→ *n*₁, *T*₁), `right` (→ *n*₂, *T*₂) at the outer ends of the half shafts (schematic and section) |
+| `mech.gearset.harmonic`, `mech.gearset.cycloidal` | schematic: `in` (left stub → *n*₁, *T*₁), `out` (right stub → *n*₂, *T*₂); axial views: the centre bore `hub` → input |
+| `mech.cvt` | `hub` (primary pulley → *n*₁, *T*₁), `hub2` (secondary pulley → *n*₂, *T*₂) |
+
+The centre bore yields to a stub port: a shaft that runs from the centre out over the sun stub is the sun shaft. A shaft
+through two member ports would lock the unit: it is docked on no member. The ring gear of the sets and the case of the
+differential have no port (enter their speed on the set, e.g. *n*_r = 0 for a ring held by the housing), nor does the
+carrier of the Ravigneaux set (its hollow shaft ends where the small sun's shaft ends).
 Context actions: freewheel "reverse locking direction", converter "lock-up clutch on/off", park lock "teeth ±1" and
 "engaged/released", CVT "ratio ±0.2" and "chain/push belt", cycloidal drive "lobes ±1".
 
@@ -133,7 +151,7 @@ Speeds *n*, torques *T* (German symbol *M*) and powers *P* are magnitudes; *P* =
 | Spur/helical, ring, bevel gear, worm wheel | *z* (`teeth`), *m* (`module`, mm), *n* (`speed`), *T* (`torque`); panel *P* (`power`), *d* (`diameter`); engineer η (`efficiency`, default 100 %) | *d* = *m*·*z* [S16]; *P* = 2π·*n*·*T* [S18] |
 | Worm | *z* = number of starts (`starts`), *m*, *n*, *T*; *P*, η | *P* = 2π·*n*·*T* |
 | Rack | *m*, *v* (`linSpeed`), *F* (`force`); panel *P*, pinion *z*_p (`pinionTeeth`), *d*_p (`pinionDiameter`, mm), *n*_p (`pinionSpeed`), *T*_p (`pinionTorque`) | *P* = *F*·*v* [S1]; *d*_p = *m*·*z*_p [S16]; *v* = ω·*r* = π·*d*_p·*n*_p; *F* = *T*/*r* = 2·*T*_p/*d*_p [S18] |
-| Planetary set | *z*_s (`zs`, default 20), *z*_r (`zr`, default 52), *n*_s (`speeds`), *n*_c (`speedc`); panel *n*_r (`speedr`), *T*_s, *T*_r, *T*_c (`torques`, `torquer`, `torquec`); engineer *k* = *z*_p1/*z*_p2 for stepped planets (`stepRatio`, default 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *T*_r = *T*_s·*k*·*z*_r/*z*_s; *T*_s + *T*_r + *T*_c = 0 [S39]. Speeds and torques are signed here (same sense positive) |
+| Planetary set | *z*_s (`zs`, default 20), *z*_r (`zr`, default 52), *n*_s (`speeds`), *n*_c (`speedc`); panel *n*_r (`speedr`), *T*_s, *T*_r, *T*_c (`torques`, `torquer`, `torquec`); engineer *k* = *z*_p1/*z*_p2 for stepped planets (`stepRatio`, default 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *T*_r = *T*_s·*k*·*z*_r/*z*_s; *T*_s + *T*_r + *T*_c = 0; so *T*_c = −*T*_s·(1 + *k*·*z*_r/*z*_s) [S39]. Speeds and torques are signed here (same sense positive) |
 | Ravigneaux set | *n*_s1 (`speeds1`, small sun), *n*_s2 (`speeds2`, large sun), *n*_r (`speedr`), *n*_c (`speedc`); panel *z*_s1 (`zs1`, default 14), *z*_s2 (`zs2`, default 20), *z*_r (`zr`, default 52) | *n*_s2 − *n*_c = −(*z*_r/*z*_s2)·(*n*_r − *n*_c) (long planets); *n*_s1 − *n*_c = +(*z*_r/*z*_s1)·(*n*_r − *n*_c) (planet pairs: two external meshes, the planet teeth cancel) [S39]. Signed speeds. No torque relations (two degrees of freedom: the split depends on which members are held) |
 | Bevel differential (`mech.gearset.differential`) | *n*_c (`speedc`, case/crown wheel), *n*₁, *n*₂ (`speed1`, `speed2`, half shafts), *T*_c (`torquec`); panel *T*₁, *T*₂ (`torque1`, `torque2`) | *n*_c = (*n*₁ + *n*₂)/2 [S39] (signed); *T*₁ = *T*₂ = *T*_c/2 (open differential, friction neglected) [S18] |
 | Strain wave gear | *z*_f (`flexTeeth`, default 200), *z*_c (`circularTeeth`, default 202), *i* (`ratio`), *n*₂ (`speedOut`); panel *n*₁ (`speedIn`), *T*₁ (`torqueIn`), *T*₂ (`torqueOut`); engineer η (`efficiency`, default 100 %) | *i* = *n*₁/*n*₂ = −*z*_f/(*z*_c − *z*_f) (circular spline fixed, wave generator in, flexspline out; Willis with the wave generator as carrier) [S39]; *n*₁ = *i*·*n*₂; *T*₂ = \|*i*\|·η·*T*₁ [S18]. Signed speeds: *i* < 0, the output turns against the input |
@@ -173,11 +191,27 @@ along"):
   relation (*T* = *F*·*d*/2, chain *T* = *F*·*z*·*p*/(2π)) is set only while at most two parts take or give torque
   through the strand; with three or more the effective pull differs per strand section and no torque is derived.
 - *Screw and nut*: the nut on the spindle takes its *v* and *F*.
+- *Gear units* (planetary, Ravigneaux, differential, strain wave, cycloidal, CVT): a member docked on a shaft or part
+  (see "Member ports of gear units") shares the speed of that part's shaft line and, when the line carries torque, its
+  torque. The docked member counts as one part taking or giving torque, so a motor, its shaft and a sun pass the torque,
+  while a second gear on the same shaft makes a branch and no torque is passed. Shaft speeds and torques are magnitudes,
+  the members of the sets are signed: the shaft takes the magnitude (*n* = \|*n*_m\|, *T* = \|*T*_m\|) and a member driven
+  from its shaft takes the positive sense. Example: motor shaft at 1000 min⁻¹ with 10 N·m on the sun (*z*_s = 20), ring
+  held (*z*_r = 52): the carrier shaft runs at 1000·20/72 = 277.8 min⁻¹ with 36 N·m. The CVT's speeds and torques are
+  magnitudes and are linked unchanged: at ratio 2, 3000 min⁻¹ and 100 N·m in with η = 90 % give 1500 min⁻¹ and 180 N·m on
+  the output shaft. Two units docked on one shaft (a CVT driving a planetary carrier) pass the torque through it.
+- *Rack and pinion*: a spur gear seen along its axis whose pitch circle touches the rack's pitch line on the teeth side
+  (within the rack's length; 45 % of the tooth depth below the tips, schematic: midway between body line and tips) is the
+  rack's pinion: the rack takes its *n*_p, *T*_p, *z*_p and *d*_p from the gear, so *v* = ω·*r* follows the pinion (and
+  the pinion's shaft line takes its speed back from an entered rack speed). With two or more such gears the rack takes
+  none (enter the pinion values on the rack).
 - Drivetrain parts of the machines module (e-machine, engine, wheel) on a shaft join the shaft line with the same keys.
 
 **Shaft lines across modules.** The shaft line rule is shared by all modules (core `ShaftLines`, built on the coupling
 relations): shafts, spline shafts, couplings, slip clutches and universal joints pass the torque on unchanged, bearings take the speed
-only, planet carriers, differential cases, gear sets and the screw-drive nut stay out. Elements of any module with a
+only, planet carriers, differential cases, gear sets and the screw-drive nut stay out (gear sets and the CVT dock their
+members on shafts instead; the core rule of other modules' elements does not yet count a docked member as a torque
+part). Elements of any module with a
 speed *n* (and a torque *T*) whose hub sits on a shaft axis or on another hub join the line. Every module links its
 elements as a star around the line's shaft or coupling, so an e-machine of the machines module, a mechanical shaft and a
 pump of the process or fluid module share *n* and, with at most two torque members, *T*: the drive's power 2π·*n*·*T*
@@ -197,10 +231,13 @@ or chain only: two of them whose pitch circles touch do not mesh like gears (no 
 | `mech.cvt.range` | CVT ratio (entered or derived from *n*₁/*n*₂) outside the spread of its `ratio` parameter (0.4 … 2.5) | warning | [S18] |
 | `mech.clutch.slip` | torque through a slip clutch (its own *T*, linked from the shaft line) above *T*_slip | warning | [S18] |
 
-Not yet available: torque relations of the Ravigneaux set (speeds only); a link between the rack and a drawn pinion gear
-(enter the pinion's teeth, speed and torque on the rack); the gear-set elements (planetary, Ravigneaux, differential,
-strain wave, cycloidal, CVT) are not linked to the shafts they sit on (their member speeds are their own values); Willis
-across separate planetary parts; torque split at branches (shaft lines and strands with three or more parts taking
+Not yet available: torque relations of the Ravigneaux set (speeds only); ports for the ring gears, the differential case
+(crown wheel driven by a bevel pinion) and the Ravigneaux carrier; meshes with a gear set (a gear on the ring's outside);
+the sense of rotation of a shaft (a shaft takes the magnitude of a signed member, so entering both the input and the
+output shaft speed of a set whose output turns backwards gives a conflict: enter the output on the set); the rack and
+gear set links in the moving gear train of the core (turning a part does not move a rack, and the core treats a
+schematic gear set carried by two shafts as one rigid body); Willis across separate planetary parts; torque split at
+branches (shaft lines and strands with three or more parts taking
 torque). No strength verification (ISO 6336, DIN 743, EN 13906 beyond *F* = *c*·*s* and *T* = *c*_φ·φ), no slip
 torque design (friction radius, number of faces, spring force).
 

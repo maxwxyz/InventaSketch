@@ -8,7 +8,8 @@ namespace InventaSketch.Modules.Mechanical
 {
     /// <summary>
     /// How mechanical elements take part in the core shaft lines (<see cref="ShaftLines"/>) and the coupling: shafts and
-    /// couplings pass the torque on, bearings take the speed only, carriers, cages, gear sets and nuts stay out; pulleys,
+    /// couplings pass the torque on, bearings take the speed only, carriers, cages, gear sets and nuts stay out (gear sets
+    /// dock their members on shafts instead, <see cref="GearUnits"/>); pulleys,
     /// sprockets and idlers have a pitch circle that sizes the belt or chain but does not mesh (<see cref="IPitchMesh"/>).
     /// </summary>
     internal sealed partial class MechType : IShaftPart, IPitchMesh
@@ -34,6 +35,9 @@ namespace InventaSketch.Modules.Mechanical
     /// <item><b>Meshes:</b> touching gears (spur, ring, bevel, worm and wheel), except planets on a carrier pin (Willis needs
     /// signed speeds: use the planetary set element).</item>
     /// <item><b>Strands:</b> a belt or chain and the pulleys or sprockets it runs over; a screw and the nut on it.</item>
+    /// <item><b>Gear units:</b> the members of gear sets and the CVT (<see cref="GearUnits"/>) share speed and torque with
+    /// the parts docked on their ports; a docked member counts as a torque part of the line.</item>
+    /// <item><b>Rack and pinion:</b> the spur gear meshing with a rack's pitch line gives the rack its pinion values.</item>
     /// </list>
     /// Built once per document and registry (documents are immutable).
     /// </summary>
@@ -66,7 +70,21 @@ namespace InventaSketch.Modules.Mechanical
             public string Rep = "";
             /// <summary>Torque representative: a shaft or coupling with a torque, else a mechanical torque member.</summary>
             public string TorqueRep = "";
+            /// <summary>
+            /// Members of gear units (gear sets, CVT) docked on the line: each takes or gives torque like a torque member, so
+            /// they count towards the "at most two" rule of the line torque.
+            /// </summary>
+            public int Ports;
+            /// <summary>The torque passes along the line: at most two parts take or give it (members and docked unit members).</summary>
+            public bool CarriesTorque => Torque.Count + Ports <= 2 && Torque.Count + Pass.Count >= 2;
         }
+
+        /// <summary>
+        /// One value a member of a gear unit shares with the part docked on it (or with the member of another unit): the
+        /// speed or the torque. <see cref="Part"/> is a magnitude (shafts, gears); <see cref="Member"/> may be signed (set
+        /// members, same sense positive), then <see cref="Signed"/> is set and the part takes its magnitude.
+        /// </summary>
+        public sealed record Share(VarRef Part, VarRef Member, bool Signed, bool Torque);
 
         private readonly Dictionary<string, List<string>> _mesh = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Line> _lineOf = new(StringComparer.Ordinal);
@@ -77,20 +95,27 @@ namespace InventaSketch.Modules.Mechanical
         private readonly Dictionary<string, List<string>> _nuts = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _screwOf = new(StringComparer.Ordinal);
         private readonly Func<string, string, bool> _has;
+        private readonly Func<string, string, VarDef?> _var;
         private readonly HashSet<(string Strand, string Part)> _backSide = new();
         private readonly Func<string, string, bool> _idler;
+        private readonly Dictionary<string, List<Share>> _shares = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _pinionOf = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<string>> _racksOf = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<(string Unit, string Member)>> _docked = new(StringComparer.Ordinal);
 
         private MechTopology(Registry registry, SketchDocument doc)
         {
-            var vars = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-            HashSet<string> VarsOf(string id)
+            var vars = new Dictionary<string, Dictionary<string, VarDef>>(StringComparer.Ordinal);
+            Dictionary<string, VarDef> VarsOf(string id)
             {
                 if (vars.TryGetValue(id, out var s)) return s;
                 var t = doc.Get(id) is { } o ? registry.Type(o.Type) : null;
-                vars[id] = s = new HashSet<string>(ValueModel.Variables(t).Select(v => v.Key), StringComparer.Ordinal);
+                vars[id] = s = new Dictionary<string, VarDef>(StringComparer.Ordinal);
+                foreach (var v in ValueModel.Variables(t)) s[v.Key] = v;
                 return s;
             }
-            _has = (id, key) => VarsOf(id).Contains(key);
+            _has = (id, key) => VarsOf(id).ContainsKey(key);
+            _var = (id, key) => VarsOf(id).TryGetValue(key, out var v) ? v : null;
             string TypeOf(string id) => doc.Get(id)?.Type ?? "";
 
             var graph = Coupling.Graph(registry, doc, Lang.En);
@@ -205,7 +230,171 @@ namespace InventaSketch.Modules.Mechanical
                 line.TorqueRep = line.Pass.Count > 0 ? line.Pass[0] : line.Torque.FirstOrDefault(Mechanical) ?? line.Torque.FirstOrDefault() ?? "";
                 foreach (var m in members) _lineOf[m] = line;
             }
+
+            var ctxA = new RenderContext(doc, Lang.En).For(registry);
+            var anchors = new Dictionary<string, List<Anchor>>(StringComparer.Ordinal);
+            List<Anchor> AnchorsOf(string id)
+            {
+                if (anchors.TryGetValue(id, out var l)) return l;
+                var o = doc.Get(id);
+                return anchors[id] = o is null || o.IsPointGeometry || registry.Type(o.Type) is null ? new List<Anchor>() : registry.PageAnchors(o, ctxA).ToList();
+            }
+            BuildUnits(graph, TypeOf, AnchorsOf);
+            BuildRacks(registry, doc, AnchorsOf, Add);
         }
+
+        /// <summary>Docking tolerance of a port hub on a shaft axis or another hub (as the core coupling).</summary>
+        private const double PortTol = 0.3;
+
+        /// <summary>
+        /// Gear units (gear sets, CVT; <see cref="GearUnits"/>): a member port docked on a part (the part's shaft axis through
+        /// the port hub, or a concentric hub) shares the speed with the part's shaft line and the torque when the line carries it
+        /// (the docked member counts as one part taking or giving torque). Two units docked on each other share both directly.
+        /// </summary>
+        private void BuildUnits(IReadOnlyList<(LinkKind Kind, string A, string B)> graph, Func<string, string> typeOf, Func<string, List<Anchor>> anchorsOf)
+        {
+            var docked = new List<(string Unit, GearUnits.Member M, string Part, GearUnits.Member? PM)>();
+            foreach (var (kind, a, b) in graph)
+            {
+                if (kind is not (LinkKind.Carried or LinkKind.Bonded)) continue;
+                bool ua = GearUnits.IsUnit(typeOf(a)), ub = GearUnits.IsUnit(typeOf(b));
+                if (!ua && !ub) continue;
+                if (ua && ub)
+                {
+                    if (MemberAt(a, b) is { } ma && MemberAt(b, a) is { } mb) docked.Add((a, ma, b, mb));
+                    continue;
+                }
+                var (unit, part) = ua ? (a, b) : (b, a);
+                var tp = typeOf(part);
+                if (!_has(part, "n") || MechValues.IsCarrierLike(tp) || tp == "mech.screwdrive.nut") continue;
+                if (MemberAt(unit, part) is { } m && !docked.Any(d => d.Unit == unit && d.Part == part)) docked.Add((unit, m, part, null));
+            }
+            if (docked.Count == 0) return;
+
+            GearUnits.Member? MemberAt(string unit, string part)
+            {
+                var table = GearUnits.PortsOf(typeOf(unit));
+                if (table is null) return null;
+                var pa = anchorsOf(part);
+                bool On(Vec2 h) => pa.Any(x => x.Kind == AnchorKind.Segment && x.Role == AnchorRole.Axis && Geo.ClosestOnSegment(h, x.P, x.Q).Point.DistanceTo(h) <= PortTol)
+                                   || pa.Any(x => x.Kind == AnchorKind.Point && x.Role == AnchorRole.Hub && x.P.DistanceTo(h) <= PortTol);
+                var hits = anchorsOf(unit)
+                    .Where(x => x.Kind == AnchorKind.Point && x.Role == AnchorRole.Hub && x.Id is { } pid && table.ContainsKey(pid) && On(x.P))
+                    .Select(x => table[x.Id!]).ToList();
+                // Ports at the shaft stubs take precedence over the centre bore; a shaft through two members locks the unit: none.
+                var chosen = hits.Any(h => !h.Centre) ? hits.Where(h => !h.Centre).ToList() : hits;
+                return chosen.Select(h => h.Name).Distinct(StringComparer.Ordinal).Count() == 1 ? chosen[0] : null;
+            }
+
+            // Docked members count as torque parts of the part's line (or of the part alone).
+            string GroupOf(string part) => LineOf(part) is { } l ? "\u0001" + l.Rep : part;
+            var ports = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var d in docked)
+            {
+                if (d.PM is not null || MechValues.IsBearing(typeOf(d.Part))) continue;
+                var g = GroupOf(d.Part);
+                ports[g] = (ports.TryGetValue(g, out var c) ? c : 0) + 1;
+            }
+            foreach (var line in _lineOf.Values.Distinct()) line.Ports = ports.TryGetValue(GroupOf(line.Rep), out var c) ? c : 0;
+
+            void Emit(Share s, params string[] ids)
+            {
+                foreach (var id in ids.Distinct(StringComparer.Ordinal))
+                {
+                    if (!_shares.TryGetValue(id, out var l)) _shares[id] = l = new List<Share>();
+                    if (!l.Contains(s)) l.Add(s);
+                }
+            }
+            foreach (var (unit, m, part, pm) in docked)
+            {
+                if (!_docked.TryGetValue(unit, out var dl)) _docked[unit] = dl = new List<(string, string)>();
+                dl.Add((part, m.Name));
+                if (pm is not null)
+                {
+                    // Unit on unit: the magnitude side (if only one is signed) is the part.
+                    bool sa = GearUnits.Signed(this, unit, m.Speed), sb = GearUnits.Signed(this, part, pm.Speed);
+                    var (p, q, signed) = sa && !sb ? ((part, pm.Speed), (unit, m.Speed), true) : ((unit, m.Speed), (part, pm.Speed), sb && !sa);
+                    Emit(new Share(new VarRef(p.Item1, p.Item2), new VarRef(q.Item1, q.Item2), signed, false), unit, part);
+                    if (m.Torque is { } ta && pm.Torque is { } tb)
+                    {
+                        bool ta1 = GearUnits.Signed(this, unit, ta), tb1 = GearUnits.Signed(this, part, tb);
+                        var (pt, qt, st) = ta1 && !tb1 ? ((part, tb), (unit, ta), true) : ((unit, ta), (part, tb), tb1 && !ta1);
+                        Emit(new Share(new VarRef(pt.Item1, pt.Item2), new VarRef(qt.Item1, qt.Item2), st, true), unit, part);
+                    }
+                    continue;
+                }
+                var line = LineOf(part);
+                var speedRep = line?.Rep ?? part;
+                Emit(new Share(new VarRef(speedRep, "n"), new VarRef(unit, m.Speed), GearUnits.Signed(this, unit, m.Speed), false), unit, part, speedRep);
+                if (m.Torque is null || MechValues.IsBearing(typeOf(part))) continue;
+                var tp = typeOf(part);
+                var count = ports.TryGetValue(GroupOf(part), out var pc) ? pc : 0;
+                int torque, pass;
+                string target;
+                if (line is null)
+                {
+                    var hasT = _has(part, "T");
+                    pass = hasT && MechValues.PassThrough.Contains(tp) ? 1 : 0;
+                    torque = hasT && pass == 0 ? 1 : 0;
+                    target = hasT ? part : "";
+                }
+                else { torque = line.Torque.Count; pass = line.Pass.Count; target = line.TorqueRep; }
+                if (target.Length == 0 || torque + count > 2 || torque + pass + count < 2) continue;
+                Emit(new Share(new VarRef(target, "T"), new VarRef(unit, m.Torque), GearUnits.Signed(this, unit, m.Torque), true), unit, part, target);
+            }
+        }
+
+        /// <summary>
+        /// Rack and pinion: a spur gear seen along its axis whose pitch circle touches the rack's pitch line on the teeth side
+        /// (within the rack's length) is its pinion; with more than one such gear the rack takes none (its pinion values are
+        /// then entered on the rack).
+        /// </summary>
+        private void BuildRacks(Registry registry, SketchDocument doc, Func<string, List<Anchor>> anchorsOf, Action<Dictionary<string, List<string>>, string, string> add)
+        {
+            var racks = doc.Objects.Values.Where(o => !o.IsPointGeometry && o.Type == GearUnits.RackId && registry.Type(o.Type) is MechType).ToList();
+            if (racks.Count == 0) return;
+            var gears = doc.Objects.Values
+                .Where(o => !o.IsPointGeometry && o.Type == "mech.gear.spur" && _has(o.Id, "n"))
+                .Select(o => (o.Id, Pitch: anchorsOf(o.Id).FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch && !a.NoMesh && a.AxisOf() is null)))
+                .Where(x => x.Pitch is not null).ToList();
+            if (gears.Count == 0) return;
+            foreach (var rack in racks)
+            {
+                var view = ((MechType)registry.Type(rack.Type)!).Spec(rack).Id;
+                var y = Gears.RackPitchY(rack.Size.H, view);
+                var mx = rack.Matrix();
+                Vec2 a = mx.Apply(new Vec2(-rack.Size.W / 2, y)), b = mx.Apply(new Vec2(rack.Size.W / 2, y));
+                var tip = mx.Apply(new Vec2(0, y - 1)) - mx.Apply(new Vec2(0, y));
+                var len = a.DistanceTo(b);
+                if (len < Geo.Eps || tip.Length < Geo.Eps) continue;
+                Vec2 u = (b - a) * (1 / len), n = tip * (1 / tip.Length);
+                var pinions = gears.Where(g =>
+                {
+                    var c = g.Pitch!.P - a;
+                    var r = g.Pitch.Radius;
+                    var t = c.Dot(u);
+                    return t >= 0 && t <= len && Math.Abs(c.Dot(n) - r) <= Math.Max(PortTol, 0.03 * r) && !Coupling.IsReleased(doc, rack.Id, g.Id);
+                }).Select(g => g.Id).ToList();
+                if (pinions.Count != 1) continue;
+                _pinionOf[rack.Id] = pinions[0];
+                add(_racksOf, pinions[0], rack.Id);
+            }
+        }
+
+        /// <summary>The values <paramref name="id"/> shares with gear unit members (as a unit, a docked part or a representative).</summary>
+        public IReadOnlyList<Share> SharesOf(string id) => _shares.TryGetValue(id, out var l) ? l : (IReadOnlyList<Share>)Array.Empty<Share>();
+
+        /// <summary>The parts docked on gear unit <paramref name="unit"/> with the member each is docked on.</summary>
+        public IReadOnlyList<(string Part, string Member)> DockedOn(string unit) => _docked.TryGetValue(unit, out var l) ? l : (IReadOnlyList<(string, string)>)Array.Empty<(string, string)>();
+
+        /// <summary>The pinion meshing with rack <paramref name="rack"/>, or null.</summary>
+        public string? PinionOf(string rack) => _pinionOf.TryGetValue(rack, out var p) ? p : null;
+
+        /// <summary>Racks <paramref name="gear"/> is the pinion of.</summary>
+        public IReadOnlyList<string> RacksOf(string gear) => _racksOf.TryGetValue(gear, out var l) ? l : (IReadOnlyList<string>)Array.Empty<string>();
+
+        /// <summary>The variable <paramref name="key"/> of <paramref name="id"/> (null if none).</summary>
+        internal VarDef? Var(string id, string key) => _var(id, key);
 
         public bool Has(string id, string key) => _has(id, key);
 
@@ -234,6 +423,50 @@ namespace InventaSketch.Modules.Mechanical
         public IReadOnlyList<string> NutsOf(string screw) => _nuts.TryGetValue(screw, out var l) ? l : (IReadOnlyList<string>)Array.Empty<string>();
 
         public string? ScrewOf(string nut) => _screwOf.TryGetValue(nut, out var s) ? s : null;
+    }
+
+    /// <summary>
+    /// Gear units (gear sets and the CVT): elements whose members turn at different speeds, so they join no shaft line but
+    /// dock each member on its own shaft. A member port is a hub point of the unit's view (its id names the member); a part
+    /// whose shaft axis passes through it, or whose hub is concentric with it, is docked on that member (<see cref="MechTopology"/>).
+    /// The centre hub of a unit is its bore (axial views: the sun, the large sun, the input) and yields to a port at a shaft
+    /// stub that the same part also touches.
+    /// </summary>
+    internal static class GearUnits
+    {
+        public const string RackId = "mech.gear.rack";
+
+        /// <summary>A member of a unit: its name, speed and torque variable; <see cref="Centre"/> for the centre bore.</summary>
+        internal sealed record Member(string Name, string Speed, string? Torque, bool Centre = false);
+
+        private static Dictionary<string, Member> Ports(params (string Anchor, Member M)[] ports)
+            => ports.ToDictionary(p => p.Anchor, p => p.M, StringComparer.Ordinal);
+
+        private static readonly Member Sun = new("sun", "ns", "Ts"), Carrier = new("carrier", "nc", "Tc");
+        private static readonly Member In = new("in", "n1", "T1"), Out = new("out", "n2", "T2");
+
+        private static readonly Dictionary<string, Dictionary<string, Member>> Table = new(StringComparer.Ordinal)
+        {
+            // Sun on the right shaft stub (and the bore of the axial views), carrier on the left one.
+            ["mech.gearset.planetary"] = Ports(("hub", Sun with { Centre = true }), ("sun", Sun), ("carrier", Carrier)),
+            // Small sun on the left stub, large sun on the right one and in the bore of the axial view; no torques.
+            ["mech.gearset.ravigneaux"] = Ports(("hub", new Member("sun2", "ns2", null, true)), ("sun1", new Member("sun1", "ns1", null)), ("sun2", new Member("sun2", "ns2", null))),
+            // Half shafts at the outer ends.
+            ["mech.gearset.differential"] = Ports(("left", new Member("left", "n1", "T1")), ("right", new Member("right", "n2", "T2"))),
+            // Input (wave generator, eccentric) left and in the bore, output right.
+            ["mech.gearset.harmonic"] = Ports(("hub", In with { Centre = true }), ("in", In), ("out", Out)),
+            ["mech.gearset.cycloidal"] = Ports(("hub", In with { Centre = true }), ("in", In), ("out", Out)),
+            // Primary pulley (input) and secondary pulley (output).
+            ["mech.cvt"] = Ports(("hub", In), ("hub2", Out)),
+        };
+
+        public static bool IsUnit(string typeId) => Table.ContainsKey(typeId);
+
+        /// <summary>Port anchor id → member of the unit type, or null for no unit.</summary>
+        public static IReadOnlyDictionary<string, Member>? PortsOf(string typeId) => Table.TryGetValue(typeId, out var p) ? p : null;
+
+        /// <summary>True if variable <paramref name="key"/> of <paramref name="id"/> is signed (its range reaches below 0).</summary>
+        internal static bool Signed(MechTopology topo, string id, string key) => topo.Var(id, key) is { Min: < 0 };
     }
 
     /// <summary>
@@ -322,7 +555,7 @@ namespace InventaSketch.Modules.Mechanical
             {
                 if (id == line.Rep) { foreach (var m in line.Members) if (m != id) list.Add(Eq(SameSpeed, id, m, "n")); }
                 else list.Add(Eq(SameSpeed, line.Rep, id, "n"));
-                if (line.Torque.Count <= 2 && line.Torque.Count + line.Pass.Count >= 2 && (line.Torque.Contains(id) || line.Pass.Contains(id)))
+                if (line.CarriesTorque && (line.Torque.Contains(id) || line.Pass.Contains(id)))
                 {
                     var rep = line.TorqueRep;
                     if (id == rep) { foreach (var m in line.Torque.Concat(line.Pass)) if (m != id) list.Add(Eq(SameTorque, id, m, "T")); }
@@ -346,7 +579,60 @@ namespace InventaSketch.Modules.Mechanical
             // Screw and nut.
             foreach (var nut in topo.NutsOf(id)) { list.Add(Eq(SameLinSpeed, id, nut, "v")); list.Add(Eq(SameForce, id, nut, "F")); }
             if (topo.ScrewOf(id) is { } screw) { list.Add(Eq(SameLinSpeed, screw, id, "v")); list.Add(Eq(SameForce, screw, id, "F")); }
+
+            // Gear units: the members share speed and torque with the parts docked on them.
+            foreach (var s in topo.SharesOf(id))
+            {
+                var rel = s.Torque ? (s.Signed ? UnitTorqueMagnitude : UnitTorque) : (s.Signed ? UnitSpeedMagnitude : UnitSpeed);
+                list.Add(s.Signed
+                    ? Bind(rel, ("x", s.Part.ObjectId, s.Part.Key), ("m", s.Member.ObjectId, s.Member.Key))
+                    : Bind(rel, ("a", s.Part.ObjectId, s.Part.Key), ("b", s.Member.ObjectId, s.Member.Key)));
+            }
+
+            // Rack and pinion: the rack's pinion values are those of the meshing gear.
+            if (topo.PinionOf(id) is { } pinion) list.AddRange(RackMesh(id, pinion));
+            foreach (var rack in topo.RacksOf(id)) list.AddRange(RackMesh(rack, id));
             return list;
+        }
+
+        private static readonly Relation UnitSpeed = Relation.Equality("mech.unit.speed", T("Same speed at a member of the gear unit", "Gleiche Drehzahl an einem Glied der Getriebeeinheit"));
+        private static readonly Relation UnitTorque = Relation.Equality("mech.unit.torque", T("Torque passes into a member of the gear unit", "Drehmoment geht in ein Glied der Getriebeeinheit"));
+
+        /// <summary>
+        /// A shaft at a member of a gear set with signed member speeds: n = |n_m| (shaft speeds are magnitudes); a member driven
+        /// from its shaft turns in the positive sense.
+        /// </summary>
+        private static readonly Relation UnitSpeedMagnitude =
+            new Relation("mech.unit.speed.magnitude", T("Shaft speed at a member of the set (magnitude)", "Wellendrehzahl an einem Glied des Satzes (Betrag)"), "{x} = |{m}|", "x", "m")
+            {
+                Validity = T("shaft speeds are magnitudes; a member driven from its shaft turns in the positive sense",
+                             "Wellendrehzahlen sind Beträge; ein von seiner Welle angetriebenes Glied dreht im positiven Sinn"),
+            }
+                .Solve("x", "|{m}|", v => Math.Abs(v("m")))
+                .Solve("m", "{x}", v => v("x"));
+
+        /// <summary>A shaft at a member of a gear set with signed member torques: T = |T_m| (shaft torques are magnitudes).</summary>
+        private static readonly Relation UnitTorqueMagnitude =
+            new Relation("mech.unit.torque.magnitude", T("Shaft torque at a member of the set (magnitude)", "Wellenmoment an einem Glied des Satzes (Betrag)"), "{x} = |{m}|", "x", "m")
+            {
+                Validity = T("shaft torques are magnitudes; a member driven from its shaft takes the positive sense",
+                             "Wellenmomente sind Beträge; ein von seiner Welle angetriebenes Glied nimmt den positiven Sinn an"),
+            }
+                .Solve("x", "|{m}|", v => Math.Abs(v("m")))
+                .Solve("m", "{x}", v => v("x"));
+
+        private static readonly Relation RackPinionSpeed = Relation.Equality("mech.rack.mesh.speed", T("The rack's pinion is the meshing gear: speed", "Das Ritzel der Zahnstange ist das kämmende Rad: Drehzahl"));
+        private static readonly Relation RackPinionTorque = Relation.Equality("mech.rack.mesh.torque", T("The rack's pinion is the meshing gear: torque", "Das Ritzel der Zahnstange ist das kämmende Rad: Drehmoment"));
+        private static readonly Relation RackPinionTeeth = Relation.Equality("mech.rack.mesh.teeth", T("The rack's pinion is the meshing gear: teeth", "Das Ritzel der Zahnstange ist das kämmende Rad: Zähnezahl"));
+        private static readonly Relation RackPinionDiameter = Relation.Equality("mech.rack.mesh.diameter", T("The rack's pinion is the meshing gear: pitch diameter", "Das Ritzel der Zahnstange ist das kämmende Rad: Teilkreisdurchmesser"));
+
+        /// <summary>Rack <paramref name="rack"/> and its pinion gear: n_p, T_p, z_p and d_p of the rack are the gear's n, T, z and d (v = ω·r on the rack).</summary>
+        private static IEnumerable<BoundRelation> RackMesh(string rack, string pinion)
+        {
+            yield return Bind(RackPinionSpeed, ("a", pinion, "n"), ("b", rack, "np"));
+            yield return Bind(RackPinionTorque, ("a", pinion, "T"), ("b", rack, "Tp"));
+            yield return Bind(RackPinionTeeth, ("a", pinion, "z"), ("b", rack, "zp"));
+            yield return Bind(RackPinionDiameter, ("a", pinion, "d"), ("b", rack, "dp"));
         }
 
         private static IEnumerable<BoundRelation> Strand(MechTopology topo, SketchDocument doc, string strand, string part)

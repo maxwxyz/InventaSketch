@@ -29,6 +29,12 @@ namespace InventaSketch.Modules.Mechanical
         private static Anchor PitchIn(Pen p, double r) => Anchor.Circle(AnchorRole.PitchInner, Vec2.Zero, r * p.K);
 
         /// <summary>
+        /// Hub point of one member of a gear unit at the end of its shaft stub on the axis (design x, y = 0): a shaft whose
+        /// axis passes through it, or a part concentric with it, is docked on that member (<see cref="GearUnits"/>).
+        /// </summary>
+        internal static Anchor MemberPort(Pen p, double x, string id) => Anchor.Point(AnchorRole.Hub, p.V(x, 0), id);
+
+        /// <summary>
         /// Pitch circle of a gear seen from the side or as a schematic stick (axis horizontal in the box): the radius is the
         /// vertical half extent of the pitch lines (stick: the symbol height), so gears on parallel shafts mesh, snap and
         /// stay coupled in these views as in the axial view.
@@ -373,6 +379,18 @@ namespace InventaSketch.Modules.Mechanical
             yield return Anchor.Point(AnchorRole.End, new Vec2(p.W / 2, 0), "right");
         }
 
+        /// <summary>
+        /// The pitch line of a rack (the line its pinion rolls on) as local y in actual mm, for a box of height
+        /// <paramref name="h"/> in <paramref name="view"/>; the teeth point to −y. Drawn views: 45 % of the tooth depth below the
+        /// tips; schematic: midway between the body line and the tips.
+        /// </summary>
+        internal static double RackPitchY(double h, string view)
+        {
+            h = Math.Max(h, 0.01);
+            if (view == "stick") return -0.25 * h / 2;
+            return -h / 2 + Math.Min(h * 0.4, 5) * 0.45;
+        }
+
         /// <summary>Rack in actual mm: tooth pitch from the module if set, otherwise from the height.</summary>
         private static void RackDraw(Pen p, SketchObject o, bool teeth)
         {
@@ -382,7 +400,7 @@ namespace InventaSketch.Modules.Mechanical
             var pitch = m > 0 ? Math.PI * m : Math.Max(1.5, depth * 2.2);
             var top = -hh;
             var rootY = top + depth;
-            var pitchY = top + depth * 0.45;
+            var pitchY = RackPitchY(p.H, "teeth");
             if (teeth)
             {
                 var n = Math.Max(1, (int)Math.Floor(p.W / pitch));
@@ -437,7 +455,9 @@ namespace InventaSketch.Modules.Mechanical
             new[] { "planetary", "epicyclic", "sun", "planet", "carrier", "ring", "planetengetriebe", "umlaufgetriebe", "sonnenrad", "planetenrad", "steg", "hohlrad" },
             // Axial views: the sun's bore (the set sits on the sun shaft). The schematic shows the members on separate
             // shafts and has no single bore: it keeps its size.
-            new ViewSpec("stick", VStick, 30, 50, PlanetStick),
+            // Member ports at the ends of the sun and carrier shafts: a shaft docked there drives or takes that member
+            // (MechTopology, GearUnits).
+            new ViewSpec("stick", VStick, 30, 50, PlanetStick) { Anchors = (p, o) => new[] { MemberPort(p, 15, "sun"), MemberPort(p, -15, "carrier") } },
             new ViewSpec("axial", VAxial, 50, 50, (p, o) => PlanetAxial(p, o, false)) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K },
             new ViewSpec("teeth", VTeeth, 50, 50, (p, o) => PlanetAxial(p, o, true)) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K })
         {
@@ -600,7 +620,9 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Ravigneaux() => new(
             "mech.gearset.ravigneaux", T("Ravigneaux gear set", "Ravigneaux-Radsatz"), Cat,
             new[] { "ravigneaux", "planet pairs", "compound planetary", "automatic transmission", "two suns", "planetenpaare", "ravigneaux-satz", "automatikgetriebe", "zwei sonnen" },
-            new ViewSpec("stick", VStick, 34, 50, RavigneauxStick),
+            // Member ports at the ends of the small and the large sun's shafts (the carrier's hollow shaft shares the small
+            // sun's axis end and has no port of its own).
+            new ViewSpec("stick", VStick, 34, 50, RavigneauxStick) { Anchors = (p, o) => new[] { MemberPort(p, -17, "sun1"), MemberPort(p, 17, "sun2") } },
             new ViewSpec("axial", VAxial, 50, 50, RavigneauxAxial) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K })
         {
             Params = new[] { Common.Count("pairs", T("Planet pairs", "Planetenpaare"), 3, 2, 3) },
@@ -814,14 +836,17 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Differential() => new(
             "mech.gearset.differential", T("Bevel differential", "Kegelraddifferential"), Cat,
             new[] { "differential", "diff", "axle", "spider gear", "side gear", "crown wheel", "differential", "ausgleichsgetriebe", "achsgetriebe", "tellerrad", "ausgleichsrad", "final drive", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-            new ViewSpec("stick", VStick, 40, 40, DiffStick),
-            new ViewSpec("section", VSection, 40, 40, DiffSection))
+            // Member ports at the outer ends of the half shafts (left: n₁, right: n₂).
+            new ViewSpec("stick", VStick, 40, 40, DiffStick) { Anchors = DiffPorts },
+            new ViewSpec("section", VSection, 40, 40, DiffSection) { Anchors = DiffPorts })
         {
             // The differential sits on the axle shaft; the wheels sit on its half shafts.
             CompanionTypes = new[] { "mech.shaft", Drivetrain.Wheel, "mech.gear.bevel", "mech.gear.spur", "mech.bearing.taperroller" },
             // Built from parts with "Explode": case with cross pin and crown wheel, two side gears, two spider gears.
             PartsOf = DifferentialParts,
         };
+
+        private static IEnumerable<Anchor> DiffPorts(Pen p, SketchObject o) => new[] { MemberPort(p, -20, "left"), MemberPort(p, 20, "right") };
 
         /// <summary>
         /// The differential as parts in the stick view: the case (cage, cross pin, crown wheel), the two side gears on the
