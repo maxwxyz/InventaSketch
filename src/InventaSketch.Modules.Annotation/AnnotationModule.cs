@@ -6,8 +6,9 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Annotation
 {
     /// <summary>
-    /// Annotation module: lines and arrows, leaders, labels, dimensions, hatching, figure marks,
-    /// technical-mechanics symbols (free-body diagrams) and flowchart starters. Every type is
+    /// Annotation module: lines and arrows, leaders, labels, dimensions, technical drawing indications (geometric
+    /// tolerances, surface texture, welds), hatching, figure marks, technical-mechanics symbols (free-body diagrams, beam
+    /// diagrams) and flowchart starters. Every type is
     /// insertable without parameters.
     /// </summary>
     public sealed class AnnotationModule : IModule
@@ -16,7 +17,7 @@ namespace InventaSketch.Modules.Annotation
 
         public string Id => "annotation";
         public I18nText Name => new("Annotation", "Beschriftung");
-        public string Version => "0.2.0";
+        public string Version => "0.3.0";
         public IEnumerable<ObjectType> Types => AllTypes;
 
         private static ObjectType[] CreateTypes() => new ObjectType[]
@@ -27,15 +28,17 @@ namespace InventaSketch.Modules.Annotation
             // Labels & text
             TextBoxType.Text(), TextBoxType.Label(), TextBoxType.Callout(), TextBoxType.Balloon(), new PartsListType(), new TableType(),
             // Dimensions
-            new LinearDimensionType(false), new LinearDimensionType(true), new AngleDimensionType(), new RadiusDimensionType(),
+            new LinearDimensionType(false), new LinearDimensionType(true), new AngleDimensionType(), new RadiusDimensionType(), new ChainDimensionType(),
+            // Technical drawing indications (tolerances, surface texture, welds)
+            new GdtFrameType(), new GdtDatumType(), new SurfaceTextureType(), new WeldSymbolType(),
             // Hatching
             new HatchBoxType(false), new HatchBoxType(true), new HatchPolygonType(),
             // Figure marks
             new LeaderType(), new FigLabelType(), new SectionLineType(), new DetailCircleType(), new CenterlineType(), new BreaklineType(),
-            new BracketType(true), new BracketType(false), new ViewArrowType(), new DetailViewType(),
+            new BracketType(true), new BracketType(false), new ViewArrowType(), new DetailViewType(), new RevisionCloudType(),
             // Technical mechanics
             new ForceType(), new MomentType(), new CoordSysType(), new CogType(), new GroundType(), new SupportType(false), new SupportType(true),
-            new FixedSupportType(), new DistributedLoadType(), new BeamType(), new SpringType(), new DamperType(), new MassType(),
+            new FixedSupportType(), new DistributedLoadType(), new BeamType(), new SpringType(), new DamperType(), new MassType(), new BeamDiagramType(),
             // Flowchart
             new FlowBoxType(FlowShape.Process), new FlowBoxType(FlowShape.Decision), new FlowBoxType(FlowShape.Terminator),
             new FlowBoxType(FlowShape.Data), new FlowBoxType(FlowShape.Document), new FlowBoxType(FlowShape.Connector), new FlowBoxType(FlowShape.End), new FlowStepType(),
@@ -119,6 +122,21 @@ namespace InventaSketch.Modules.Annotation
                 yield return Wide("uturn", "Block arrow U-turn", "Blockpfeil Kehre (U)", new[] { new Vec2(-12, 12), new Vec2(-12, -10), new Vec2(12, -10), new Vec2(12, 12) }, false, "u-turn", "return", "kehre", "rückführung", "umlenkung");
                 yield return new LibraryItem("ann.viewarrow.free", "ann.viewarrow", new I18nText("View arrow, letter freestanding", "Ansichtspfeil, Buchstabe freistehend"), AnnCategories.PatentMarks)
                 { Params = new Dictionary<string, ParamValue> { ["mode"] = "freestanding" }, Keywords = new[] { "freestanding", "freistehend" } };
+                // Drawing indications: common tolerance, weld and beam-diagram cases.
+                LibraryItem Preset(string id, string type, string en, string de, string category, Dictionary<string, ParamValue> ps, params string[] keys)
+                    => new(id, type, new I18nText(en, de), category) { Params = ps, Keywords = keys };
+                yield return Preset("ann.gdt.frame.flatness", "ann.gdt.frame", "Flatness tolerance", "Ebenheitstoleranz", AnnCategories.Dimensions,
+                    new Dictionary<string, ParamValue> { ["characteristic"] = "flatness", ["tolerance"] = "0.05" }, "flatness", "ebenheit", "form");
+                yield return Preset("ann.gdt.frame.parallelism", "ann.gdt.frame", "Parallelism tolerance", "Parallelitätstoleranz", AnnCategories.Dimensions,
+                    new Dictionary<string, ParamValue> { ["characteristic"] = "parallelism", ["tolerance"] = "0.02" }, "parallelism", "parallelität", "orientation", "richtung");
+                yield return Preset("ann.gdt.frame.runout", "ann.gdt.frame", "Circular run-out tolerance", "Lauftoleranz", AnnCategories.Dimensions,
+                    new Dictionary<string, ParamValue> { ["characteristic"] = "circularRunout", ["tolerance"] = "0.03" }, "run-out", "runout", "lauf", "rundlauf");
+                yield return Preset("ann.weld.v", "ann.weld", "V butt weld symbol", "Symbol V-Naht", AnnCategories.Dimensions,
+                    new Dictionary<string, ParamValue> { ["kind"] = "v" }, "v weld", "butt", "v-naht", "stumpfnaht");
+                yield return Preset("ann.beam.diagram.cantilever", BeamDiagramType.TypeId, "Cantilever diagrams (end load)", "Kragträger-Verläufe (Endlast)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["support"] = "cantilever", ["at"] = 1.0 }, "cantilever", "kragträger", "kragarm");
+                yield return Preset("ann.beam.diagram.uniform", BeamDiagramType.TypeId, "Beam diagrams (uniform load)", "Balken-Verläufe (Streckenlast)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["load"] = "uniform" }, "uniform load", "streckenlast", "gleichlast");
                 yield return new LibraryItem("ann.line.bus", "ann.line", new I18nText("Bus line with slash (n lines)", "Sammelleitung mit Schrägstrich (n Leitungen)"), AnnCategories.Lines)
                 { Params = new Dictionary<string, ParamValue> { ["busMark"] = "slash", ["busCount"] = "n" }, Keywords = new[] { "bus", "bundle", "n lines", "bündel", "sammelleitung", "mehrfachleitung" } };
             }
